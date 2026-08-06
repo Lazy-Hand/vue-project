@@ -1,11 +1,18 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { computed } from 'vue'
+import { ElConfigProvider } from 'element-plus'
+import en from 'element-plus/es/locale/lang/en'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+
+import { useAppConfigStore } from '@/stores/app-config'
+
+const appConfig = useAppConfigStore()
+
+const elementLocale = computed(() => (appConfig.locale === 'en-US' ? en : zhCn))
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <ElConfigProvider :locale="elementLocale">
+    <RouterView />
+  </ElConfigProvider>
 </template>
-
-<style scoped></style>

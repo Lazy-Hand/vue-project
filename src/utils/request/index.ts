@@ -4,6 +4,7 @@ import { createClientTokenAuthentication } from 'alova/client'
 
 import { requestAdapter } from '@/mocks'
 import { pinia } from '@/stores'
+import { useAppConfigStore } from '@/stores/app-config'
 import { useAuthStore } from '@/stores/auth'
 import type { AuthTokenData } from '@/types/auth'
 import { unwrapResponse } from './response'
@@ -17,12 +18,15 @@ export const authMeta = {
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 
 function assignBearerToken(method: Method): void {
-  const { accessToken } = useAuthStore(pinia)
+  const { accessToken, currentAccountSetId } = useAuthStore(pinia)
   if (!accessToken) return
 
   method.config.headers = {
     ...method.config.headers,
     Authorization: `Bearer ${accessToken}`,
+    ...(currentAccountSetId
+      ? { 'X-Account-Set-Id': currentAccountSetId }
+      : {}),
   }
 }
 
@@ -30,7 +34,7 @@ async function refreshAccessToken(): Promise<AuthTokenData> {
   const authStore = useAuthStore(pinia)
 
   try {
-    const tokenData = await alovaInstance.Post<AuthTokenData>('/auth/refresh', undefined, {
+    const tokenData = await alovaInstance.Post<AuthTokenData>('/auth/refresh', {}, {
       meta: authMeta.refreshToken,
       cacheFor: 0,
     })
@@ -65,6 +69,7 @@ export const alovaInstance = createAlova({
     method.config.credentials = 'include'
     method.config.headers = {
       Accept: 'application/json',
+      'X-Locale': useAppConfigStore(pinia).locale,
       ...method.config.headers,
     }
   }),

@@ -3,7 +3,8 @@ import adapterFetch, { type FetchRequestInit } from 'alova/fetch'
 import { createAlovaMockAdapter } from '@alova/mock'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { AuthTokenData } from '@/types/auth'
+import type { AuthTokenData, AuthUser } from '@/types/auth'
+import type { PermissionTreeNode } from '@/types/permission'
 import { unwrapResponse } from '@/utils/request/response'
 import authMock from './auth'
 
@@ -44,6 +45,32 @@ describe('auth mock', () => {
       status: 401,
       code: 401,
       message: '用户名或密码错误',
+    })
+  })
+
+  it('returns me, menus, permissions, account-sets and logout payloads', async () => {
+    const alova = createMockAlova()
+
+    await expect(alova.Get<AuthUser>('/auth/me')).resolves.toMatchObject({
+      username: 'admin',
+      enabled: true,
+    })
+    await expect(alova.Get<string[]>('/auth/me/permissions')).resolves.toContain(
+      'system:user:create',
+    )
+    const menus = await alova.Get<PermissionTreeNode[]>('/auth/me/menus')
+    expect(menus.some((node) => node.code === 'system')).toBe(true)
+    await expect(alova.Get('/auth/me/account-sets')).resolves.toEqual([
+      {
+        id: '1',
+        code: 'DEFAULT',
+        name: '默认账套',
+        isDefault: true,
+        enabled: true,
+      },
+    ])
+    await expect(alova.Post<{ success: boolean }>('/auth/logout')).resolves.toEqual({
+      success: true,
     })
   })
 

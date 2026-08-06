@@ -1,7 +1,6 @@
 import { createAlovaMockAdapter } from '@alova/mock'
 import adapterFetch from 'alova/fetch'
 
-import authMock from './auth'
 
 const fetchAdapter = adapterFetch()
 
@@ -11,7 +10,7 @@ export const mockEnabled =
   import.meta.env.VITE_ENABLE_MOCK !== 'false'
 
 export const requestAdapter = mockEnabled
-  ? createAlovaMockAdapter([authMock], {
+  ? createAlovaMockAdapter([], {
       httpAdapter: fetchAdapter,
       delay: 300,
       matchMode: 'methodurl',

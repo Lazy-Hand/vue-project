@@ -111,6 +111,9 @@ describe('authenticated requests', () => {
     expect(protectedCall).toBeDefined()
     if (!refreshCall || !protectedCall) throw new Error('expected refresh and protected calls')
     expect(refreshCall.init.credentials).toBe('include')
-    expect(protectedCall.init.headers).toMatchObject({ Authorization: 'Bearer refreshed-token' })
+    expect(protectedCall.init.headers).toMatchObject({
+      Authorization: 'Bearer refreshed-token',
+      'X-Locale': 'zh-CN',
+    })
   })
 })

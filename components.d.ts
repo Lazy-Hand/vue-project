@@ -12,6 +12,21 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ElAside: typeof import('element-plus/es')['ElAside']
+    ElButton: typeof import('element-plus/es')['ElButton']
+    ElColorPicker: typeof import('element-plus/es')['ElColorPicker']
+    ElContainer: typeof import('element-plus/es')['ElContainer']
+    ElForm: typeof import('element-plus/es')['ElForm']
+    ElFormItem: typeof import('element-plus/es')['ElFormItem']
+    ElHeader: typeof import('element-plus/es')['ElHeader']
+    ElIcon: typeof import('element-plus/es')['ElIcon']
+    ElInput: typeof import('element-plus/es')['ElInput']
+    ElMain: typeof import('element-plus/es')['ElMain']
+    ElMenu: typeof import('element-plus/es')['ElMenu']
+    ElMenuItem: typeof import('element-plus/es')['ElMenuItem']
+    ElOption: typeof import('element-plus/es')['ElOption']
+    ElSelect: typeof import('element-plus/es')['ElSelect']
+    ElSubMenu: typeof import('element-plus/es')['ElSubMenu']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
@@ -19,6 +34,21 @@ declare module 'vue' {
 
 // For TSX support
 declare global {
+  const ElAside: typeof import('element-plus/es')['ElAside']
+  const ElButton: typeof import('element-plus/es')['ElButton']
+  const ElColorPicker: typeof import('element-plus/es')['ElColorPicker']
+  const ElContainer: typeof import('element-plus/es')['ElContainer']
+  const ElForm: typeof import('element-plus/es')['ElForm']
+  const ElFormItem: typeof import('element-plus/es')['ElFormItem']
+  const ElHeader: typeof import('element-plus/es')['ElHeader']
+  const ElIcon: typeof import('element-plus/es')['ElIcon']
+  const ElInput: typeof import('element-plus/es')['ElInput']
+  const ElMain: typeof import('element-plus/es')['ElMain']
+  const ElMenu: typeof import('element-plus/es')['ElMenu']
+  const ElMenuItem: typeof import('element-plus/es')['ElMenuItem']
+  const ElOption: typeof import('element-plus/es')['ElOption']
+  const ElSelect: typeof import('element-plus/es')['ElSelect']
+  const ElSubMenu: typeof import('element-plus/es')['ElSubMenu']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
 }
