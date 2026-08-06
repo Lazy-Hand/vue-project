@@ -1,53 +1,39 @@
 export interface AuthUser {
-  id: string;
-  username: string;
-  nickname: string | null;
-  email: string | null;
-  phone: string | null;
-  avatar: string | null;
-  enabled: boolean;
+  id: string
+  username: string
+  nickname: string | null
+  email: string | null
+  phone: string | null
+  avatar: string | null
+  enabled: boolean
 }
 
 export interface LoginParams {
-  username: string;
-  password: string;
+  username: string
+  password: string
 }
 
 export interface AuthTokenData {
-  accessToken: string;
-  tokenType: 'Bearer';
-  expiresIn: number;
-  user: AuthUser;
+  accessToken: string
+  tokenType: 'Bearer'
+  expiresIn: number
+  user: AuthUser
 }
 
 export interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
-  errors?: unknown;
+  code: number
+  message: string
+  data: T
+  errors?: unknown
 }
 
 export interface AuthTokenState {
-  accessToken: string;
-  expiresAt: number;
+  accessToken: string
+  expiresAt: number
 }
 
 export interface ApiErrorDetails {
-  status?: number;
-  code?: number;
-  errors?: unknown;
-}
-
-export class ApiRequestError extends Error {
-  readonly status?: number;
-  readonly code?: number;
-  readonly errors?: unknown;
-
-  constructor(message: string, details: ApiErrorDetails = {}) {
-    super(message);
-    this.name = 'ApiRequestError';
-    this.status = details.status;
-    this.code = details.code;
-    this.errors = details.errors;
-  }
+  status?: number
+  code?: number
+  errors?: unknown
 }
