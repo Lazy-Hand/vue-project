@@ -34,7 +34,7 @@ const menus = computed(() => visibleMenus(authStore.menus))
     class="aside-menu"
     background-color="#0f172a"
     text-color="rgba(255, 255, 255, 0.78)"
-    active-text-color="#ffffff"
+    active-text-color="var(--el-color-primary)"
   >
     <el-menu-item index="/">
       <MenuIcon icon="HomeFilled" />
@@ -80,6 +80,11 @@ const menus = computed(() => visibleMenus(authStore.menus))
 }
 
 .aside-menu :deep(.el-menu-item.is-active) {
-  background-color: rgb(59 130 246 / 0.28) !important;
+  color: var(--el-color-primary) !important;
+  background-color: color-mix(in srgb, var(--el-color-primary) 28%, transparent) !important;
+}
+
+.aside-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title) {
+  color: var(--el-color-primary) !important;
 }
 </style>

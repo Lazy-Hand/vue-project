@@ -1,16 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  ElButton,
-  ElEmpty,
-  ElInput,
-  ElMessage,
-  ElMessageBox,
-  ElPagination,
-  ElTable,
-  ElTableColumn,
-} from 'element-plus'
+import { ElButton, ElEmpty, ElMessage, ElMessageBox } from 'element-plus'
 
 import {
   createDictItem,
@@ -22,7 +13,7 @@ import {
   updateDictItem,
   updateDictType,
 } from '@/api/dict'
-import DictTag from '@/components/DictTag/index.vue'
+import ProTable from '@/components/ProTable/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import { useDictStore } from '@/stores/dict'
 import {
@@ -34,6 +25,12 @@ import {
   type UpdateDictItemPayload,
   type UpdateDictTypePayload,
 } from '@/types/dict'
+import type {
+  ProTableColumn,
+  ProTableExpose,
+  ProTableRequestParams,
+  ProTableSearchField,
+} from '@/types/pro-table'
 import { ApiRequestError } from '@/utils/request'
 import DictItemFormDialog from './DictItemFormDialog.vue'
 import DictTypeFormDialog from './DictTypeFormDialog.vue'
@@ -47,24 +44,9 @@ const { t } = useI18n()
 const { hasPermission } = usePermission()
 const dictStore = useDictStore()
 
-const canCreate = computed(() => hasPermission('system:dict:create'))
-const canUpdate = computed(() => hasPermission('system:dict:update'))
-const canDelete = computed(() => hasPermission('system:dict:delete'))
-
-const typeLoading = ref(false)
-const typeKeyword = ref('')
-const types = ref<DictType[]>([])
-const typePage = ref(1)
-const typePageSize = ref(10)
-const typeTotal = ref(0)
+const typeTableRef = ref<ProTableExpose<DictType> | null>(null)
+const itemTableRef = ref<ProTableExpose<DictItem> | null>(null)
 const selectedType = ref<DictType | null>(null)
-
-const itemLoading = ref(false)
-const itemKeyword = ref('')
-const items = ref<DictItem[]>([])
-const itemPage = ref(1)
-const itemPageSize = ref(10)
-const itemTotal = ref(0)
 
 const typeFormVisible = ref(false)
 const typeFormMode = ref<'create' | 'edit'>('create')
@@ -76,10 +58,90 @@ const itemFormMode = ref<'create' | 'edit'>('create')
 const editingItem = ref<DictItem | null>(null)
 const itemFormRef = ref<InstanceType<typeof DictItemFormDialog> | null>(null)
 
+const canCreate = computed(() => hasPermission('system:dict:create'))
+const canUpdate = computed(() => hasPermission('system:dict:update'))
+const canDelete = computed(() => hasPermission('system:dict:delete'))
+
+const typeSearchFields = computed<ProTableSearchField[]>(() => [
+  {
+    prop: 'keyword',
+    type: 'input',
+    placeholder: t('dict.typeSearchPlaceholder'),
+    defaultValue: '',
+  },
+])
+
+const itemSearchFields = computed<ProTableSearchField[]>(() => [
+  {
+    prop: 'keyword',
+    type: 'input',
+    placeholder: t('dict.itemSearchPlaceholder'),
+    defaultValue: '',
+  },
+])
+
+const typeColumns = computed<ProTableColumn<DictType>[]>(() => [
+  {
+    prop: 'name',
+    label: t('dict.typeName'),
+    minWidth: 120,
+    showOverflowTooltip: true,
+  },
+  {
+    prop: 'code',
+    label: t('dict.typeCode'),
+    minWidth: 130,
+    showOverflowTooltip: true,
+  },
+  {
+    prop: 'enabled',
+    label: t('dict.enabled'),
+    width: 90,
+    type: 'dict',
+    dictTypeCode: DICT_CODES.COMMON_STATUS,
+    tagTypeMap: STATUS_TAG_TYPE_MAP,
+  },
+  {
+    key: 'actions',
+    label: t('common.actions'),
+    width: 120,
+    fixed: 'right',
+    type: 'slot',
+    slot: 'actions',
+  },
+])
+
+const itemColumns = computed<ProTableColumn<DictItem>[]>(() => [
+  { prop: 'label', label: t('dict.itemLabel'), minWidth: 120 },
+  { prop: 'code', label: t('dict.itemCode'), minWidth: 120 },
+  { prop: 'value', label: t('dict.itemValue'), minWidth: 100 },
+  { prop: 'sort', label: t('dict.sort'), width: 80 },
+  {
+    prop: 'enabled',
+    label: t('dict.enabled'),
+    width: 90,
+    type: 'dict',
+    dictTypeCode: DICT_CODES.COMMON_STATUS,
+    tagTypeMap: STATUS_TAG_TYPE_MAP,
+  },
+  {
+    key: 'actions',
+    label: t('common.actions'),
+    width: 120,
+    fixed: 'right',
+    type: 'slot',
+    slot: 'actions',
+  },
+])
+
 function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return error.message
   if (error instanceof Error) return error.message
   return t('dict.requestFailed')
+}
+
+function handleRequestError(error: unknown): void {
+  ElMessage.error(errorMessage(error))
 }
 
 function invalidateCache(typeCode?: string): void {
@@ -90,61 +152,38 @@ function invalidateCache(typeCode?: string): void {
   dictStore.clear()
 }
 
-async function loadTypes(): Promise<void> {
-  typeLoading.value = true
-  try {
-    const result = await fetchDictTypeList({
-      page: typePage.value,
-      pageSize: typePageSize.value,
-      keyword: typeKeyword.value.trim() || undefined,
-    })
-    types.value = result.items
-    typeTotal.value = result.total
+async function requestTypes(params: ProTableRequestParams) {
+  const result = await fetchDictTypeList({
+    page: params.page,
+    pageSize: params.pageSize,
+    keyword: String(params.keyword ?? '').trim() || undefined,
+  })
 
-    if (selectedType.value) {
-      const stillVisible = result.items.find((item) => item.id === selectedType.value?.id)
-      if (stillVisible) {
-        selectedType.value = stillVisible
-      }
-    } else if (result.items.length) {
-      selectedType.value = result.items[0] ?? null
+  if (selectedType.value) {
+    const stillVisible = result.items.find((item) => item.id === selectedType.value?.id)
+    if (stillVisible) {
+      selectedType.value = stillVisible
     }
-  } catch (error) {
-    ElMessage.error(errorMessage(error))
-  } finally {
-    typeLoading.value = false
+  } else if (result.items.length) {
+    selectedType.value = result.items[0] ?? null
   }
+
+  return result
 }
 
-async function loadItems(): Promise<void> {
-  if (!selectedType.value) {
-    items.value = []
-    itemTotal.value = 0
-    return
-  }
-
-  itemLoading.value = true
-  try {
-    const result = await fetchDictItemList({
-      page: itemPage.value,
-      pageSize: itemPageSize.value,
-      dictTypeId: selectedType.value.id,
-      keyword: itemKeyword.value.trim() || undefined,
-    })
-    items.value = result.items
-    itemTotal.value = result.total
-  } catch (error) {
-    ElMessage.error(errorMessage(error))
-  } finally {
-    itemLoading.value = false
-  }
+async function requestItems(params: ProTableRequestParams) {
+  if (!selectedType.value) return []
+  return fetchDictItemList({
+    page: params.page,
+    pageSize: params.pageSize,
+    dictTypeId: selectedType.value.id,
+    keyword: String(params.keyword ?? '').trim() || undefined,
+  })
 }
 
 function handleTypeRowClick(row: DictType): void {
   if (selectedType.value?.id === row.id) return
   selectedType.value = row
-  itemPage.value = 1
-  itemKeyword.value = ''
 }
 
 function openCreateType(): void {
@@ -182,10 +221,8 @@ async function handleTypeSubmit(payload: DictTypePayload | UpdateDictTypePayload
       const created = await createDictType(payload as DictTypePayload)
       ElMessage.success(t('dict.createSuccess'))
       typeFormVisible.value = false
-      await loadTypes()
       selectedType.value = created
-      itemPage.value = 1
-      await loadItems()
+      await typeTableRef.value?.reload()
       return
     }
 
@@ -197,7 +234,7 @@ async function handleTypeSubmit(payload: DictTypePayload | UpdateDictTypePayload
     if (selectedType.value?.id === updated.id) {
       selectedType.value = updated
     }
-    await loadTypes()
+    await typeTableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   } finally {
@@ -218,7 +255,7 @@ async function handleItemSubmit(payload: DictItemPayload | UpdateDictItemPayload
     }
     itemFormVisible.value = false
     invalidateCache(selectedType.value.code)
-    await loadItems()
+    await itemTableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   } finally {
@@ -241,17 +278,8 @@ async function handleDeleteType(row: DictType): Promise<void> {
     invalidateCache(row.code)
     if (selectedType.value?.id === row.id) {
       selectedType.value = null
-      items.value = []
-      itemTotal.value = 0
     }
-    if (types.value.length === 1 && typePage.value > 1) {
-      typePage.value -= 1
-    }
-    await loadTypes()
-    if (!selectedType.value && types.value.length) {
-      selectedType.value = types.value[0] ?? null
-    }
-    await loadItems()
+    await typeTableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   }
@@ -272,211 +300,91 @@ async function handleDeleteItem(row: DictItem): Promise<void> {
     if (selectedType.value) {
       invalidateCache(selectedType.value.code)
     }
-    if (items.value.length === 1 && itemPage.value > 1) {
-      itemPage.value -= 1
-    }
-    await loadItems()
+    await itemTableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   }
 }
 
-function onEditType(row: unknown): void {
-  openEditType(row as DictType)
-}
-
-function onDeleteType(row: unknown): void {
-  void handleDeleteType(row as DictType)
-}
-
-function onEditItem(row: unknown): void {
-  openEditItem(row as DictItem)
-}
-
-function onDeleteItem(row: unknown): void {
-  void handleDeleteItem(row as DictItem)
-}
-
-function handleTypeSearch(): void {
-  typePage.value = 1
-  void loadTypes()
-}
-
-function handleItemSearch(): void {
-  itemPage.value = 1
-  void loadItems()
-}
-
-function handleTypePageChange(next: number): void {
-  typePage.value = next
-  void loadTypes()
-}
-
-function handleTypeSizeChange(size: number): void {
-  typePageSize.value = size
-  typePage.value = 1
-  void loadTypes()
-}
-
-function handleItemPageChange(next: number): void {
-  itemPage.value = next
-  void loadItems()
-}
-
-function handleItemSizeChange(size: number): void {
-  itemPageSize.value = size
-  itemPage.value = 1
-  void loadItems()
-}
-
 watch(
   () => selectedType.value?.id,
-  () => {
-    void loadItems()
+  async (id) => {
+    if (!id) return
+    await nextTick()
+    await itemTableRef.value?.resetSearch()
   },
 )
-
-onMounted(() => {
-  void loadTypes()
-})
 </script>
 
 <template>
   <div class="dict-page">
     <section class="dict-page__panel">
-      <div class="dict-page__toolbar">
-        <el-input
-          v-model="typeKeyword"
-          clearable
-          class="dict-page__search"
-          :placeholder="t('dict.typeSearchPlaceholder')"
-          @keyup.enter="handleTypeSearch"
-          @clear="handleTypeSearch"
-        />
-        <div class="dict-page__actions">
-          <el-button @click="loadTypes">{{ t('common.refresh') }}</el-button>
+      <ProTable
+        ref="typeTableRef"
+        :columns="typeColumns"
+        :search-fields="typeSearchFields"
+        :request="requestTypes"
+        :pagination="{ small: true }"
+        highlight-current-row
+        :current-row-key="selectedType?.id"
+        :show-request-error="false"
+        @row-click="handleTypeRowClick"
+        @request-error="handleRequestError"
+      >
+        <template #toolbar-actions>
           <el-button v-if="canCreate" type="primary" @click="openCreateType">
             {{ t('dict.createType') }}
           </el-button>
-        </div>
-      </div>
+        </template>
 
-      <el-table
-        v-loading="typeLoading"
-        :data="types"
-        row-key="id"
-        highlight-current-row
-        class="dict-page__table"
-        :current-row-key="selectedType?.id"
-        @row-click="handleTypeRowClick"
-      >
-        <el-table-column prop="name" :label="t('dict.typeName')" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="code" :label="t('dict.typeCode')" min-width="130" show-overflow-tooltip />
-        <el-table-column :label="t('dict.enabled')" width="90">
-          <template #default="{ row }">
-            <DictTag
-              :type-code="DICT_CODES.COMMON_STATUS"
-              :value="row.enabled"
-              :tag-type-map="STATUS_TAG_TYPE_MAP"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column :label="t('common.actions')" width="120" fixed="right">
-          <template #default="{ row }">
-            <el-button v-if="canUpdate" link type="primary" @click.stop="onEditType(row)">
-              {{ t('common.edit') }}
-            </el-button>
-            <el-button v-if="canDelete" link type="danger" @click.stop="onDeleteType(row)">
-              {{ t('common.delete') }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="dict-page__pagination">
-        <el-pagination
-          v-model:current-page="typePage"
-          v-model:page-size="typePageSize"
-          background
-          small
-          layout="total, sizes, prev, pager, next"
-          :total="typeTotal"
-          :page-sizes="[10, 20, 50]"
-          @current-change="handleTypePageChange"
-          @size-change="handleTypeSizeChange"
-        />
-      </div>
+        <template #column-actions="{ row }">
+          <el-button v-if="canUpdate" link type="primary" @click.stop="openEditType(row)">
+            {{ t('common.edit') }}
+          </el-button>
+          <el-button v-if="canDelete" link type="danger" @click.stop="handleDeleteType(row)">
+            {{ t('common.delete') }}
+          </el-button>
+        </template>
+      </ProTable>
     </section>
 
     <section class="dict-page__panel">
-      <div class="dict-page__toolbar">
-        <div class="dict-page__panel-title">
-          {{
-            selectedType
-              ? t('dict.itemsTitle', { name: selectedType.name })
-              : t('dict.itemsTitleEmpty')
-          }}
-        </div>
-        <div class="dict-page__actions">
-          <el-input
-            v-model="itemKeyword"
-            clearable
-            class="dict-page__search"
-            :disabled="!selectedType"
-            :placeholder="t('dict.itemSearchPlaceholder')"
-            @keyup.enter="handleItemSearch"
-            @clear="handleItemSearch"
-          />
-          <el-button :disabled="!selectedType" @click="loadItems">{{ t('common.refresh') }}</el-button>
-          <el-button v-if="canCreate" type="primary" :disabled="!selectedType" @click="openCreateItem">
-            {{ t('dict.createItem') }}
-          </el-button>
-        </div>
+      <div class="dict-page__panel-title">
+        {{
+          selectedType
+            ? t('dict.itemsTitle', { name: selectedType.name })
+            : t('dict.itemsTitleEmpty')
+        }}
       </div>
 
       <el-empty v-if="!selectedType" :description="t('dict.selectTypeFirst')" />
 
-      <template v-else>
-        <el-table v-loading="itemLoading" :data="items" row-key="id" class="dict-page__table">
-          <el-table-column prop="label" :label="t('dict.itemLabel')" min-width="120" />
-          <el-table-column prop="code" :label="t('dict.itemCode')" min-width="120" />
-          <el-table-column prop="value" :label="t('dict.itemValue')" min-width="100" />
-          <el-table-column prop="sort" :label="t('dict.sort')" width="80" />
-          <el-table-column :label="t('dict.enabled')" width="90">
-            <template #default="{ row }">
-              <DictTag
-                :type-code="DICT_CODES.COMMON_STATUS"
-                :value="row.enabled"
-                :tag-type-map="STATUS_TAG_TYPE_MAP"
-              />
-            </template>
-          </el-table-column>
-          <el-table-column :label="t('common.actions')" width="120" fixed="right">
-            <template #default="{ row }">
-              <el-button v-if="canUpdate" link type="primary" @click="onEditItem(row)">
-                {{ t('common.edit') }}
-              </el-button>
-              <el-button v-if="canDelete" link type="danger" @click="onDeleteItem(row)">
-                {{ t('common.delete') }}
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+      <ProTable
+        v-else
+        ref="itemTableRef"
+        :columns="itemColumns"
+        :search-fields="itemSearchFields"
+        :request="requestItems"
+        :pagination="{ small: true }"
+        :immediate="false"
+        :show-request-error="false"
+        @request-error="handleRequestError"
+      >
+        <template #toolbar-actions>
+          <el-button v-if="canCreate" type="primary" @click="openCreateItem">
+            {{ t('dict.createItem') }}
+          </el-button>
+        </template>
 
-        <div class="dict-page__pagination">
-          <el-pagination
-            v-model:current-page="itemPage"
-            v-model:page-size="itemPageSize"
-            background
-            small
-            layout="total, sizes, prev, pager, next"
-            :total="itemTotal"
-            :page-sizes="[10, 20, 50]"
-            @current-change="handleItemPageChange"
-            @size-change="handleItemSizeChange"
-          />
-        </div>
-      </template>
+        <template #column-actions="{ row }">
+          <el-button v-if="canUpdate" link type="primary" @click="openEditItem(row)">
+            {{ t('common.edit') }}
+          </el-button>
+          <el-button v-if="canDelete" link type="danger" @click="handleDeleteItem(row)">
+            {{ t('common.delete') }}
+          </el-button>
+        </template>
+      </ProTable>
     </section>
 
     <DictTypeFormDialog
@@ -517,38 +425,10 @@ onMounted(() => {
   border-radius: 8px;
 }
 
-.dict-page__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .dict-page__panel-title {
   font-size: 15px;
   font-weight: 600;
   color: #111827;
-}
-
-.dict-page__search {
-  width: 220px;
-}
-
-.dict-page__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.dict-page__table {
-  width: 100%;
-}
-
-.dict-page__pagination {
-  display: flex;
-  justify-content: flex-end;
 }
 
 @media (max-width: 1100px) {

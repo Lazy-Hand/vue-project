@@ -1,16 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  ElButton,
-  ElInput,
-  ElMessage,
-  ElMessageBox,
-  ElPagination,
-  ElTable,
-  ElTableColumn,
-  ElTag,
-} from 'element-plus'
+import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
 
 import { fetchDeptTree } from '@/api/dept'
 import { fetchPermissionTree } from '@/api/permission'
@@ -23,14 +14,17 @@ import {
   fetchRolePermissions,
   updateRole,
 } from '@/api/role'
+import ProTable from '@/components/ProTable/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import type { DeptTreeNode } from '@/types/dept'
 import type { PermissionTreeNode } from '@/types/permission'
-import {
-  SUPER_ADMIN_ROLE_CODE,
-  type Role,
-  type RolePayload,
-} from '@/types/role'
+import type {
+  ProTableColumn,
+  ProTableExpose,
+  ProTableRequestParams,
+  ProTableSearchField,
+} from '@/types/pro-table'
+import { SUPER_ADMIN_ROLE_CODE, type Role, type RolePayload } from '@/types/role'
 import { ApiRequestError } from '@/utils/request'
 import RoleFormDialog from './RoleFormDialog.vue'
 import RolePermissionDialog from './RolePermissionDialog.vue'
@@ -38,12 +32,7 @@ import RolePermissionDialog from './RolePermissionDialog.vue'
 const { t } = useI18n()
 const { hasPermission } = usePermission()
 
-const loading = ref(false)
-const keyword = ref('')
-const roles = ref<Role[]>([])
-const page = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
+const tableRef = ref<ProTableExpose<Role> | null>(null)
 
 const deptTree = ref<DeptTreeNode[]>([])
 const permissionTree = ref<PermissionTreeNode[]>([])
@@ -64,13 +53,40 @@ const canUpdate = computed(() => hasPermission('system:role:update'))
 const canDelete = computed(() => hasPermission('system:role:delete'))
 const canAssign = computed(() => hasPermission('system:role:assignPermissions'))
 
-const displayRoles = computed(() => {
-  const q = keyword.value.trim().toLowerCase()
-  if (!q) return roles.value
-  return roles.value.filter(
-    (role) => role.name.toLowerCase().includes(q) || role.code.toLowerCase().includes(q),
-  )
-})
+const searchFields = computed<ProTableSearchField[]>(() => [
+  {
+    prop: 'keyword',
+    type: 'input',
+    placeholder: t('role.searchPlaceholder'),
+    defaultValue: '',
+  },
+])
+
+const columns = computed<ProTableColumn<Role>[]>(() => [
+  { prop: 'name', label: t('role.name'), minWidth: 140 },
+  { prop: 'code', label: t('role.code'), minWidth: 140 },
+  {
+    prop: 'dataScope',
+    label: t('role.dataScope'),
+    minWidth: 140,
+    formatter: (row) => t(`role.dataScope_${row.dataScope}`),
+  },
+  {
+    prop: 'description',
+    label: t('role.description'),
+    minWidth: 180,
+    showOverflowTooltip: true,
+  },
+  { prop: 'sort', label: t('role.sort'), width: 80 },
+  { prop: 'enabled', label: t('role.enabled'), width: 90, type: 'tag' as const },
+  {
+    label: t('common.actions'),
+    width: 260,
+    fixed: 'right' as const,
+    type: 'slot' as const,
+    slot: 'actions',
+  },
+])
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return error.message
@@ -78,29 +94,26 @@ function errorMessage(error: unknown): string {
   return t('role.requestFailed')
 }
 
-function dataScopeLabel(scope: Role['dataScope']): string {
-  return t(`role.dataScope_${scope}`)
+function handleRequestError(error: unknown): void {
+  ElMessage.error(errorMessage(error))
 }
 
 function isSuperAdmin(role: Role): boolean {
   return role.code === SUPER_ADMIN_ROLE_CODE
 }
 
-function isSuperAdminRow(row: unknown): boolean {
-  return isSuperAdmin(row as Role)
+async function requestRoles(params: ProTableRequestParams) {
+  return fetchRoleList({ page: params.page, pageSize: params.pageSize })
 }
 
-async function loadRoles(): Promise<void> {
-  loading.value = true
-  try {
-    const result = await fetchRoleList({ page: page.value, pageSize: pageSize.value })
-    roles.value = result.items
-    total.value = result.total
-  } catch (error) {
-    ElMessage.error(errorMessage(error))
-  } finally {
-    loading.value = false
-  }
+function filterRoles(items: Role[], params: ProTableRequestParams): Role[] {
+  const q = String(params.keyword ?? '')
+    .trim()
+    .toLowerCase()
+  if (!q) return items
+  return items.filter((item) => {
+    return item.name.toLowerCase().includes(q) || item.code.toLowerCase().includes(q)
+  })
 }
 
 async function ensureDeptTree(): Promise<void> {
@@ -181,7 +194,7 @@ async function handleFormSubmit(payload: RolePayload): Promise<void> {
       ElMessage.success(t('role.updateSuccess'))
     }
     formVisible.value = false
-    await loadRoles()
+    await tableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   } finally {
@@ -220,119 +233,52 @@ async function handleDelete(row: Role): Promise<void> {
   try {
     await deleteRole(row.id)
     ElMessage.success(t('role.deleteSuccess'))
-    if (roles.value.length === 1 && page.value > 1) {
-      page.value -= 1
-    }
-    await loadRoles()
+    await tableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   }
 }
-
-function onEdit(row: unknown): void {
-  void openEdit(row as Role)
-}
-
-function onAssign(row: unknown): void {
-  void openAssignPermissions(row as Role)
-}
-
-function onDelete(row: unknown): void {
-  void handleDelete(row as Role)
-}
-
-function handlePageChange(next: number): void {
-  page.value = next
-  void loadRoles()
-}
-
-function handleSizeChange(size: number): void {
-  pageSize.value = size
-  page.value = 1
-  void loadRoles()
-}
-
-onMounted(() => {
-  void loadRoles()
-})
 </script>
 
 <template>
   <div class="role-page">
-    <div class="role-page__toolbar">
-      <el-input
-        v-model="keyword"
-        clearable
-        class="role-page__search"
-        :placeholder="t('role.searchPlaceholder')"
-      />
-      <div class="role-page__actions">
-        <el-button @click="loadRoles">{{ t('common.refresh') }}</el-button>
+    <ProTable
+      ref="tableRef"
+      :columns="columns"
+      :search-fields="searchFields"
+      :request="requestRoles"
+      :client-filter="filterRoles"
+      :show-request-error="false"
+      @request-error="handleRequestError"
+    >
+      <template #toolbar-actions>
         <el-button v-if="canCreate" type="primary" @click="openCreate">
           {{ t('role.create') }}
         </el-button>
-      </div>
-    </div>
+      </template>
 
-    <el-table v-loading="loading" :data="displayRoles" row-key="id" class="role-page__table">
-      <el-table-column prop="name" :label="t('role.name')" min-width="140" />
-      <el-table-column prop="code" :label="t('role.code')" min-width="140" />
-      <el-table-column :label="t('role.dataScope')" min-width="140">
-        <template #default="{ row }">
-          {{ dataScopeLabel(row.dataScope) }}
-        </template>
-      </el-table-column>
-      <el-table-column
-        prop="description"
-        :label="t('role.description')"
-        min-width="180"
-        show-overflow-tooltip
-      />
-      <el-table-column prop="sort" :label="t('role.sort')" width="80" />
-      <el-table-column :label="t('role.enabled')" width="90">
-        <template #default="{ row }">
-          <el-tag :type="row.enabled ? 'success' : 'info'" size="small">
-            {{ row.enabled ? t('common.enabled') : t('common.disabled') }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column :label="t('common.actions')" width="260" fixed="right">
-        <template #default="{ row }">
-          <el-button v-if="canUpdate" link type="primary" @click="onEdit(row)">
-            {{ t('common.edit') }}
-          </el-button>
-          <el-button
-            v-if="canAssign && !isSuperAdminRow(row)"
-            link
-            type="primary"
-            @click="onAssign(row)"
-          >
-            {{ t('role.assignPermissions') }}
-          </el-button>
-          <el-button
-            v-if="canDelete && !isSuperAdminRow(row)"
-            link
-            type="danger"
-            @click="onDelete(row)"
-          >
-            {{ t('common.delete') }}
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <div class="role-page__pagination">
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        background
-        layout="total, sizes, prev, pager, next"
-        :total="total"
-        :page-sizes="[10, 20, 50]"
-        @current-change="handlePageChange"
-        @size-change="handleSizeChange"
-      />
-    </div>
+      <template #column-actions="{ row }">
+        <el-button v-if="canUpdate" link type="primary" @click="openEdit(row)">
+          {{ t('common.edit') }}
+        </el-button>
+        <el-button
+          v-if="canAssign && !isSuperAdmin(row)"
+          link
+          type="primary"
+          @click="openAssignPermissions(row)"
+        >
+          {{ t('role.assignPermissions') }}
+        </el-button>
+        <el-button
+          v-if="canDelete && !isSuperAdmin(row)"
+          link
+          type="danger"
+          @click="handleDelete(row)"
+        >
+          {{ t('common.delete') }}
+        </el-button>
+      </template>
+    </ProTable>
 
     <RoleFormDialog
       ref="formDialogRef"
@@ -360,33 +306,5 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.role-page__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.role-page__search {
-  width: 260px;
-}
-
-.role-page__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.role-page__table {
-  width: 100%;
-  background: #fff;
-}
-
-.role-page__pagination {
-  display: flex;
-  justify-content: flex-end;
 }
 </style>

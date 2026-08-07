@@ -1,15 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  ElButton,
-  ElInput,
-  ElMessage,
-  ElMessageBox,
-  ElTable,
-  ElTableColumn,
-  ElTag,
-} from 'element-plus'
+import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
 
 import {
   createPermission,
@@ -18,8 +10,15 @@ import {
   updatePermission,
 } from '@/api/permission'
 import MenuIcon from '@/components/MenuIcon/index.vue'
+import ProTable from '@/components/ProTable/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import type { PermissionPayload, PermissionTreeNode, PermissionType } from '@/types/permission'
+import type {
+  ProTableColumn,
+  ProTableExpose,
+  ProTableRequestParams,
+  ProTableSearchField,
+} from '@/types/pro-table'
 import { ApiRequestError } from '@/utils/request'
 import PermissionFormDialog from './PermissionFormDialog.vue'
 import { filterTreeByKeyword } from './utils'
@@ -27,8 +26,7 @@ import { filterTreeByKeyword } from './utils'
 const { t } = useI18n()
 const { hasPermission } = usePermission()
 
-const loading = ref(false)
-const keyword = ref('')
+const tableRef = ref<ProTableExpose<PermissionTreeNode> | null>(null)
 const tree = ref<PermissionTreeNode[]>([])
 const expandAll = ref(true)
 
@@ -38,17 +36,63 @@ const editingNode = ref<PermissionTreeNode | null>(null)
 const initialParentId = ref<string | null>(null)
 const formDialogRef = ref<InstanceType<typeof PermissionFormDialog> | null>(null)
 
-const displayTree = computed(() => filterTreeByKeyword(tree.value, keyword.value))
-
 const canCreate = computed(() => hasPermission('system:permission:create'))
 const canUpdate = computed(() => hasPermission('system:permission:update'))
 const canDelete = computed(() => hasPermission('system:permission:delete'))
 
-function typeTagType(type: PermissionType): 'primary' | 'success' | 'info' {
-  if (type === 'DIRECTORY') return 'primary'
-  if (type === 'MENU') return 'success'
-  return 'info'
-}
+const searchFields = computed<ProTableSearchField[]>(() => [
+  {
+    prop: 'keyword',
+    type: 'input',
+    placeholder: t('permission.searchPlaceholder'),
+    defaultValue: '',
+  },
+])
+
+const columns = computed<ProTableColumn<PermissionTreeNode>[]>(() => [
+  {
+    prop: 'name',
+    label: t('permission.name'),
+    minWidth: 220,
+    type: 'slot',
+    slot: 'name',
+  },
+  { prop: 'code', label: t('permission.code'), minWidth: 180 },
+  {
+    prop: 'type',
+    label: t('permission.type'),
+    width: 110,
+    type: 'tag',
+    formatter: (row) => typeLabel(row.type),
+    tagTypeMap: {
+      DIRECTORY: 'primary',
+      MENU: 'success',
+      BUTTON: 'info',
+    },
+  },
+  {
+    prop: 'path',
+    label: t('permission.path'),
+    minWidth: 160,
+    showOverflowTooltip: true,
+  },
+  {
+    prop: 'component',
+    label: t('permission.component'),
+    minWidth: 160,
+    showOverflowTooltip: true,
+  },
+  { prop: 'sort', label: t('permission.sort'), width: 80 },
+  { prop: 'enabled', label: t('permission.enabled'), width: 90, type: 'tag' },
+  {
+    key: 'actions',
+    label: t('common.actions'),
+    width: 220,
+    fixed: 'right',
+    type: 'slot',
+    slot: 'actions',
+  },
+])
 
 function typeLabel(type: PermissionType): string {
   if (type === 'DIRECTORY') return t('permission.typeDirectory')
@@ -62,15 +106,21 @@ function errorMessage(error: unknown): string {
   return t('permission.requestFailed')
 }
 
-async function loadTree(): Promise<void> {
-  loading.value = true
-  try {
-    tree.value = await fetchPermissionTree()
-  } catch (error) {
-    ElMessage.error(errorMessage(error))
-  } finally {
-    loading.value = false
-  }
+function handleRequestError(error: unknown): void {
+  ElMessage.error(errorMessage(error))
+}
+
+async function requestPermissions(): Promise<PermissionTreeNode[]> {
+  const result = await fetchPermissionTree()
+  tree.value = result
+  return result
+}
+
+function filterPermissions(
+  items: PermissionTreeNode[],
+  params: ProTableRequestParams,
+): PermissionTreeNode[] {
+  return filterTreeByKeyword(items, String(params.keyword ?? ''))
 }
 
 function openCreate(parentId?: string | null): void {
@@ -98,7 +148,7 @@ async function handleSubmit(payload: PermissionPayload): Promise<void> {
       ElMessage.success(t('permission.updateSuccess'))
     }
     dialogVisible.value = false
-    await loadTree()
+    await tableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   } finally {
@@ -108,11 +158,9 @@ async function handleSubmit(payload: PermissionPayload): Promise<void> {
 
 async function handleDelete(row: PermissionTreeNode): Promise<void> {
   try {
-    await ElMessageBox.confirm(
-      t('permission.deleteConfirm', { name: row.name }),
-      t('common.tip'),
-      { type: 'warning' },
-    )
+    await ElMessageBox.confirm(t('permission.deleteConfirm', { name: row.name }), t('common.tip'), {
+      type: 'warning',
+    })
   } catch {
     return
   }
@@ -120,115 +168,65 @@ async function handleDelete(row: PermissionTreeNode): Promise<void> {
   try {
     await deletePermission(row.id)
     ElMessage.success(t('permission.deleteSuccess'))
-    await loadTree()
+    await tableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   }
 }
 
-function onCreateChild(row: unknown): void {
-  openCreate((row as PermissionTreeNode).id)
-}
-
-function onEdit(row: unknown): void {
-  openEdit(row as PermissionTreeNode)
-}
-
-function onDelete(row: unknown): void {
-  void handleDelete(row as PermissionTreeNode)
-}
-
 function toggleExpand(): void {
   expandAll.value = !expandAll.value
+  tableRef.value?.setAllRowsExpanded(expandAll.value)
 }
-
-onMounted(() => {
-  void loadTree()
-})
 </script>
 
 <template>
   <div class="permission-page">
-    <div class="permission-page__toolbar">
-      <el-input
-        v-model="keyword"
-        clearable
-        class="permission-page__search"
-        :placeholder="t('permission.searchPlaceholder')"
-      />
-      <div class="permission-page__actions">
+    <ProTable
+      ref="tableRef"
+      :columns="columns"
+      :search-fields="searchFields"
+      :request="requestPermissions"
+      :client-filter="filterPermissions"
+      :pagination="false"
+      :default-expand-all="expandAll"
+      :tree-props="{ children: 'children' }"
+      :show-request-error="false"
+      @request-error="handleRequestError"
+    >
+      <template #toolbar-actions>
         <el-button @click="toggleExpand">
           {{ expandAll ? t('permission.collapseAll') : t('permission.expandAll') }}
         </el-button>
-        <el-button @click="loadTree">{{ t('common.refresh') }}</el-button>
         <el-button v-if="canCreate" type="primary" @click="openCreate()">
           {{ t('permission.create') }}
         </el-button>
-      </div>
-    </div>
+      </template>
 
-    <el-table
-      :key="String(expandAll)"
-      v-loading="loading"
-      :data="displayTree"
-      row-key="id"
-      :default-expand-all="expandAll"
-      :tree-props="{ children: 'children' }"
-      class="permission-page__table"
-    >
-      <el-table-column :label="t('permission.name')" min-width="220">
-        <template #default="{ row }">
-          <span class="permission-page__name-cell">
-            <MenuIcon v-if="row.icon" :icon="row.icon" class="permission-page__icon" />
-            <span>{{ row.name }}</span>
-          </span>
-        </template>
-      </el-table-column>
+      <template #column-name="{ row }">
+        <span class="permission-page__name-cell">
+          <MenuIcon v-if="row.icon" :icon="row.icon" class="permission-page__icon" />
+          <span>{{ row.name }}</span>
+        </span>
+      </template>
 
-      <el-table-column prop="code" :label="t('permission.code')" min-width="180" />
-
-      <el-table-column :label="t('permission.type')" width="110">
-        <template #default="{ row }">
-          <el-tag :type="typeTagType(row.type)" size="small">{{ typeLabel(row.type) }}</el-tag>
-        </template>
-      </el-table-column>
-
-      <el-table-column prop="path" :label="t('permission.path')" min-width="160" show-overflow-tooltip />
-      <el-table-column
-        prop="component"
-        :label="t('permission.component')"
-        min-width="160"
-        show-overflow-tooltip
-      />
-      <el-table-column prop="sort" :label="t('permission.sort')" width="80" />
-
-      <el-table-column :label="t('permission.enabled')" width="90">
-        <template #default="{ row }">
-          <el-tag :type="row.enabled ? 'success' : 'info'" size="small">
-            {{ row.enabled ? t('common.enabled') : t('common.disabled') }}
-          </el-tag>
-        </template>
-      </el-table-column>
-
-      <el-table-column :label="t('common.actions')" width="220" fixed="right">
-        <template #default="{ row }">
-          <el-button
-            v-if="canCreate && row.type !== 'BUTTON'"
-            link
-            type="primary"
-            @click="onCreateChild(row)"
-          >
-            {{ t('permission.createChild') }}
-          </el-button>
-          <el-button v-if="canUpdate" link type="primary" @click="onEdit(row)">
-            {{ t('common.edit') }}
-          </el-button>
-          <el-button v-if="canDelete" link type="danger" @click="onDelete(row)">
-            {{ t('common.delete') }}
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+      <template #column-actions="{ row }">
+        <el-button
+          v-if="canCreate && row.type !== 'BUTTON'"
+          link
+          type="primary"
+          @click="openCreate(row.id)"
+        >
+          {{ t('permission.createChild') }}
+        </el-button>
+        <el-button v-if="canUpdate" link type="primary" @click="openEdit(row)">
+          {{ t('common.edit') }}
+        </el-button>
+        <el-button v-if="canDelete" link type="danger" @click="handleDelete(row)">
+          {{ t('common.delete') }}
+        </el-button>
+      </template>
+    </ProTable>
 
     <PermissionFormDialog
       ref="formDialogRef"
@@ -247,29 +245,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.permission-page__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.permission-page__search {
-  width: 260px;
-}
-
-.permission-page__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.permission-page__table {
-  width: 100%;
-  background: #fff;
 }
 
 .permission-page__name-cell {

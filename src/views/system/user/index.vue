@@ -1,16 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  ElButton,
-  ElInput,
-  ElMessage,
-  ElMessageBox,
-  ElPagination,
-  ElTable,
-  ElTableColumn,
-  ElTag,
-} from 'element-plus'
+import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
 
 import { fetchDeptTree } from '@/api/dept'
 import { fetchPosts } from '@/api/post'
@@ -26,10 +17,17 @@ import {
   resetUserPassword,
   updateUser,
 } from '@/api/user'
+import ProTable from '@/components/ProTable/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import { useAuthStore } from '@/stores/auth'
 import type { DeptTreeNode } from '@/types/dept'
 import type { Post } from '@/types/post'
+import type {
+  ProTableColumn,
+  ProTableExpose,
+  ProTableRequestParams,
+  ProTableSearchField,
+} from '@/types/pro-table'
 import type { Role } from '@/types/role'
 import type { CreateUserPayload, ManagedUser, UpdateUserPayload } from '@/types/user'
 import { ApiRequestError } from '@/utils/request'
@@ -41,13 +39,7 @@ const { t } = useI18n()
 const { hasPermission } = usePermission()
 const authStore = useAuthStore()
 
-const loading = ref(false)
-const keyword = ref('')
-const users = ref<ManagedUser[]>([])
-const page = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
-
+const tableRef = ref<ProTableExpose<ManagedUser> | null>(null)
 const deptTree = ref<DeptTreeNode[]>([])
 const posts = ref<Post[]>([])
 const roles = ref<Role[]>([])
@@ -74,14 +66,36 @@ const canResetPassword = computed(() => hasPermission('system:user:resetPassword
 const canAssignRoles = computed(() => hasPermission('system:user:assignRoles'))
 const canAssignPosts = computed(() => hasPermission('system:user:assignPosts'))
 
-const displayUsers = computed(() => {
-  const q = keyword.value.trim().toLowerCase()
-  if (!q) return users.value
-  return users.value.filter((user) => {
-    const fields = [user.username, user.nickname, user.email, user.phone, user.deptName]
-    return fields.some((field) => field?.toLowerCase().includes(q))
-  })
-})
+const searchFields = computed<ProTableSearchField[]>(() => [
+  {
+    prop: 'keyword',
+    type: 'input',
+    placeholder: t('user.searchPlaceholder'),
+    defaultValue: '',
+  },
+])
+
+const columns = computed<ProTableColumn<ManagedUser>[]>(() => [
+  { prop: 'username', label: t('user.username'), minWidth: 120 },
+  { prop: 'nickname', label: t('user.nickname'), minWidth: 120 },
+  { prop: 'deptName', label: t('user.dept'), minWidth: 120 },
+  {
+    prop: 'email',
+    label: t('user.email'),
+    minWidth: 160,
+    showOverflowTooltip: true,
+  },
+  { prop: 'phone', label: t('user.phone'), minWidth: 120 },
+  { prop: 'enabled', label: t('user.enabled'), width: 90, type: 'tag' },
+  {
+    key: 'actions',
+    label: t('common.actions'),
+    width: 280,
+    fixed: 'right',
+    type: 'slot',
+    slot: 'actions',
+  },
+])
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return error.message
@@ -89,25 +103,28 @@ function errorMessage(error: unknown): string {
   return t('user.requestFailed')
 }
 
+function handleRequestError(error: unknown): void {
+  ElMessage.error(errorMessage(error))
+}
+
 function isSelf(user: ManagedUser): boolean {
   return authStore.user?.id === user.id
 }
 
-function isSelfRow(row: unknown): boolean {
-  return isSelf(row as ManagedUser)
+async function requestUsers(params: ProTableRequestParams) {
+  return fetchUserList({ page: params.page, pageSize: params.pageSize })
 }
 
-async function loadUsers(): Promise<void> {
-  loading.value = true
-  try {
-    const result = await fetchUserList({ page: page.value, pageSize: pageSize.value })
-    users.value = result.items
-    total.value = result.total
-  } catch (error) {
-    ElMessage.error(errorMessage(error))
-  } finally {
-    loading.value = false
-  }
+function filterUsers(items: ManagedUser[], params: ProTableRequestParams): ManagedUser[] {
+  const keyword = String(params.keyword ?? '')
+    .trim()
+    .toLowerCase()
+  if (!keyword) return items
+
+  return items.filter((user) => {
+    const fields = [user.username, user.nickname, user.email, user.phone, user.deptName]
+    return fields.some((field) => field?.toLowerCase().includes(keyword))
+  })
 }
 
 async function ensureDeptTree(): Promise<void> {
@@ -162,7 +179,7 @@ async function openEdit(row: ManagedUser): Promise<void> {
   formVisible.value = true
 }
 
-async function openResetPassword(row: ManagedUser): Promise<void> {
+function openResetPassword(row: ManagedUser): void {
   resetUser.value = row
   resetVisible.value = true
 }
@@ -201,7 +218,7 @@ async function handleFormSubmit(
       ElMessage.success(t('user.updateSuccess'))
     }
     formVisible.value = false
-    await loadUsers()
+    await tableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   } finally {
@@ -256,112 +273,45 @@ async function handleDelete(row: ManagedUser): Promise<void> {
   try {
     await deleteUser(row.id)
     ElMessage.success(t('user.deleteSuccess'))
-    if (users.value.length === 1 && page.value > 1) {
-      page.value -= 1
-    }
-    await loadUsers()
+    await tableRef.value?.reload()
   } catch (error) {
     ElMessage.error(errorMessage(error))
   }
 }
-
-function onEdit(row: unknown): void {
-  void openEdit(row as ManagedUser)
-}
-
-function onReset(row: unknown): void {
-  void openResetPassword(row as ManagedUser)
-}
-
-function onAssignRoles(row: unknown): void {
-  void openAssignRoles(row as ManagedUser)
-}
-
-function onDelete(row: unknown): void {
-  void handleDelete(row as ManagedUser)
-}
-
-function handlePageChange(next: number): void {
-  page.value = next
-  void loadUsers()
-}
-
-function handleSizeChange(size: number): void {
-  pageSize.value = size
-  page.value = 1
-  void loadUsers()
-}
-
-onMounted(() => {
-  void loadUsers()
-})
 </script>
 
 <template>
   <div class="user-page">
-    <div class="user-page__toolbar">
-      <el-input
-        v-model="keyword"
-        clearable
-        class="user-page__search"
-        :placeholder="t('user.searchPlaceholder')"
-      />
-      <div class="user-page__actions">
-        <el-button @click="loadUsers">{{ t('common.refresh') }}</el-button>
+    <ProTable
+      ref="tableRef"
+      :columns="columns"
+      :search-fields="searchFields"
+      :request="requestUsers"
+      :client-filter="filterUsers"
+      :show-request-error="false"
+      @request-error="handleRequestError"
+    >
+      <template #toolbar-actions>
         <el-button v-if="canCreate" type="primary" @click="openCreate">
           {{ t('user.create') }}
         </el-button>
-      </div>
-    </div>
+      </template>
 
-    <el-table v-loading="loading" :data="displayUsers" row-key="id" class="user-page__table">
-      <el-table-column prop="username" :label="t('user.username')" min-width="120" />
-      <el-table-column prop="nickname" :label="t('user.nickname')" min-width="120" />
-      <el-table-column prop="deptName" :label="t('user.dept')" min-width="120" />
-      <el-table-column prop="email" :label="t('user.email')" min-width="160" show-overflow-tooltip />
-      <el-table-column prop="phone" :label="t('user.phone')" min-width="120" />
-      <el-table-column :label="t('user.enabled')" width="90">
-        <template #default="{ row }">
-          <el-tag :type="row.enabled ? 'success' : 'info'" size="small">
-            {{ row.enabled ? t('common.enabled') : t('common.disabled') }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column :label="t('common.actions')" width="280" fixed="right">
-        <template #default="{ row }">
-          <el-button v-if="canUpdate" link type="primary" @click="onEdit(row)">
-            {{ t('common.edit') }}
-          </el-button>
-          <el-button v-if="canAssignRoles" link type="primary" @click="onAssignRoles(row)">
-            {{ t('user.assignRoles') }}
-          </el-button>
-          <el-button v-if="canResetPassword" link type="primary" @click="onReset(row)">
-            {{ t('user.resetPassword') }}
-          </el-button>
-          <el-button
-            v-if="canDelete && !isSelfRow(row)"
-            link
-            type="danger"
-            @click="onDelete(row)"
-          >
-            {{ t('common.delete') }}
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <div class="user-page__pagination">
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        background
-        layout="total, sizes, prev, pager, next"
-        :total="total"
-        :page-sizes="[10, 20, 50]"
-        @current-change="handlePageChange"
-        @size-change="handleSizeChange"
-      />
-    </div>
+      <template #column-actions="{ row }">
+        <el-button v-if="canUpdate" link type="primary" @click="openEdit(row)">
+          {{ t('common.edit') }}
+        </el-button>
+        <el-button v-if="canAssignRoles" link type="primary" @click="openAssignRoles(row)">
+          {{ t('user.assignRoles') }}
+        </el-button>
+        <el-button v-if="canResetPassword" link type="primary" @click="openResetPassword(row)">
+          {{ t('user.resetPassword') }}
+        </el-button>
+        <el-button v-if="canDelete && !isSelf(row)" link type="danger" @click="handleDelete(row)">
+          {{ t('common.delete') }}
+        </el-button>
+      </template>
+    </ProTable>
 
     <UserFormDialog
       ref="formDialogRef"
@@ -397,33 +347,5 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.user-page__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.user-page__search {
-  width: 260px;
-}
-
-.user-page__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.user-page__table {
-  width: 100%;
-  background: #fff;
-}
-
-.user-page__pagination {
-  display: flex;
-  justify-content: flex-end;
 }
 </style>

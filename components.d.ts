@@ -31,6 +31,7 @@ declare module 'vue' {
     ElSubMenu: typeof import('element-plus/es')['ElSubMenu']
     IconPicker: typeof import('./src/components/IconPicker/index.vue')['default']
     MenuIcon: typeof import('./src/components/MenuIcon/index.vue')['default']
+    ProTable: typeof import('./src/components/ProTable/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
@@ -60,6 +61,7 @@ declare global {
   const ElSubMenu: typeof import('element-plus/es')['ElSubMenu']
   const IconPicker: typeof import('./src/components/IconPicker/index.vue')['default']
   const MenuIcon: typeof import('./src/components/MenuIcon/index.vue')['default']
+  const ProTable: typeof import('./src/components/ProTable/index.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
 }
