@@ -2,11 +2,11 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { ElIcon, ElMenu, ElMenuItem, ElSubMenu } from 'element-plus'
+import { ElMenu, ElMenuItem, ElSubMenu } from 'element-plus'
 
+import MenuIcon from '@/components/MenuIcon/index.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { PermissionTreeNode } from '@/types/permission'
-import { resolveMenuIcon } from '@/utils/icons'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -37,14 +37,14 @@ const menus = computed(() => visibleMenus(authStore.menus))
     active-text-color="#ffffff"
   >
     <el-menu-item index="/">
-      <el-icon><component :is="resolveMenuIcon('HomeFilled')" /></el-icon>
+      <MenuIcon icon="HomeFilled" />
       <span>{{ t('common.home') }}</span>
     </el-menu-item>
 
     <template v-for="node in menus" :key="node.id">
       <el-sub-menu v-if="node.type === 'DIRECTORY' && node.children.length" :index="node.code">
         <template #title>
-          <el-icon><component :is="resolveMenuIcon(node.icon)" /></el-icon>
+          <MenuIcon :icon="node.icon" />
           <span>{{ node.name }}</span>
         </template>
         <el-menu-item
@@ -52,20 +52,20 @@ const menus = computed(() => visibleMenus(authStore.menus))
           :key="child.id"
           :index="child.path || child.code"
         >
-          <el-icon><component :is="resolveMenuIcon(child.icon)" /></el-icon>
+          <MenuIcon :icon="child.icon" />
           <span>{{ child.name }}</span>
         </el-menu-item>
       </el-sub-menu>
 
       <el-menu-item v-else-if="node.type === 'MENU' && node.path" :index="node.path">
-        <el-icon><component :is="resolveMenuIcon(node.icon)" /></el-icon>
+        <MenuIcon :icon="node.icon" />
         <span>{{ node.name }}</span>
       </el-menu-item>
     </template>
   </el-menu>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .aside-menu {
   border-right: none;
 }

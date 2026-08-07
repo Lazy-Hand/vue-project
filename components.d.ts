@@ -12,6 +12,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    DictSelect: typeof import('./src/components/DictSelect/index.vue')['default']
+    DictTag: typeof import('./src/components/DictTag/index.vue')['default']
     ElAside: typeof import('element-plus/es')['ElAside']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElColorPicker: typeof import('element-plus/es')['ElColorPicker']
@@ -27,13 +29,20 @@ declare module 'vue' {
     ElOption: typeof import('element-plus/es')['ElOption']
     ElSelect: typeof import('element-plus/es')['ElSelect']
     ElSubMenu: typeof import('element-plus/es')['ElSubMenu']
+    IconPicker: typeof import('./src/components/IconPicker/index.vue')['default']
+    MenuIcon: typeof import('./src/components/MenuIcon/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+  }
+  export interface GlobalDirectives {
+    vLoading: typeof import('element-plus/es')['ElLoadingDirective']
   }
 }
 
 // For TSX support
 declare global {
+  const DictSelect: typeof import('./src/components/DictSelect/index.vue')['default']
+  const DictTag: typeof import('./src/components/DictTag/index.vue')['default']
   const ElAside: typeof import('element-plus/es')['ElAside']
   const ElButton: typeof import('element-plus/es')['ElButton']
   const ElColorPicker: typeof import('element-plus/es')['ElColorPicker']
@@ -49,6 +58,8 @@ declare global {
   const ElOption: typeof import('element-plus/es')['ElOption']
   const ElSelect: typeof import('element-plus/es')['ElSelect']
   const ElSubMenu: typeof import('element-plus/es')['ElSubMenu']
+  const IconPicker: typeof import('./src/components/IconPicker/index.vue')['default']
+  const MenuIcon: typeof import('./src/components/MenuIcon/index.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
 }

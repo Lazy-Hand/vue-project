@@ -4,7 +4,7 @@ import { pinia } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import type { AuthTokenData } from '@/types/auth'
 import { loginAuth } from '@/api/auth'
-import { alovaInstance } from './index'
+import { request } from './index'
 
 const tokenData: AuthTokenData = {
   accessToken: 'access-token',
@@ -103,7 +103,7 @@ describe('authenticated requests', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(alovaInstance.Get<{ ok: boolean }>('/protected')).resolves.toEqual({ ok: true })
+    await expect(request.Get<{ ok: boolean }>('/protected')).resolves.toEqual({ ok: true })
 
     expect(calls).toHaveLength(2)
     const [refreshCall, protectedCall] = calls

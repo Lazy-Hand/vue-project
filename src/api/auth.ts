@@ -1,4 +1,4 @@
-import { alovaInstance, authMeta, refreshAccessToken } from '@/utils/request'
+import { request, authMeta, refreshAccessToken } from '@/utils/request'
 import { pinia } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import type { AccountSetSummary } from '@/types/account-set'
@@ -6,7 +6,7 @@ import type { AuthTokenData, AuthUser, LoginParams } from '@/types/auth'
 import type { PermissionTreeNode } from '@/types/permission'
 
 export async function loginAuth(params: LoginParams): Promise<AuthTokenData> {
-  const tokenData = await alovaInstance.Post<AuthTokenData>('/auth/login', params, {
+  const tokenData = await request.Post<AuthTokenData>('/auth/login', params, {
     meta: authMeta.login,
     cacheFor: 0,
   })
@@ -19,19 +19,19 @@ export function refreshAuth(): Promise<AuthTokenData> {
 }
 
 export function fetchAuthMe(): Promise<AuthUser> {
-  return alovaInstance.Get<AuthUser>('/auth/me', { cacheFor: 0 })
+  return request.Get<AuthUser>('/auth/me', { cacheFor: 0 })
 }
 
 export function fetchAuthPermissions(): Promise<string[]> {
-  return alovaInstance.Get<string[]>('/auth/me/permissions', { cacheFor: 0 })
+  return request.Get<string[]>('/auth/me/permissions', { cacheFor: 0 })
 }
 
 export function fetchAuthMenus(): Promise<PermissionTreeNode[]> {
-  return alovaInstance.Get<PermissionTreeNode[]>('/auth/me/menus', { cacheFor: 0 })
+  return request.Get<PermissionTreeNode[]>('/auth/me/menus', { cacheFor: 0 })
 }
 
 export function fetchMyAccountSets(): Promise<AccountSetSummary[]> {
-  return alovaInstance.Get<AccountSetSummary[]>('/auth/me/account-sets', { cacheFor: 0 })
+  return request.Get<AccountSetSummary[]>('/auth/me/account-sets', { cacheFor: 0 })
 }
 
 export async function bootstrapAccess(): Promise<void> {
@@ -58,7 +58,7 @@ export async function refreshLocalizedMenus(): Promise<void> {
 
 export async function logoutAuth(): Promise<void> {
   try {
-    await alovaInstance.Post<{ success: boolean }>(
+    await request.Post<{ success: boolean }>(
       '/auth/logout',
       {},
       {

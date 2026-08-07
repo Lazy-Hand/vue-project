@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, type FormInstance, type FormRules, ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'
 
 import { bootstrapAccess, loginAuth } from '@/api/auth'
 import { registerDynamicRoutes } from '@/router/dynamic'

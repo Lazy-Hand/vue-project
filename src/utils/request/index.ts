@@ -57,7 +57,7 @@ const { onAuthRequired, onResponseRefreshToken } = createClientTokenAuthenticati
   assignToken: assignBearerToken,
 })
 
-export const alovaInstance = createAlova({
+const alovaInstance = createAlova({
   statesHook: VueHook,
   requestAdapter,
   baseURL: API_BASE_URL,
@@ -78,5 +78,5 @@ export const alovaInstance = createAlova({
   }),
 })
 
-export { refreshAccessToken }
+export { refreshAccessToken, alovaInstance as request }
 export { ApiRequestError, unwrapResponse } from './response'
