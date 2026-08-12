@@ -46,18 +46,16 @@ describe('authentication route guard', () => {
 
   function createTestRouter(
     refreshSession = vi.fn<() => Promise<unknown>>(),
-    loadAccess = vi.fn(async () => {
+    loadAccess = vi.fn<() => Promise<void>>(async () => {
       authStore.setAccess([], [])
     }),
-    registerRoutes = vi.fn(() => [] as string[]),
+    registerRoutes = vi.fn<() => string[]>(() => []),
   ) {
     const router = createRouter({
       history: createMemoryHistory(),
       routes,
     })
-    router.beforeEach(
-      createAuthGuard(() => authStore, refreshSession, loadAccess, registerRoutes),
-    )
+    router.beforeEach(createAuthGuard(() => authStore, refreshSession, loadAccess, registerRoutes))
     return { router, loadAccess, registerRoutes, refreshSession }
   }
 
@@ -84,11 +82,11 @@ describe('authentication route guard', () => {
 
   it('bootstraps access before entering protected routes when access is not ready', async () => {
     authStore.setSession(tokenData)
-    const loadAccess = vi.fn(async () => {
+    const loadAccess = vi.fn<() => Promise<void>>(async () => {
       authStore.setAccess([], [])
     })
-    const registerRoutes = vi.fn(() => [] as string[])
-    const { router } = createTestRouter(vi.fn(), loadAccess, registerRoutes)
+    const registerRoutes = vi.fn<() => string[]>(() => [])
+    const { router } = createTestRouter(vi.fn<() => Promise<unknown>>(), loadAccess, registerRoutes)
 
     await router.push('/protected')
 
@@ -101,7 +99,7 @@ describe('authentication route guard', () => {
     const refreshSession = vi.fn<() => Promise<void>>(async () => {
       authStore.setSession(tokenData)
     })
-    const loadAccess = vi.fn(async () => {
+    const loadAccess = vi.fn<() => Promise<void>>(async () => {
       authStore.setAccess([], [])
     })
     const { router } = createTestRouter(refreshSession, loadAccess)
@@ -115,7 +113,9 @@ describe('authentication route guard', () => {
   })
 
   it('redirects to login and preserves the target when refresh fails', async () => {
-    const { router } = createTestRouter(vi.fn().mockRejectedValue(new Error('refresh failed')))
+    const { router } = createTestRouter(
+      vi.fn<() => Promise<unknown>>().mockRejectedValue(new Error('refresh failed')),
+    )
 
     await router.push('/protected?tab=profile')
 
@@ -134,10 +134,15 @@ describe('authentication route guard', () => {
           }
         }),
     )
-    const loadAccess = vi.fn(async () => {
+    const loadAccess = vi.fn<() => Promise<void>>(async () => {
       authStore.setAccess([], [])
     })
-    const guard = createAuthGuard(() => authStore, refreshSession, loadAccess, vi.fn(() => []))
+    const guard = createAuthGuard(
+      () => authStore,
+      refreshSession,
+      loadAccess,
+      vi.fn<() => string[]>(() => []),
+    )
     const { router } = createTestRouter()
     const from = router.resolve('/') as Parameters<NavigationGuard>[1]
     const next: NavigationGuardNext = () => undefined
@@ -162,7 +167,10 @@ describe('authentication route guard', () => {
     for (const result of results) {
       expect(
         result === true ||
-          (typeof result === 'object' && result !== null && 'path' in result && result.replace === true),
+          (typeof result === 'object' &&
+            result !== null &&
+            'path' in result &&
+            result.replace === true),
       ).toBe(true)
     }
   })

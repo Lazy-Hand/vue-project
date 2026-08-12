@@ -5,7 +5,9 @@ import { useRoute } from 'vue-router'
 
 const { t } = useI18n()
 const route = useRoute()
-const title = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : t('common.console')))
+const title = computed(() =>
+  typeof route.meta.title === 'string' ? route.meta.title : t('common.console'),
+)
 </script>
 
 <template>

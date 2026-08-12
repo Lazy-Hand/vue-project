@@ -1,6 +1,6 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus from 'element-plus'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
+import { Pagination, Popover, Select, Table } from 'antdv-next'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { i18n } from '@/i18n'
 import type {
@@ -11,6 +11,22 @@ import type {
   ProTableSearchField,
 } from '@/types/pro-table'
 import ProTable from './index.vue'
+
+if (!window.matchMedia) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    }),
+  })
+}
 
 const columns: ProTableColumn<object>[] = [
   { prop: 'name', label: 'Name' },
@@ -51,7 +67,7 @@ function mountTable(
       showRequestError: options.showRequestError ?? false,
     },
     global: {
-      plugins: [i18n, ElementPlus],
+      plugins: [i18n],
     },
   })
 }
@@ -60,9 +76,17 @@ function exposed(wrapper: ReturnType<typeof mountTable>): ProTableExpose {
   return wrapper.vm as unknown as ProTableExpose
 }
 
+function popup(): DOMWrapper<HTMLElement> {
+  return new DOMWrapper(document.body)
+}
+
 describe('ProTable', () => {
   beforeEach(() => {
     i18n.global.locale.value = 'zh-CN'
+  })
+
+  afterEach(() => {
+    document.body.innerHTML = ''
   })
 
   it('loads request data with the default pagination params', async () => {
@@ -87,10 +111,10 @@ describe('ProTable', () => {
     const wrapper = mountTable(request)
     await flushPromises()
 
-    wrapper.findComponent({ name: 'ElPopover' }).vm.$emit('update:visible', true)
+    wrapper.findComponent(Popover).vm.$emit('update:open', true)
     await flushPromises()
 
-    const options = wrapper.findAll('.pro-table__column-setting-option')
+    const options = popup().findAll('.pro-table__column-setting-option')
     expect(options).toHaveLength(2)
     expect(
       options.every((option) => option.find('.pro-table__column-drag-icon svg').exists()),
@@ -98,35 +122,35 @@ describe('ProTable', () => {
     await options[0]!.find('input').setValue(false)
     await flushPromises()
 
-    expect(wrapper.findComponent({ name: 'ElTable' }).text()).toContain('Admin')
+    expect(wrapper.findComponent(Table).text()).toContain('Admin')
     expect(wrapper.emitted('column-visibility-change')).toBeUndefined()
 
-    wrapper.findComponent({ name: 'ElPopover' }).vm.$emit('update:visible', false)
+    wrapper.findComponent(Popover).vm.$emit('update:open', false)
     await flushPromises()
-    wrapper.findComponent({ name: 'ElPopover' }).vm.$emit('update:visible', true)
+    wrapper.findComponent(Popover).vm.$emit('update:open', true)
     await flushPromises()
 
-    const reopenedOptions = wrapper.findAll('.pro-table__column-setting-option')
+    const reopenedOptions = popup().findAll('.pro-table__column-setting-option')
     expect((reopenedOptions[0]!.find('input').element as HTMLInputElement).checked).toBe(true)
     await reopenedOptions[0]!.find('input').setValue(false)
 
-    await wrapper.find('.pro-table__column-setting-save').trigger('click')
+    await popup().find('.pro-table__column-setting-save').trigger('click')
     await flushPromises()
 
-    expect(wrapper.findComponent({ name: 'ElTable' }).text()).not.toContain('Admin')
+    expect(wrapper.findComponent(Table).text()).not.toContain('Admin')
     expect(wrapper.emitted('column-visibility-change')?.[0]).toEqual([['status']])
 
-    wrapper.findComponent({ name: 'ElPopover' }).vm.$emit('update:visible', true)
+    wrapper.findComponent(Popover).vm.$emit('update:open', true)
     await flushPromises()
-    await wrapper.find('.pro-table__column-setting-reset').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.findComponent({ name: 'ElTable' }).text()).not.toContain('Admin')
-
-    await wrapper.find('.pro-table__column-setting-save').trigger('click')
+    await popup().find('.pro-table__column-setting-reset').trigger('click')
     await flushPromises()
 
-    expect(wrapper.findComponent({ name: 'ElTable' }).text()).toContain('Admin')
+    expect(wrapper.findComponent(Table).text()).not.toContain('Admin')
+
+    await popup().find('.pro-table__column-setting-save').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findComponent(Table).text()).toContain('Admin')
   })
 
   it('reorders column drafts by dragging and applies the order after saving', async () => {
@@ -138,40 +162,40 @@ describe('ProTable', () => {
     await flushPromises()
 
     const rowCells = () =>
-      wrapper
-        .findAll('.el-table__body-wrapper tbody tr:first-child .cell')
-        .map((cell) => cell.text())
+      wrapper.findAll('.ant-table-tbody > tr:first-child > td').map((cell) => cell.text())
 
     expect(rowCells()).toEqual(['Admin', '启用'])
 
-    wrapper.findComponent({ name: 'ElPopover' }).vm.$emit('update:visible', true)
+    wrapper.findComponent(Popover).vm.$emit('update:open', true)
     await flushPromises()
 
-    const options = wrapper.findAll('.pro-table__column-setting-option')
+    const options = popup().findAll('.pro-table__column-setting-option')
     const dataTransfer = {
       effectAllowed: 'none',
       getData: vi.fn<(format: string) => string>(() => 'status'),
       setData: vi.fn<(format: string, data: string) => void>(),
     }
     await options[1]!.find('.pro-table__column-drag-handle').trigger('dragstart', { dataTransfer })
-    expect(wrapper.findAll('.pro-table__column-setting-option')[1]!.classes()).toContain(
+    expect(popup().findAll('.pro-table__column-setting-option')[1]!.classes()).toContain(
       'is-dragging',
     )
-    await wrapper.findAll('.pro-table__column-setting-option')[0]!.trigger('dragenter')
-    expect(wrapper.findAll('.pro-table__column-setting-option')[0]!.classes()).toContain(
+    await popup().findAll('.pro-table__column-setting-option')[0]!.trigger('dragenter')
+    expect(popup().findAll('.pro-table__column-setting-option')[0]!.classes()).toContain(
       'is-dragging',
     )
-    await wrapper.findAll('.pro-table__column-setting-option')[1]!.trigger('drop', { dataTransfer })
+    await popup().findAll('.pro-table__column-setting-option')[1]!.trigger('drop', { dataTransfer })
     await flushPromises()
 
     expect(
-      wrapper.findAll('.pro-table__column-setting-checkbox').map((item) => item.text()),
+      popup()
+        .findAll('.pro-table__column-setting-checkbox .ant-checkbox + span')
+        .map((item) => item.text()),
     ).toEqual(['Status', 'Name'])
 
     expect(rowCells()).toEqual(['Admin', '启用'])
     expect(wrapper.emitted('column-order-change')).toBeUndefined()
 
-    await wrapper.find('.pro-table__column-setting-save').trigger('click')
+    await popup().find('.pro-table__column-setting-save').trigger('click')
     await flushPromises()
 
     expect(rowCells()).toEqual(['启用', 'Admin'])
@@ -193,6 +217,11 @@ describe('ProTable', () => {
       },
     ]
     const wrapper = mountTable(request, { searchFields, immediate: false })
+
+    expect(wrapper.findComponent(Select).props('options')).toEqual([
+      { label: 'Enabled', value: 0, disabled: undefined },
+      { label: 'Disabled', value: 1, disabled: undefined },
+    ])
 
     await exposed(wrapper).setSearchParams({ keyword: 'admin', status: false })
     await exposed(wrapper).search()
@@ -249,11 +278,17 @@ describe('ProTable', () => {
     const wrapper = mountTable(request, { columns: sortableColumns })
     await flushPromises()
 
-    wrapper.findComponent({ name: 'ElTable' }).vm.$emit('sort-change', {
-      column: {},
-      prop: 'name',
-      order: 'descending',
-    })
+    wrapper.findComponent(Table).vm.$emit(
+      'change',
+      {},
+      {},
+      {
+        column: {},
+        field: 'name',
+        columnKey: 'name',
+        order: 'descend',
+      },
+    )
     await flushPromises()
 
     expect(request).toHaveBeenLastCalledWith({
@@ -274,7 +309,7 @@ describe('ProTable', () => {
     const wrapper = mountTable(request)
     await flushPromises()
 
-    wrapper.findComponent({ name: 'ElPagination' }).vm.$emit('current-change', 2)
+    wrapper.findComponent(Pagination).vm.$emit('change', 2, 10)
     await flushPromises()
 
     expect(request).toHaveBeenNthCalledWith(2, { page: 2, pageSize: 10 })
@@ -297,9 +332,9 @@ describe('ProTable', () => {
     })
     await flushPromises()
 
-    const tableWrapper = wrapper.findComponent({ name: 'ElTable' })
-    expect(tableWrapper.props('defaultExpandAll')).toBe(true)
-    expect(tableWrapper.props('treeProps')).toEqual({ children: 'children' })
+    const tableWrapper = wrapper.findComponent(Table)
+    expect(tableWrapper.props('expandable')).toMatchObject({ defaultExpandAllRows: true })
+    expect(tableWrapper.props('expandable')).toMatchObject({ childrenColumnName: 'children' })
     expect(() => exposed(wrapper).setAllRowsExpanded(false)).not.toThrow()
   })
 

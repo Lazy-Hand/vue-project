@@ -1,7 +1,6 @@
 import { createAlovaMockAdapter } from '@alova/mock'
 import adapterFetch from 'alova/fetch'
 
-
 const fetchAdapter = adapterFetch()
 
 export const mockEnabled =

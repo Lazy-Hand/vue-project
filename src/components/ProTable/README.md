@@ -1,6 +1,6 @@
 # ProTable 高级表格
 
-`ProTable` 是基于 Element Plus `ElTable` 的请求驱动表格，统一处理查询表单、分页、远程排序、选择、加载与失败状态。组件保留列插槽和查询插槽，业务页面只需要描述查询项、列和数据请求。
+`ProTable` 是基于 Antdv Next `Table` 的请求驱动表格，统一处理查询表单、分页、远程排序、选择、加载与失败状态。组件保留列插槽和查询插槽，业务页面只需要描述查询项、列和数据请求。
 
 ## 快速开始
 
@@ -8,6 +8,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Button } from 'antdv-next'
 
 import ProTable from '@/components/ProTable/index.vue'
 import type {
@@ -84,15 +85,15 @@ async function handleCreated(): Promise<void> {
     @selection-change="handleSelectionChange"
   >
     <template #toolbar-actions>
-      <el-button type="primary" @click="openCreateDialog">
+      <Button type="primary" @click="openCreateDialog">
         {{ t('user.create') }}
-      </el-button>
+      </Button>
     </template>
 
     <template #column-actions="{ row }">
-      <el-button link type="primary" @click="openEditDialog(row)">
+      <Button type="link" @click="openEditDialog(row)">
         {{ t('common.edit') }}
-      </el-button>
+      </Button>
     </template>
   </ProTable>
 </template>
@@ -124,7 +125,7 @@ interface ProTableRequestParams {
 rows
 ```
 
-只有 `sortable: 'custom'` 的列会触发重新请求，并写入 `sortField`、`sortOrder`。`sortable: true` 使用 Element Plus 的当前页本地排序。
+只有 `sortable: 'custom'` 的列会触发重新请求，并写入 `sortField`、`sortOrder`。`sortable: true` 使用 Antdv Next 的当前页本地排序。
 
 组件使用请求序号忽略过期响应。例如先发出的慢查询晚于新查询返回时，不会覆盖新数据。请求失败会触发 `request-error`，默认显示可替换的错误提示；旧数据不会被清空。
 
@@ -197,7 +198,7 @@ interface ProTablePaginationConfig {
 | 类型          | 说明                                             |
 | ------------- | ------------------------------------------------ |
 | `input`       | 文本输入，默认类型；回车查询，清空后默认查询     |
-| `select`      | Element Plus 选择器，值变化后默认查询            |
+| `select`      | Antdv Next 选择器，值变化后默认查询              |
 | `dict-select` | 项目 `DictSelect`，需要 `dictTypeCode`           |
 | `slot`        | 自定义查询控件，插槽名为 `search-{slot ?? prop}` |
 
@@ -248,11 +249,10 @@ const searchFields = computed<ProTableSearchField[]>(() => [
 
 ```vue
 <template #search-createdAt="{ modelValue, setValue, search }">
-  <el-date-picker
+  <DateRangePicker
     :model-value="modelValue"
-    type="daterange"
     value-format="YYYY-MM-DD"
-    @update:model-value="setValue"
+    @update:value="setValue"
     @change="search"
   />
 </template>
@@ -262,18 +262,18 @@ const searchFields = computed<ProTableSearchField[]>(() => [
 
 ## 列配置
 
-常用属性与 Element Plus `ElTableColumn` 一致：`prop`、`label`、`width`、`minWidth`、`fixed`、`align`、`headerAlign`、`className`、`showOverflowTooltip`、`sortable` 和 `sortOrders`。
+常用属性与 Antdv Next `Table` 列一致：`prop`、`label`、`width`、`minWidth`、`fixed`、`align`、`headerAlign`、`className`、`showOverflowTooltip`、`sortable` 和 `sortOrders`。
 
 `type` 的扩展能力：
 
-| 类型        | 说明                                                             |
-| ----------- | ---------------------------------------------------------------- |
-| `text`      | 普通文本，支持点路径，如 `department.name`                       |
-| `tag`       | `ElTag`；布尔值自动映射为启用/禁用，可用 `tagTypeMap` 映射其他值 |
-| `dict`      | `DictTag`，需要 `dictTypeCode`                                   |
-| `slot`      | 自定义单元格，插槽名为 `column-{slot}`                           |
-| `selection` | 多选列，支持 `selectable`、`reserveSelection`                    |
-| `index`     | 序号列，支持 `index` 自定义序号                                  |
+| 类型        | 说明                                                                      |
+| ----------- | ------------------------------------------------------------------------- |
+| `text`      | 普通文本，支持点路径，如 `department.name`                                |
+| `tag`       | Antdv Next `Tag`；布尔值自动映射为启用/禁用，可用 `tagTypeMap` 映射其他值 |
+| `dict`      | `DictTag`，需要 `dictTypeCode`                                            |
+| `slot`      | 自定义单元格，插槽名为 `column-{slot}`                                    |
+| `selection` | 多选列，支持 `selectable`、`reserveSelection`                             |
+| `index`     | 序号列，支持 `index` 自定义序号                                           |
 
 其他扩展属性：
 
@@ -298,6 +298,48 @@ const searchFields = computed<ProTableSearchField[]>(() => [
 ```
 
 没有 `prop` 的操作列、选择列等应提供稳定的 `key`，避免列数组调整后设置项错位。
+
+### 行操作收纳
+
+操作超过两个时，推荐通过 `ProTableActions` 常驻高频操作，并将其余操作收入“更多”菜单。危险操作会集中显示在菜单底部。
+
+```vue
+<script setup lang="ts">
+import { computed } from 'vue'
+
+import ProTableActions from '@/components/ProTableActions/index.vue'
+import type { ProTableAction } from '@/types/pro-table'
+
+const userActions = computed<ProTableAction<UserRow>[]>(() => [
+  {
+    key: 'edit',
+    label: t('common.edit'),
+    placement: 'inline',
+    onClick: openEditDialog,
+  },
+  {
+    key: 'resetPassword',
+    label: t('user.resetPassword'),
+    onClick: openResetPasswordDialog,
+  },
+  {
+    key: 'delete',
+    label: t('common.delete'),
+    danger: true,
+    visible: (row) => !isCurrentUser(row),
+    onClick: handleDelete,
+  },
+])
+</script>
+
+<template #column-actions="{ row }">
+  <ProTableActions :row="row" :actions="userActions" />
+</template>
+```
+
+`visible` 与 `disabled` 可以传入布尔值或按行判断的函数。默认不超过 3 个操作时全部显示；超过 3 个时显示前 2 个操作和“更多”，分别可通过 `collapse-threshold` 与 `max-inline` 调整。`placement: 'inline'` 可以提高常驻优先级，`placement: 'menu'` 会强制收入菜单。
+
+当操作列无法完整容纳当前操作时，常驻操作会继续自动收入菜单；空间恢复后自动展开。危险操作在自动排序时最后进入常驻区域，并统一排列在菜单底部。
 
 ### 树形表格
 
@@ -343,7 +385,7 @@ const searchFields = computed<ProTableSearchField[]>(() => [
 | `request-success`          | `result, params`     | 最新请求成功         |
 | `request-error`            | `error, params`      | 最新请求失败         |
 
-`sort-change.order` 沿用 Element Plus 的 `ascending`、`descending`、`null`；传给 `request` 时会转换成 `asc`、`desc`。
+`sort-change.order` 沿用 `ascending`、`descending`、`null`；传给 `request` 时会转换成 `asc`、`desc`。
 
 ## 实例方法
 

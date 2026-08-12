@@ -32,7 +32,10 @@ function resolveViewLoader(component: string) {
   return matched ?? PLACEHOLDER_VIEW
 }
 
-function collectMenuRoutes(nodes: PermissionTreeNode[], routes: RouteRecordRaw[] = []): RouteRecordRaw[] {
+function collectMenuRoutes(
+  nodes: PermissionTreeNode[],
+  routes: RouteRecordRaw[] = [],
+): RouteRecordRaw[] {
   for (const node of nodes) {
     if (!node.enabled) {
       continue

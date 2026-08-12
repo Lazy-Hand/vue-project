@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
+import { Button, Modal, message } from 'antdv-next'
 
 import { fetchDeptTree } from '@/api/dept'
 import { fetchPosts } from '@/api/post'
@@ -18,11 +18,13 @@ import {
   updateUser,
 } from '@/api/user'
 import ProTable from '@/components/ProTable/index.vue'
+import ProTableActions from '@/components/ProTableActions/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import { useAuthStore } from '@/stores/auth'
 import type { DeptTreeNode } from '@/types/dept'
 import type { Post } from '@/types/post'
 import type {
+  ProTableAction,
   ProTableColumn,
   ProTableExpose,
   ProTableRequestParams,
@@ -97,6 +99,35 @@ const columns = computed<ProTableColumn<ManagedUser>[]>(() => [
   },
 ])
 
+const userActions = computed<ProTableAction<ManagedUser>[]>(() => [
+  {
+    key: 'edit',
+    label: t('common.edit'),
+    placement: 'inline',
+    visible: canUpdate.value,
+    onClick: openEdit,
+  },
+  {
+    key: 'assignRoles',
+    label: t('user.assignRoles'),
+    visible: canAssignRoles.value,
+    onClick: openAssignRoles,
+  },
+  {
+    key: 'resetPassword',
+    label: t('user.resetPassword'),
+    visible: canResetPassword.value,
+    onClick: openResetPassword,
+  },
+  {
+    key: 'delete',
+    label: t('common.delete'),
+    danger: true,
+    visible: (row) => canDelete.value && !isSelf(row),
+    onClick: handleDelete,
+  },
+])
+
 function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return error.message
   if (error instanceof Error) return error.message
@@ -104,7 +135,7 @@ function errorMessage(error: unknown): string {
 }
 
 function handleRequestError(error: unknown): void {
-  ElMessage.error(errorMessage(error))
+  message.error(errorMessage(error))
 }
 
 function isSelf(user: ManagedUser): boolean {
@@ -150,7 +181,7 @@ async function ensureRoles(): Promise<void> {
   try {
     roles.value = await fetchRoles()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 
@@ -172,7 +203,7 @@ async function openEdit(row: ManagedUser): Promise<void> {
     const userPosts = await fetchUserPosts(row.id)
     initialPostIds.value = userPosts.map((item) => item.id)
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
     return
   }
 
@@ -187,7 +218,7 @@ function openResetPassword(row: ManagedUser): void {
 async function openAssignRoles(row: ManagedUser): Promise<void> {
   await ensureRoles()
   if (!roles.value.length) {
-    ElMessage.warning(t('user.roleEmpty'))
+    message.warning(t('user.roleEmpty'))
     return
   }
 
@@ -197,7 +228,7 @@ async function openAssignRoles(row: ManagedUser): Promise<void> {
     rolesCheckedIds.value = userRoles.map((item) => item.id)
     rolesVisible.value = true
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 
@@ -209,18 +240,18 @@ async function handleFormSubmit(
   try {
     if (formMode.value === 'create') {
       await createUser(payload as CreateUserPayload)
-      ElMessage.success(t('user.createSuccess'))
+      message.success(t('user.createSuccess'))
     } else if (editingUser.value) {
       await updateUser(editingUser.value.id, payload as UpdateUserPayload)
       if (canAssignPosts.value) {
         await assignUserPosts(editingUser.value.id, postIds)
       }
-      ElMessage.success(t('user.updateSuccess'))
+      message.success(t('user.updateSuccess'))
     }
     formVisible.value = false
     await tableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   } finally {
     formDialogRef.value?.setSubmitting(false)
   }
@@ -231,10 +262,10 @@ async function handleResetSubmit(password: string): Promise<void> {
   resetDialogRef.value?.setSubmitting(true)
   try {
     await resetUserPassword(resetUser.value.id, password)
-    ElMessage.success(t('user.resetPasswordSuccess'))
+    message.success(t('user.resetPasswordSuccess'))
     resetVisible.value = false
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   } finally {
     resetDialogRef.value?.setSubmitting(false)
   }
@@ -245,10 +276,10 @@ async function handleRolesSubmit(roleIds: string[]): Promise<void> {
   rolesDialogRef.value?.setSubmitting(true)
   try {
     await assignUserRoles(rolesUser.value.id, roleIds)
-    ElMessage.success(t('user.assignRolesSuccess'))
+    message.success(t('user.assignRolesSuccess'))
     rolesVisible.value = false
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   } finally {
     rolesDialogRef.value?.setSubmitting(false)
   }
@@ -256,26 +287,29 @@ async function handleRolesSubmit(roleIds: string[]): Promise<void> {
 
 async function handleDelete(row: ManagedUser): Promise<void> {
   if (isSelf(row)) {
-    ElMessage.warning(t('user.cannotOperateSelf'))
+    message.warning(t('user.cannotOperateSelf'))
     return
   }
 
-  try {
-    await ElMessageBox.confirm(
-      t('user.deleteConfirm', { name: row.nickname || row.username }),
-      t('common.tip'),
-      { type: 'warning' },
-    )
-  } catch {
-    return
-  }
+  const confirmed = await new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: t('common.tip'),
+      content: t('user.deleteConfirm', { name: row.nickname || row.username }),
+      okType: 'danger',
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
+    })
+  })
+  if (!confirmed) return
 
   try {
     await deleteUser(row.id)
-    ElMessage.success(t('user.deleteSuccess'))
+    message.success(t('user.deleteSuccess'))
     await tableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 </script>
@@ -292,24 +326,13 @@ async function handleDelete(row: ManagedUser): Promise<void> {
       @request-error="handleRequestError"
     >
       <template #toolbar-actions>
-        <el-button v-if="canCreate" type="primary" @click="openCreate">
+        <Button v-if="canCreate" type="primary" @click="openCreate">
           {{ t('user.create') }}
-        </el-button>
+        </Button>
       </template>
 
       <template #column-actions="{ row }">
-        <el-button v-if="canUpdate" link type="primary" @click="openEdit(row)">
-          {{ t('common.edit') }}
-        </el-button>
-        <el-button v-if="canAssignRoles" link type="primary" @click="openAssignRoles(row)">
-          {{ t('user.assignRoles') }}
-        </el-button>
-        <el-button v-if="canResetPassword" link type="primary" @click="openResetPassword(row)">
-          {{ t('user.resetPassword') }}
-        </el-button>
-        <el-button v-if="canDelete && !isSelf(row)" link type="danger" @click="handleDelete(row)">
-          {{ t('common.delete') }}
-        </el-button>
+        <ProTableActions :row="row" :actions="userActions" />
       </template>
     </ProTable>
 

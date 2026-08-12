@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { FormInstance, FormRules } from 'element-plus'
 import {
-  ElButton,
-  ElDialog,
-  ElForm,
-  ElFormItem,
-  ElInput,
-  ElInputNumber,
-  ElOption,
-  ElSelect,
-  ElSwitch,
-  ElTreeSelect,
-} from 'element-plus'
+  Button,
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Switch,
+  TreeSelect,
+  type FormInstance,
+  type Rule,
+} from 'antdv-next'
 
 import IconPicker from '@/components/IconPicker/index.vue'
 import type { PermissionPayload, PermissionTreeNode, PermissionType } from '@/types/permission'
@@ -64,7 +64,7 @@ const form = reactive<FormModel>({
   enabled: true,
 })
 
-const rules = computed<FormRules<FormModel>>(() => ({
+const rules = computed<Partial<Record<keyof FormModel, Rule[]>>>(() => ({
   type: [{ required: true, message: t('permission.typeRequired'), trigger: 'change' }],
   name: [{ required: true, message: t('permission.nameRequired'), trigger: 'blur' }],
   code: [
@@ -77,24 +77,22 @@ const rules = computed<FormRules<FormModel>>(() => ({
   ],
   path: [
     {
-      validator: (_rule, value: string, callback) => {
-        if (form.type === 'MENU' && !value.trim()) {
-          callback(new Error(t('permission.pathRequired')))
-          return
+      validator: async (_rule, value) => {
+        const path = typeof value === 'string' ? value : ''
+        if (form.type === 'MENU' && !path.trim()) {
+          throw new Error(t('permission.pathRequired'))
         }
-        callback()
       },
       trigger: 'blur',
     },
   ],
   component: [
     {
-      validator: (_rule, value: string, callback) => {
-        if (form.type === 'MENU' && !value.trim()) {
-          callback(new Error(t('permission.componentRequired')))
-          return
+      validator: async (_rule, value) => {
+        const component = typeof value === 'string' ? value : ''
+        if (form.type === 'MENU' && !component.trim()) {
+          throw new Error(t('permission.componentRequired'))
         }
-        callback()
       },
       trigger: 'blur',
     },
@@ -112,6 +110,11 @@ const title = computed(() =>
 
 const showRouteFields = computed(() => form.type === 'MENU')
 const showIconField = computed(() => form.type === 'DIRECTORY' || form.type === 'MENU')
+const permissionTypeOptions = computed(() => [
+  { label: t('permission.typeDirectory'), value: 'DIRECTORY' },
+  { label: t('permission.typeMenu'), value: 'MENU' },
+  { label: t('permission.typeButton'), value: 'BUTTON' },
+])
 
 const excludedParentIds = computed(() => {
   if (props.mode !== 'edit' || !props.editing) return new Set<string>()
@@ -223,81 +226,81 @@ defineExpose({
 </script>
 
 <template>
-  <el-dialog
-    v-model="visible"
+  <Modal
+    v-model:open="visible"
     :title="title"
     width="560px"
-    destroy-on-close
+    destroy-on-hidden
     class="permission-dialog"
   >
-    <el-form
+    <Form
       ref="formRef"
       :model="form"
       :rules="rules"
-      label-width="108px"
+      :label-col="{ span: 5 }"
+      :wrapper-col="{ span: 19 }"
       class="permission-form"
     >
-      <el-form-item :label="t('permission.type')" prop="type">
-        <el-select v-model="form.type" class="w-full" :disabled="mode === 'edit'">
-          <el-option :label="t('permission.typeDirectory')" value="DIRECTORY" />
-          <el-option :label="t('permission.typeMenu')" value="MENU" />
-          <el-option :label="t('permission.typeButton')" value="BUTTON" />
-        </el-select>
-      </el-form-item>
+      <FormItem :label="t('permission.type')" name="type">
+        <Select
+          v-model:value="form.type"
+          class="w-full"
+          :disabled="mode === 'edit'"
+          :options="permissionTypeOptions"
+        />
+      </FormItem>
 
-      <el-form-item :label="t('permission.parent')" prop="parentId">
-        <el-tree-select
-          v-model="form.parentId"
-          :data="parentTreeData"
-          clearable
-          check-strictly
-          filterable
-          :render-after-expand="false"
+      <FormItem :label="t('permission.parent')" name="parentId">
+        <TreeSelect
+          v-model:value="form.parentId"
+          :tree-data="parentTreeData"
+          allow-clear
+          show-search
           :placeholder="t('permission.parentPlaceholder')"
           class="w-full"
         />
-      </el-form-item>
+      </FormItem>
 
-      <el-form-item :label="t('permission.name')" prop="name">
-        <el-input v-model="form.name" maxlength="64" show-word-limit />
-      </el-form-item>
+      <FormItem :label="t('permission.name')" name="name">
+        <Input v-model:value="form.name" :maxlength="64" show-count />
+      </FormItem>
 
-      <el-form-item :label="t('permission.nameEn')" prop="nameEn">
-        <el-input v-model="form.nameEn" maxlength="64" show-word-limit />
-      </el-form-item>
+      <FormItem :label="t('permission.nameEn')" name="nameEn">
+        <Input v-model:value="form.nameEn" :maxlength="64" show-count />
+      </FormItem>
 
-      <el-form-item :label="t('permission.code')" prop="code">
-        <el-input v-model="form.code" maxlength="128" show-word-limit :disabled="mode === 'edit'" />
-      </el-form-item>
+      <FormItem :label="t('permission.code')" name="code">
+        <Input v-model:value="form.code" :maxlength="128" show-count :disabled="mode === 'edit'" />
+      </FormItem>
 
-      <el-form-item v-if="showIconField" :label="t('permission.icon')" prop="icon">
+      <FormItem v-if="showIconField" :label="t('permission.icon')" name="icon">
         <IconPicker v-model="form.icon" />
-      </el-form-item>
+      </FormItem>
 
-      <el-form-item v-if="showRouteFields" :label="t('permission.path')" prop="path">
-        <el-input v-model="form.path" maxlength="255" placeholder="/system/example" />
-      </el-form-item>
+      <FormItem v-if="showRouteFields" :label="t('permission.path')" name="path">
+        <Input v-model:value="form.path" :maxlength="255" placeholder="/system/example" />
+      </FormItem>
 
-      <el-form-item v-if="showRouteFields" :label="t('permission.component')" prop="component">
-        <el-input v-model="form.component" maxlength="255" placeholder="system/example/index" />
-      </el-form-item>
+      <FormItem v-if="showRouteFields" :label="t('permission.component')" name="component">
+        <Input v-model:value="form.component" :maxlength="255" placeholder="system/example/index" />
+      </FormItem>
 
-      <el-form-item :label="t('permission.sort')" prop="sort">
-        <el-input-number v-model="form.sort" :min="0" :max="9999" controls-position="right" />
-      </el-form-item>
+      <FormItem :label="t('permission.sort')" name="sort">
+        <InputNumber v-model:value="form.sort" :min="0" :max="9999" controls />
+      </FormItem>
 
-      <el-form-item :label="t('permission.enabled')" prop="enabled">
-        <el-switch v-model="form.enabled" />
-      </el-form-item>
-    </el-form>
+      <FormItem :label="t('permission.enabled')" name="enabled">
+        <Switch v-model:checked="form.enabled" />
+      </FormItem>
+    </Form>
 
     <template #footer>
-      <el-button @click="visible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <Button @click="visible = false">{{ t('common.cancel') }}</Button>
+      <Button type="primary" :loading="submitting" @click="handleSubmit">
         {{ t('common.confirm') }}
-      </el-button>
+      </Button>
     </template>
-  </el-dialog>
+  </Modal>
 </template>
 
 <style scoped lang="scss">

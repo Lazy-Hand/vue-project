@@ -1,9 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig, loadEnv } from 'vite'
-import AutoImport from 'unplugin-auto-import/vite'
-import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import vueDevTools from 'vite-plugin-vue-devtools'
@@ -16,24 +13,18 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: mode === 'test' ? 'dist-test' : 'dist-prod',
     },
-    plugins: [
-      vue(),
-      vueJsx(),
-      vueDevTools(),
-      tailwindcss(),
-      AutoImport({
-        resolvers: [ElementPlusResolver()],
-      }),
-      Components({
-        resolvers: [ElementPlusResolver()],
-      }),
-    ],
+    plugins: [vue(), vueJsx(), vueDevTools(), tailwindcss()],
     resolve: {
-      alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
-      },
+      alias: [
+        { find: /^dayjs\/plugin\/(.+)$/, replacement: 'dayjs/plugin/$1.js' },
+        { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+      ],
+    },
+    ssr: {
+      noExternal: ['antdv-next', '@v-c/picker'],
     },
     server: {
+      port: 4657,
       proxy: {
         '/api': {
           target: env.API_PROXY_TARGET || 'http://localhost:4658',

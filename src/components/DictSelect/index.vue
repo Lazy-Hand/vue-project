@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
-import { ElOption, ElSelect } from 'element-plus'
+import { computed, onMounted, watch } from 'vue'
+import { Select } from 'antdv-next'
 
 import { useDict } from '@/composables/useDict'
 
@@ -28,6 +28,16 @@ const emit = defineEmits<{
 
 const { options, load } = useDict(props.typeCode)
 
+const selectOptions = computed(() =>
+  options.value
+    .filter((item) => props.includeDisabled || !item.disabled)
+    .map((item) => ({
+      label: item.label,
+      value: item.value,
+      disabled: item.disabled,
+    })),
+)
+
 onMounted(() => {
   void load(props.typeCode)
 })
@@ -49,22 +59,15 @@ function onChange(value: string | number | boolean | null | undefined): void {
 </script>
 
 <template>
-  <el-select
+  <Select
     class="dict-select"
-    :model-value="modelValue == null ? null : String(modelValue)"
-    :clearable="clearable"
+    :value="modelValue == null ? undefined : String(modelValue)"
+    :allow-clear="clearable"
     :disabled="disabled"
+    :options="selectOptions"
     :placeholder="placeholder"
-    @update:model-value="onChange"
-  >
-    <el-option
-      v-for="item in options.filter((entry) => includeDisabled || !entry.disabled)"
-      :key="item.value"
-      :label="item.label"
-      :value="item.value"
-      :disabled="item.disabled"
-    />
-  </el-select>
+    @change="onChange"
+  />
 </template>
 
 <style scoped lang="scss">

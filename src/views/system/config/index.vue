@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
+import { Button, Modal, message } from 'antdv-next'
 
 import {
   createSystemConfig,
@@ -101,7 +101,7 @@ function errorMessage(error: unknown): string {
 }
 
 function handleRequestError(error: unknown): void {
-  ElMessage.error(errorMessage(error))
+  message.error(errorMessage(error))
 }
 
 async function requestConfigs(params: ProTableRequestParams) {
@@ -131,35 +131,40 @@ async function handleFormSubmit(
   try {
     if (formMode.value === 'create') {
       await createSystemConfig(payload as SystemConfigPayload)
-      ElMessage.success(t('config.createSuccess'))
+      message.success(t('config.createSuccess'))
     } else if (editingConfig.value) {
       await updateSystemConfig(editingConfig.value.id, payload as UpdateSystemConfigPayload)
-      ElMessage.success(t('config.updateSuccess'))
+      message.success(t('config.updateSuccess'))
     }
     formVisible.value = false
     await tableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   } finally {
     formDialogRef.value?.setSubmitting(false)
   }
 }
 
 async function handleDelete(row: SystemConfig): Promise<void> {
-  try {
-    await ElMessageBox.confirm(t('config.deleteConfirm', { name: row.name }), t('common.tip'), {
-      type: 'warning',
+  const confirmed = await new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: t('common.tip'),
+      content: t('config.deleteConfirm', { name: row.name }),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      okType: 'danger',
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
     })
-  } catch {
-    return
-  }
+  })
+  if (!confirmed) return
 
   try {
     await deleteSystemConfig(row.id)
-    ElMessage.success(t('config.deleteSuccess'))
+    message.success(t('config.deleteSuccess'))
     await tableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 </script>
@@ -175,18 +180,18 @@ async function handleDelete(row: SystemConfig): Promise<void> {
       @request-error="handleRequestError"
     >
       <template #toolbar-actions>
-        <el-button v-if="canCreate" type="primary" @click="openCreate">
+        <Button v-if="canCreate" type="primary" @click="openCreate">
           {{ t('config.create') }}
-        </el-button>
+        </Button>
       </template>
 
       <template #column-actions="{ row }">
-        <el-button v-if="canUpdate" link type="primary" @click="openEdit(row)">
+        <Button v-if="canUpdate" type="link" @click="openEdit(row)">
           {{ t('common.edit') }}
-        </el-button>
-        <el-button v-if="canDelete" link type="danger" @click="handleDelete(row)">
+        </Button>
+        <Button v-if="canDelete" danger type="link" @click="handleDelete(row)">
           {{ t('common.delete') }}
-        </el-button>
+        </Button>
       </template>
     </ProTable>
 

@@ -1,14 +1,17 @@
 <script setup lang="ts">
+import { Button } from 'antdv-next'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+const { t } = useI18n()
 const router = useRouter()
 </script>
 
 <template>
   <div class="not-found">
     <h1>404</h1>
-    <p>页面不存在或无权访问</p>
-    <el-button type="primary" @click="router.replace('/')">返回首页</el-button>
+    <p>{{ t('notFound.message') }}</p>
+    <Button type="primary" @click="router.replace('/')">{{ t('notFound.backHome') }}</Button>
   </div>
 </template>
 

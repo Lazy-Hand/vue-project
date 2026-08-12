@@ -24,9 +24,7 @@ function assignBearerToken(method: Method): void {
   method.config.headers = {
     ...method.config.headers,
     Authorization: `Bearer ${accessToken}`,
-    ...(currentAccountSetId
-      ? { 'X-Account-Set-Id': currentAccountSetId }
-      : {}),
+    ...(currentAccountSetId ? { 'X-Account-Set-Id': currentAccountSetId } : {}),
   }
 }
 
@@ -34,10 +32,14 @@ async function refreshAccessToken(): Promise<AuthTokenData> {
   const authStore = useAuthStore(pinia)
 
   try {
-    const tokenData = await alovaInstance.Post<AuthTokenData>('/auth/refresh', {}, {
-      meta: authMeta.refreshToken,
-      cacheFor: 0,
-    })
+    const tokenData = await alovaInstance.Post<AuthTokenData>(
+      '/auth/refresh',
+      {},
+      {
+        meta: authMeta.refreshToken,
+        cacheFor: 0,
+      },
+    )
     authStore.setSession(tokenData)
     return tokenData
   } catch (error) {

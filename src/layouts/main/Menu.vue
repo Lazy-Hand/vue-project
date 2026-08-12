@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
-import { ElMenu, ElMenuItem, ElSubMenu } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
+import { Menu, MenuItem, SubMenu } from 'antdv-next'
 
 import MenuIcon from '@/components/MenuIcon/index.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -10,6 +10,7 @@ import type { PermissionTreeNode } from '@/types/permission'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 
 const activeMenu = computed(() => route.path)
@@ -25,66 +26,67 @@ function visibleMenus(nodes: PermissionTreeNode[]): PermissionTreeNode[] {
 }
 
 const menus = computed(() => visibleMenus(authStore.menus))
+
+function handleMenuClick(info: { key: string | number }): void {
+  const path = String(info.key)
+  if (path.startsWith('/')) void router.push(path)
+}
 </script>
 
 <template>
-  <el-menu
-    :default-active="activeMenu"
-    router
+  <Menu
+    :selected-keys="[activeMenu]"
+    mode="inline"
+    theme="dark"
     class="aside-menu"
-    background-color="#0f172a"
-    text-color="rgba(255, 255, 255, 0.78)"
-    active-text-color="var(--el-color-primary)"
+    @click="handleMenuClick"
   >
-    <el-menu-item index="/">
+    <MenuItem key="/">
       <MenuIcon icon="HomeFilled" />
       <span>{{ t('common.home') }}</span>
-    </el-menu-item>
+    </MenuItem>
 
     <template v-for="node in menus" :key="node.id">
-      <el-sub-menu v-if="node.type === 'DIRECTORY' && node.children.length" :index="node.code">
+      <SubMenu v-if="node.type === 'DIRECTORY' && node.children.length" :key="node.code">
         <template #title>
           <MenuIcon :icon="node.icon" />
           <span>{{ node.name }}</span>
         </template>
-        <el-menu-item
+        <MenuItem
           v-for="child in node.children"
-          :key="child.id"
-          :index="child.path || child.code"
+          :key="child.path || child.code"
+          :disabled="!child.path"
         >
           <MenuIcon :icon="child.icon" />
           <span>{{ child.name }}</span>
-        </el-menu-item>
-      </el-sub-menu>
+        </MenuItem>
+      </SubMenu>
 
-      <el-menu-item v-else-if="node.type === 'MENU' && node.path" :index="node.path">
+      <MenuItem v-else-if="node.type === 'MENU' && node.path" :key="node.path">
         <MenuIcon :icon="node.icon" />
         <span>{{ node.name }}</span>
-      </el-menu-item>
+      </MenuItem>
     </template>
-  </el-menu>
+  </Menu>
 </template>
 
 <style scoped lang="scss">
 .aside-menu {
   border-right: none;
-}
-
-.aside-menu:not(.el-menu--collapse) {
   width: 220px;
 }
 
-.aside-menu :deep(.el-menu-item:hover),
-.aside-menu :deep(.el-sub-menu__title:hover) {
+.aside-menu :deep(.ant-menu-item:hover),
+.aside-menu :deep(.ant-menu-submenu-title:hover) {
   background-color: rgb(255 255 255 / 0.08) !important;
 }
 
-.aside-menu :deep(.el-menu-item.is-active) {
-  color: var(--el-color-primary) !important;
-  background-color: color-mix(in srgb, var(--el-color-primary) 28%, transparent) !important;
+.aside-menu :deep(.ant-menu-item-selected) {
+  color: var(--app-color-primary) !important;
+  background-color: color-mix(in srgb, var(--app-color-primary) 28%, transparent) !important;
 }
 
-.aside-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title) {
-  color: var(--el-color-primary) !important;
+.aside-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title) {
+  color: var(--app-color-primary) !important;
 }
 </style>

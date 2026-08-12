@@ -1,6 +1,22 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus from 'element-plus'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('antdv-next', async () => {
+  const [
+    { default: Button },
+    { default: Form, FormItem },
+    { default: Input, TextArea },
+    { default: Modal },
+    { default: Switch },
+  ] = await Promise.all([
+    import('antdv-next/dist/button/index'),
+    import('antdv-next/dist/form/index'),
+    import('antdv-next/dist/input/index'),
+    import('antdv-next/dist/modal/index'),
+    import('antdv-next/dist/switch/index'),
+  ])
+  return { Button, Form, FormItem, Input, Modal, Switch, TextArea }
+})
 
 import { i18n } from '@/i18n'
 import type { SystemConfig } from '@/types/system-config'
@@ -9,6 +25,16 @@ import SystemConfigFormDialog from './SystemConfigFormDialog.vue'
 describe('SystemConfigFormDialog', () => {
   beforeEach(() => {
     i18n.global.locale.value = 'zh-CN'
+    window.matchMedia ??= (query: string): MediaQueryList => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    })
   })
 
   function mountDialog(props: {
@@ -19,13 +45,13 @@ describe('SystemConfigFormDialog', () => {
     return mount(SystemConfigFormDialog, {
       props,
       global: {
-        plugins: [i18n, ElementPlus],
+        plugins: [i18n],
       },
     })
   }
 
   async function submit(wrapper: ReturnType<typeof mountDialog>): Promise<void> {
-    await wrapper.find('.el-dialog__footer .el-button--primary').trigger('click')
+    await wrapper.find('.ant-modal-footer .ant-btn-primary').trigger('click')
     await flushPromises()
   }
 
@@ -33,8 +59,8 @@ describe('SystemConfigFormDialog', () => {
     const wrapper = mountDialog({ modelValue: true, mode: 'create' })
     await flushPromises()
 
-    const inputs = wrapper.findAll('input.el-input__inner')
-    const textareas = wrapper.findAll('textarea.el-textarea__inner')
+    const inputs = wrapper.findAll('.ant-input')
+    const textareas = wrapper.findAll('textarea.ant-input')
     await inputs[0]!.setValue('site.title')
     await inputs[1]!.setValue('Site title')
     await textareas[0]!.setValue('Welcome')
@@ -69,10 +95,10 @@ describe('SystemConfigFormDialog', () => {
     const wrapper = mountDialog({ modelValue: true, mode: 'edit', editing })
     await flushPromises()
 
-    const inputs = wrapper.findAll('input.el-input__inner')
+    const inputs = wrapper.findAll('input.ant-input')
     expect(inputs[0]!.attributes('disabled')).toBeDefined()
     await inputs[1]!.setValue('Updated title')
-    await wrapper.findAll('textarea.el-textarea__inner')[1]!.setValue('')
+    await wrapper.findAll('textarea.ant-input')[1]!.setValue('')
 
     await submit(wrapper)
 
@@ -90,13 +116,13 @@ describe('SystemConfigFormDialog', () => {
     const wrapper = mountDialog({ modelValue: true, mode: 'create' })
     await flushPromises()
 
-    expect(wrapper.find('.el-dialog__title').text()).toBe(i18n.global.t('config.createTitle'))
+    expect(wrapper.find('.ant-modal-title').text()).toBe(i18n.global.t('config.createTitle'))
     expect(wrapper.text()).toContain(i18n.global.t('config.key'))
 
     i18n.global.locale.value = 'en-US'
     await flushPromises()
 
-    expect(wrapper.find('.el-dialog__title').text()).toBe(i18n.global.t('config.createTitle'))
+    expect(wrapper.find('.ant-modal-title').text()).toBe(i18n.global.t('config.createTitle'))
     expect(wrapper.text()).toContain(i18n.global.t('config.key'))
   })
 
@@ -104,7 +130,7 @@ describe('SystemConfigFormDialog', () => {
     const wrapper = mountDialog({ modelValue: true, mode: 'create' })
     await flushPromises()
 
-    const inputs = wrapper.findAll('input.el-input__inner')
+    const inputs = wrapper.findAll('input.ant-input')
     await inputs[0]!.setValue('site.title')
     await inputs[1]!.setValue('   ')
 

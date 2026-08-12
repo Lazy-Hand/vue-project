@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
+import { Button, Modal, message } from 'antdv-next'
 
 import {
   createPermission,
@@ -87,7 +87,7 @@ const columns = computed<ProTableColumn<PermissionTreeNode>[]>(() => [
   {
     key: 'actions',
     label: t('common.actions'),
-    width: 220,
+    width: 280,
     fixed: 'right',
     type: 'slot',
     slot: 'actions',
@@ -107,7 +107,7 @@ function errorMessage(error: unknown): string {
 }
 
 function handleRequestError(error: unknown): void {
-  ElMessage.error(errorMessage(error))
+  message.error(errorMessage(error))
 }
 
 async function requestPermissions(): Promise<PermissionTreeNode[]> {
@@ -142,35 +142,40 @@ async function handleSubmit(payload: PermissionPayload): Promise<void> {
   try {
     if (dialogMode.value === 'create') {
       await createPermission(payload)
-      ElMessage.success(t('permission.createSuccess'))
+      message.success(t('permission.createSuccess'))
     } else if (editingNode.value) {
       await updatePermission(editingNode.value.id, payload)
-      ElMessage.success(t('permission.updateSuccess'))
+      message.success(t('permission.updateSuccess'))
     }
     dialogVisible.value = false
     await tableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   } finally {
     formDialogRef.value?.setSubmitting(false)
   }
 }
 
 async function handleDelete(row: PermissionTreeNode): Promise<void> {
-  try {
-    await ElMessageBox.confirm(t('permission.deleteConfirm', { name: row.name }), t('common.tip'), {
-      type: 'warning',
+  const confirmed = await new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: t('common.tip'),
+      content: t('permission.deleteConfirm', { name: row.name }),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      okType: 'danger',
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
     })
-  } catch {
-    return
-  }
+  })
+  if (!confirmed) return
 
   try {
     await deletePermission(row.id)
-    ElMessage.success(t('permission.deleteSuccess'))
+    message.success(t('permission.deleteSuccess'))
     await tableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 
@@ -195,12 +200,12 @@ function toggleExpand(): void {
       @request-error="handleRequestError"
     >
       <template #toolbar-actions>
-        <el-button @click="toggleExpand">
+        <Button type="default" @click="toggleExpand">
           {{ expandAll ? t('permission.collapseAll') : t('permission.expandAll') }}
-        </el-button>
-        <el-button v-if="canCreate" type="primary" @click="openCreate()">
+        </Button>
+        <Button v-if="canCreate" type="primary" @click="openCreate()">
           {{ t('permission.create') }}
-        </el-button>
+        </Button>
       </template>
 
       <template #column-name="{ row }">
@@ -211,20 +216,15 @@ function toggleExpand(): void {
       </template>
 
       <template #column-actions="{ row }">
-        <el-button
-          v-if="canCreate && row.type !== 'BUTTON'"
-          link
-          type="primary"
-          @click="openCreate(row.id)"
-        >
+        <Button v-if="canCreate && row.type !== 'BUTTON'" type="link" @click="openCreate(row.id)">
           {{ t('permission.createChild') }}
-        </el-button>
-        <el-button v-if="canUpdate" link type="primary" @click="openEdit(row)">
+        </Button>
+        <Button v-if="canUpdate" type="link" @click="openEdit(row)">
           {{ t('common.edit') }}
-        </el-button>
-        <el-button v-if="canDelete" link type="danger" @click="handleDelete(row)">
+        </Button>
+        <Button v-if="canDelete" danger type="link" @click="handleDelete(row)">
           {{ t('common.delete') }}
-        </el-button>
+        </Button>
       </template>
     </ProTable>
 
@@ -255,6 +255,6 @@ function toggleExpand(): void {
 
 .permission-page__icon {
   font-size: 16px;
-  color: var(--el-text-color-regular);
+  color: var(--ant-color-text-secondary);
 }
 </style>

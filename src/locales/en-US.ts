@@ -28,6 +28,8 @@ export default {
     selectionColumn: 'Selection',
     indexColumn: 'Index',
     unnamedColumn: 'Unnamed column',
+    more: 'More',
+    moreActions: 'More actions',
     loading: 'Loading',
     empty: 'No data',
     requestFailed: 'Failed to load table data',
@@ -56,10 +58,14 @@ export default {
   iconPicker: {
     placeholder: 'Select icon',
     search: 'Search icon name',
-    tabElement: 'Element Plus',
+    tabAntdv: 'Antdv Next',
     tabCustom: 'Custom',
     empty: 'No matching icons',
     emptyCustom: 'No custom icons yet. Put SVGs in src/assets/icons/',
+  },
+  notFound: {
+    message: 'The page does not exist or you do not have access.',
+    backHome: 'Back home',
   },
   permission: {
     searchPlaceholder: 'Search by name or code',

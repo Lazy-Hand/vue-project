@@ -22,9 +22,7 @@ describe('app config store', () => {
     expect(store.primaryColor).toBe('#67C23A')
     expect(document.documentElement.lang).toBe('en-US')
     expect(i18n.global.locale.value).toBe('en-US')
-    expect(document.documentElement.style.getPropertyValue('--el-color-primary')).toBe(
-      '#67C23A',
-    )
+    expect(document.documentElement.style.getPropertyValue('--app-color-primary')).toBe('#67C23A')
   })
 
   it('resets to defaults', () => {

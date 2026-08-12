@@ -2,11 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { setI18nLocale } from '@/i18n'
-import {
-  APP_LOCALES,
-  DEFAULT_PRIMARY_COLOR,
-  type AppLocale,
-} from '@/types/app-config'
+import { APP_LOCALES, DEFAULT_PRIMARY_COLOR, type AppLocale } from '@/types/app-config'
 import { applyDocumentLocale, applyPrimaryColor } from '@/utils/theme'
 
 export const useAppConfigStore = defineStore(

@@ -35,11 +35,7 @@ export function fetchRolePermissions(id: string): Promise<Permission[]> {
 }
 
 export function assignRolePermissions(id: string, permissionIds: string[]): Promise<Permission[]> {
-  return request.Put<Permission[]>(
-    `/role/${id}/permissions`,
-    { permissionIds },
-    { cacheFor: 0 },
-  )
+  return request.Put<Permission[]>(`/role/${id}/permissions`, { permissionIds }, { cacheFor: 0 })
 }
 
 export function fetchRoleDepts(id: string): Promise<Dept[]> {

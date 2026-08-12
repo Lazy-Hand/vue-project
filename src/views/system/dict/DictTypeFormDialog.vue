@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { FormInstance, FormRules } from 'element-plus'
-import {
-  ElButton,
-  ElDialog,
-  ElForm,
-  ElFormItem,
-  ElInput,
-} from 'element-plus'
+import type { FormInstance, Rule } from 'antdv-next'
+import { Button, Form, FormItem, Input, Modal, TextArea } from 'antdv-next'
 
 import DictSelect from '@/components/DictSelect/index.vue'
-import { DICT_CODES, type DictType, type DictTypePayload, type UpdateDictTypePayload } from '@/types/dict'
+import {
+  DICT_CODES,
+  type DictType,
+  type DictTypePayload,
+  type UpdateDictTypePayload,
+} from '@/types/dict'
 
 interface Props {
   modelValue: boolean
@@ -47,7 +46,7 @@ const title = computed(() =>
   props.mode === 'create' ? t('dict.createTypeTitle') : t('dict.editTypeTitle'),
 )
 
-const rules = computed<FormRules<typeof form>>(() => ({
+const rules = computed<Record<string, Rule[]>>(() => ({
   code: [
     { required: true, message: t('dict.typeCodeRequired'), trigger: 'blur' },
     { min: 2, max: 64, message: t('dict.typeCodeLength'), trigger: 'blur' },
@@ -109,27 +108,39 @@ defineExpose({
 </script>
 
 <template>
-  <el-dialog v-model="visible" :title="title" width="520px" destroy-on-close>
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="108px">
-      <el-form-item :label="t('dict.typeCode')" prop="code">
-        <el-input v-model="form.code" maxlength="64" :disabled="mode === 'edit'" />
-      </el-form-item>
-      <el-form-item :label="t('dict.typeName')" prop="name">
-        <el-input v-model="form.name" maxlength="64" />
-      </el-form-item>
-      <el-form-item :label="t('dict.description')" prop="description">
-        <el-input v-model="form.description" type="textarea" :rows="2" maxlength="255" />
-      </el-form-item>
-      <el-form-item :label="t('dict.enabled')" prop="enabled">
-        <DictSelect v-model="enabledValue" :type-code="DICT_CODES.COMMON_STATUS" :clearable="false" />
-      </el-form-item>
-    </el-form>
+  <Modal v-model:open="visible" :title="title" width="520px" destroy-on-hidden>
+    <Form ref="formRef" :model="form" :rules="rules" class="dict-type-form">
+      <FormItem :label="t('dict.typeCode')" name="code">
+        <Input v-model:value="form.code" :maxlength="64" :disabled="mode === 'edit'" />
+      </FormItem>
+      <FormItem :label="t('dict.typeName')" name="name">
+        <Input v-model:value="form.name" :maxlength="64" />
+      </FormItem>
+      <FormItem :label="t('dict.description')" name="description">
+        <TextArea v-model:value="form.description" :rows="2" :maxlength="255" />
+      </FormItem>
+      <FormItem :label="t('dict.enabled')" name="enabled">
+        <DictSelect
+          v-model="enabledValue"
+          :type-code="DICT_CODES.COMMON_STATUS"
+          :clearable="false"
+        />
+      </FormItem>
+    </Form>
 
     <template #footer>
-      <el-button @click="visible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <Button @click="visible = false">{{ t('common.cancel') }}</Button>
+      <Button type="primary" :loading="submitting" @click="handleSubmit">
         {{ t('common.confirm') }}
-      </el-button>
+      </Button>
     </template>
-  </el-dialog>
+  </Modal>
 </template>
+
+<style scoped lang="scss">
+.dict-type-form {
+  :deep(.ant-form-item-label) {
+    width: 108px;
+  }
+}
+</style>

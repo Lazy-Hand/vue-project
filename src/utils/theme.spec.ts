@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { buildPrimaryColorVars } from './theme'
 
 describe('buildPrimaryColorVars', () => {
-  it('builds Element Plus primary color variants', () => {
+  it('builds application primary color variants', () => {
     const vars = buildPrimaryColorVars('#409EFF')
 
     expect(vars).toMatchObject({
-      '--el-color-primary': '#409EFF',
-      '--el-color-primary-light-3': expect.stringMatching(/^#[0-9a-f]{6}$/i),
-      '--el-color-primary-dark-2': expect.stringMatching(/^#[0-9a-f]{6}$/i),
+      '--app-color-primary': '#409EFF',
+      '--app-color-primary-light-3': expect.stringMatching(/^#[0-9a-f]{6}$/i),
+      '--app-color-primary-dark-2': expect.stringMatching(/^#[0-9a-f]{6}$/i),
     })
   })
 

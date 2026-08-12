@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormInstance, Rule } from 'antdv-next'
 import {
-  ElButton,
-  ElDialog,
-  ElForm,
-  ElFormItem,
-  ElInput,
-  ElInputNumber,
-  ElOption,
-  ElSelect,
-  ElSwitch,
-  ElTreeSelect,
-} from 'element-plus'
+  Button,
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Switch,
+  TextArea,
+  TreeSelect,
+} from 'antdv-next'
 
 import type { DeptTreeNode } from '@/types/dept'
 import {
@@ -63,6 +63,14 @@ const form = reactive<FormModel>({
   enabled: true,
 })
 
+interface DeptSelectionItem {
+  value: string
+  label?: unknown
+  halfChecked?: boolean
+}
+
+const deptSelection = ref<DeptSelectionItem[]>([])
+
 const visible = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
@@ -77,6 +85,9 @@ const isSuperAdmin = computed(
 )
 
 const showDeptField = computed(() => form.dataScope === 'CUSTOM')
+const dataScopeOptions = computed(() =>
+  DATA_SCOPES.map((scope) => ({ value: scope, label: t(`role.dataScope_${scope}`) })),
+)
 
 const deptTreeData = computed(() => {
   const mapNodes = (nodes: DeptTreeNode[]): Array<Record<string, unknown>> =>
@@ -89,7 +100,7 @@ const deptTreeData = computed(() => {
   return mapNodes(props.deptTree)
 })
 
-const rules = computed<FormRules<FormModel>>(() => ({
+const rules = computed<Record<string, Rule[]>>(() => ({
   code: [
     { required: true, message: t('role.codeRequired'), trigger: 'blur' },
     {
@@ -104,7 +115,7 @@ const rules = computed<FormRules<FormModel>>(() => ({
     {
       validator: (_rule, value: string[], callback) => {
         if (form.dataScope === 'CUSTOM' && (!value || value.length === 0)) {
-          callback(new Error(t('role.deptIdsRequired')))
+          callback(t('role.deptIdsRequired'))
           return
         }
         callback()
@@ -120,6 +131,7 @@ function resetForm(): void {
   form.description = ''
   form.dataScope = 'ALL'
   form.deptIds = []
+  deptSelection.value = []
   form.sort = 0
   form.enabled = true
 }
@@ -130,8 +142,35 @@ function fillFromEditing(role: Role): void {
   form.description = role.description ?? ''
   form.dataScope = role.dataScope
   form.deptIds = [...(props.initialDeptIds ?? [])]
+  deptSelection.value = form.deptIds.map((value) => ({ value }))
   form.sort = role.sort
   form.enabled = role.enabled
+}
+
+function normalizeDeptSelection(value: unknown): DeptSelectionItem[] {
+  if (!Array.isArray(value)) return []
+
+  return value.flatMap((entry) => {
+    if (typeof entry === 'string' || typeof entry === 'number') {
+      return [{ value: String(entry) }]
+    }
+    if (typeof entry !== 'object' || entry === null || !('value' in entry)) return []
+
+    const rawValue = entry.value
+    if (typeof rawValue !== 'string' && typeof rawValue !== 'number') return []
+
+    const item: DeptSelectionItem = { value: String(rawValue) }
+    if ('label' in entry && entry.label !== undefined) item.label = entry.label
+    if ('halfChecked' in entry && typeof entry.halfChecked === 'boolean') {
+      item.halfChecked = entry.halfChecked
+    }
+    return [item]
+  })
+}
+
+function handleDeptSelectionChange(value: unknown): void {
+  deptSelection.value = normalizeDeptSelection(value)
+  form.deptIds = deptSelection.value.map((item) => item.value)
 }
 
 watch(
@@ -187,78 +226,74 @@ defineExpose({
 </script>
 
 <template>
-  <el-dialog v-model="visible" :title="title" width="560px" destroy-on-close>
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="108px">
-      <el-form-item :label="t('role.code')" prop="code">
-        <el-input
-          v-model="form.code"
-          maxlength="64"
-          show-word-limit
+  <Modal v-model:open="visible" :title="title" width="560px" destroy-on-hidden>
+    <Form ref="formRef" :model="form" :rules="rules" class="role-form">
+      <FormItem :label="t('role.code')" name="code">
+        <Input
+          v-model:value="form.code"
+          :maxlength="64"
+          show-count
           :disabled="isSuperAdmin || mode === 'edit'"
         />
-      </el-form-item>
+      </FormItem>
 
-      <el-form-item :label="t('role.name')" prop="name">
-        <el-input v-model="form.name" maxlength="64" show-word-limit />
-      </el-form-item>
+      <FormItem :label="t('role.name')" name="name">
+        <Input v-model:value="form.name" :maxlength="64" show-count />
+      </FormItem>
 
-      <el-form-item :label="t('role.description')" prop="description">
-        <el-input
-          v-model="form.description"
-          type="textarea"
-          :rows="2"
-          maxlength="255"
-          show-word-limit
+      <FormItem :label="t('role.description')" name="description">
+        <TextArea v-model:value="form.description" :rows="2" :maxlength="255" show-count />
+      </FormItem>
+
+      <FormItem :label="t('role.dataScope')" name="dataScope">
+        <Select
+          v-model:value="form.dataScope"
+          class="w-full"
+          :disabled="isSuperAdmin"
+          :options="dataScopeOptions"
         />
-      </el-form-item>
+      </FormItem>
 
-      <el-form-item :label="t('role.dataScope')" prop="dataScope">
-        <el-select v-model="form.dataScope" class="w-full" :disabled="isSuperAdmin">
-          <el-option
-            v-for="scope in DATA_SCOPES"
-            :key="scope"
-            :label="t(`role.dataScope_${scope}`)"
-            :value="scope"
-          />
-        </el-select>
-      </el-form-item>
-
-      <el-form-item v-if="showDeptField" :label="t('role.deptIds')" prop="deptIds">
-        <el-tree-select
-          v-model="form.deptIds"
-          :data="deptTreeData"
-          multiple
-          show-checkbox
-          check-strictly
-          filterable
-          collapse-tags
-          collapse-tags-tooltip
-          :render-after-expand="false"
+      <FormItem v-if="showDeptField" :label="t('role.deptIds')" name="deptIds">
+        <TreeSelect
+          v-model:value="deptSelection"
+          :tree-data="deptTreeData"
+          tree-checkable
+          tree-check-strictly
+          :show-search="true"
+          allow-clear
           :placeholder="t('role.deptIdsPlaceholder')"
           class="w-full"
+          @change="handleDeptSelectionChange"
         />
-      </el-form-item>
+      </FormItem>
 
-      <el-form-item :label="t('role.sort')" prop="sort">
-        <el-input-number v-model="form.sort" :min="0" :max="9999" controls-position="right" />
-      </el-form-item>
+      <FormItem :label="t('role.sort')" name="sort">
+        <InputNumber v-model:value="form.sort" :min="0" :max="9999" />
+      </FormItem>
 
-      <el-form-item :label="t('role.enabled')" prop="enabled">
-        <el-switch v-model="form.enabled" :disabled="isSuperAdmin" />
-      </el-form-item>
-    </el-form>
+      <FormItem :label="t('role.enabled')" name="enabled">
+        <Switch v-model:checked="form.enabled" :disabled="isSuperAdmin" />
+      </FormItem>
+    </Form>
 
     <template #footer>
-      <el-button @click="visible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <Button @click="visible = false">{{ t('common.cancel') }}</Button>
+      <Button type="primary" :loading="submitting" @click="handleSubmit">
         {{ t('common.confirm') }}
-      </el-button>
+      </Button>
     </template>
-  </el-dialog>
+  </Modal>
 </template>
 
 <style scoped lang="scss">
 .w-full {
   width: 100%;
+}
+
+.role-form {
+  :deep(.ant-form-item-label) {
+    width: 108px;
+  }
 }
 </style>

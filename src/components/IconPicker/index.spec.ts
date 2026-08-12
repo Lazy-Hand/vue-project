@@ -1,7 +1,6 @@
-import { mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import ElementPlus from 'element-plus'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 
 import { i18n } from '@/i18n'
@@ -14,6 +13,14 @@ describe('IconPicker', () => {
     i18n.global.locale.value = 'zh-CN'
   })
 
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  function popup(wrapper: ReturnType<typeof mountPicker>): DOMWrapper<HTMLElement> {
+    return new DOMWrapper((wrapper.element.parentElement ?? document.body) as HTMLElement)
+  }
+
   function mountPicker(modelValue: string | null = null) {
     return mount(IconPicker, {
       props: {
@@ -21,30 +28,34 @@ describe('IconPicker', () => {
         teleported: false,
       },
       global: {
-        plugins: [i18n, ElementPlus],
+        plugins: [i18n],
       },
     })
   }
 
-  it('renders tabs for Element Plus and custom icons', async () => {
+  it('renders tabs for Antdv Next and custom icons', async () => {
     const wrapper = mountPicker()
     await wrapper.find('.icon-picker__trigger').trigger('click')
     await nextTick()
+    await flushPromises()
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
-    expect(wrapper.text()).toContain('Element Plus')
-    expect(wrapper.text()).toContain('自定义')
+    expect(popup(wrapper).text()).toContain('Antdv Next')
+    expect(popup(wrapper).text()).toContain('自定义')
   })
 
-  it('emits Element Plus icon name on select', async () => {
+  it('emits Antdv icon name on select', async () => {
     const wrapper = mountPicker()
     await wrapper.find('.icon-picker__trigger').trigger('click')
     await nextTick()
 
-    const item = wrapper.findAll('.icon-picker__item').find((node) => node.attributes('title') === 'Aim')
+    const item = popup(wrapper)
+      .findAll('.icon-picker__item')
+      .find((node) => node.attributes('title') === 'AimOutlined')
     expect(item).toBeTruthy()
     await item!.trigger('click')
 
-    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['Aim'])
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['AimOutlined'])
   })
 
   it('emits custom: prefixed value from custom tab', async () => {
@@ -52,12 +63,14 @@ describe('IconPicker', () => {
     await wrapper.find('.icon-picker__trigger').trigger('click')
     await nextTick()
 
-    const customTab = wrapper.findAll('.el-tabs__item').find((node) => node.text().includes('自定义'))
+    const customTab = popup(wrapper)
+      .findAll('.ant-tabs-tab')
+      .find((node) => node.text().includes('自定义'))
     expect(customTab).toBeTruthy()
     await customTab!.trigger('click')
     await nextTick()
 
-    const item = wrapper
+    const item = popup(wrapper)
       .findAll('.icon-picker__item')
       .find((node) => node.attributes('title')?.startsWith(CUSTOM_ICON_PREFIX))
     expect(item).toBeTruthy()

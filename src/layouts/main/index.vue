@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { ElAside, ElButton, ElContainer, ElHeader, ElMain } from 'element-plus'
+import { Button, Layout, LayoutContent, LayoutHeader, LayoutSider } from 'antdv-next'
 
 import { logoutAuth } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
@@ -26,29 +26,29 @@ async function handleLogout() {
 </script>
 
 <template>
-  <el-container class="main-layout">
-    <el-aside width="220px" class="main-aside">
+  <Layout class="main-layout">
+    <LayoutSider :width="220" class="main-aside">
       <div class="brand">{{ t('common.appName') }}</div>
       <div class="main-aside__menu">
         <LayoutMenu />
       </div>
-    </el-aside>
+    </LayoutSider>
 
-    <el-container class="main-body">
-      <el-header class="main-header">
+    <Layout class="main-body">
+      <LayoutHeader class="main-header">
         <div class="header-title">{{ route.meta.title || t('common.console') }}</div>
         <div class="header-actions">
           <AppConfigControls />
           <AccountSetSwitcher />
           <span class="user-name">{{ displayName }}</span>
-          <el-button text type="primary" @click="handleLogout">{{ t('common.logout') }}</el-button>
+          <Button type="link" @click="handleLogout">{{ t('common.logout') }}</Button>
         </div>
-      </el-header>
-      <el-main class="main-content">
+      </LayoutHeader>
+      <LayoutContent class="main-content">
         <RouterView />
-      </el-main>
-    </el-container>
-  </el-container>
+      </LayoutContent>
+    </Layout>
+  </Layout>
 </template>
 
 <style scoped lang="scss">

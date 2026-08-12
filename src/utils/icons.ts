@@ -1,13 +1,96 @@
-import { Menu } from '@element-plus/icons-vue'
-import * as ElementPlusIcons from '@element-plus/icons-vue'
+import * as AntdvIcons from '@antdv-next/icons'
+import { MenuOutlined } from '@antdv-next/icons'
 import { defineComponent, h, type Component } from 'vue'
 
 /** Backend / menu `icon` prefix for assets under `src/assets/icons/`. */
 export const CUSTOM_ICON_PREFIX = 'custom:'
 
-const epIcons = ElementPlusIcons as Record<string, Component | undefined>
+const antdvIcons = AntdvIcons as Record<string, Component | undefined>
 const cache = new Map<string, Component>()
 const customIcons = new Map<string, Component>()
+
+/**
+ * Menu data predates the Antdv icon package and may still contain legacy names.
+ * Keep this map explicit so a backend value always resolves to a stable icon
+ * name that the picker can persist.
+ */
+const legacyIconAliases: Readonly<Record<string, string>> = {
+  AddLocation: 'EnvironmentOutlined',
+  Aim: 'AimOutlined',
+  AlarmClock: 'ClockCircleOutlined',
+  ArrowDown: 'ArrowDownOutlined',
+  ArrowDownBold: 'ArrowDownOutlined',
+  ArrowLeft: 'ArrowLeftOutlined',
+  ArrowLeftBold: 'ArrowLeftOutlined',
+  ArrowRight: 'ArrowRightOutlined',
+  ArrowRightBold: 'ArrowRightOutlined',
+  ArrowUp: 'ArrowUpOutlined',
+  ArrowUpBold: 'ArrowUpOutlined',
+  Avatar: 'UserOutlined',
+  Back: 'RollbackOutlined',
+  Bell: 'BellOutlined',
+  Bottom: 'VerticalAlignBottomOutlined',
+  Calendar: 'CalendarOutlined',
+  Camera: 'CameraOutlined',
+  Check: 'CheckOutlined',
+  CircleCheck: 'CheckCircleOutlined',
+  CircleClose: 'CloseCircleOutlined',
+  CirclePlus: 'PlusCircleOutlined',
+  Close: 'CloseOutlined',
+  CopyDocument: 'CopyOutlined',
+  Delete: 'DeleteOutlined',
+  Download: 'DownloadOutlined',
+  Edit: 'EditOutlined',
+  Expand: 'ExpandOutlined',
+  Filter: 'FilterOutlined',
+  Folder: 'FolderOutlined',
+  FolderAdd: 'FolderAddOutlined',
+  FolderOpened: 'FolderOpenOutlined',
+  FullScreen: 'FullscreenOutlined',
+  Grid: 'AppstoreOutlined',
+  Help: 'QuestionOutlined',
+  Hide: 'EyeInvisibleOutlined',
+  Home: 'HomeOutlined',
+  House: 'HomeOutlined',
+  InfoFilled: 'InfoCircleFilled',
+  Key: 'KeyOutlined',
+  Link: 'LinkOutlined',
+  List: 'UnorderedListOutlined',
+  Loading: 'LoadingOutlined',
+  Location: 'EnvironmentOutlined',
+  Lock: 'LockOutlined',
+  Management: 'SettingOutlined',
+  Menu: 'MenuOutlined',
+  Message: 'MessageOutlined',
+  More: 'MoreOutlined',
+  MoreFilled: 'MoreOutlined',
+  Notification: 'NotificationOutlined',
+  Odometer: 'DashboardOutlined',
+  Open: 'ExportOutlined',
+  Paperclip: 'PaperClipOutlined',
+  Phone: 'PhoneOutlined',
+  Picture: 'PictureOutlined',
+  Plus: 'PlusOutlined',
+  QuestionFilled: 'QuestionCircleFilled',
+  Rank: 'HolderOutlined',
+  Refresh: 'ReloadOutlined',
+  Remove: 'MinusOutlined',
+  Search: 'SearchOutlined',
+  Select: 'SelectOutlined',
+  Setting: 'SettingOutlined',
+  Share: 'ShareAltOutlined',
+  Sort: 'SortAscendingOutlined',
+  Star: 'StarOutlined',
+  Tools: 'ToolOutlined',
+  Top: 'VerticalAlignTopOutlined',
+  Upload: 'UploadOutlined',
+  User: 'UserOutlined',
+  UserFilled: 'UserOutlined',
+  View: 'EyeOutlined',
+  Warning: 'WarningOutlined',
+  ZoomIn: 'ZoomInOutlined',
+  ZoomOut: 'ZoomOutOutlined',
+}
 
 const svgRawModules = import.meta.glob<string>('@/assets/icons/**/*.svg', {
   eager: true,
@@ -46,7 +129,10 @@ function registerCustomIcon(name: string, component: Component): void {
 }
 
 for (const [path, markup] of Object.entries(svgRawModules)) {
-  const fileName = path.split('/').pop()?.replace(/\.svg$/i, '')
+  const fileName = path
+    .split('/')
+    .pop()
+    ?.replace(/\.svg$/i, '')
   if (!fileName) continue
   registerCustomIcon(fileName, createSvgIconComponent(fileName, markup))
 }
@@ -55,20 +141,28 @@ function resolveCustomIcon(name: string): Component | undefined {
   const key = name.trim()
   if (!key) return undefined
   return (
-    customIcons.get(key) ??
-    customIcons.get(key.toLowerCase()) ??
-    customIcons.get(toPascalCase(key))
+    customIcons.get(key) ?? customIcons.get(key.toLowerCase()) ?? customIcons.get(toPascalCase(key))
   )
 }
 
-/**
- * Resolve a menu icon for `<component :is>`.
- *
- * - Element Plus: `Setting` / `user-filled`
- * - Custom SVG in `src/assets/icons/foo.svg`: `custom:foo` or `foo`（EP 未命中时回落）
- */
+function resolveAntdvIconName(icon: string): string | undefined {
+  const key = icon.trim()
+  if (!key) return undefined
+
+  const pascalName = toPascalCase(key)
+  if (antdvIcons[key]) return key
+  if (antdvIcons[pascalName]) return pascalName
+
+  const alias = legacyIconAliases[pascalName]
+  if (alias && antdvIcons[alias]) return alias
+
+  const outlined = `${pascalName}Outlined`
+  return antdvIcons[outlined] ? outlined : undefined
+}
+
+/** Resolve a menu icon for `<component :is>`. */
 export function resolveMenuIcon(icon?: string | null): Component {
-  if (!icon) return Menu
+  if (!icon) return MenuOutlined
 
   const cached = cache.get(icon)
   if (cached) return cached
@@ -78,13 +172,11 @@ export function resolveMenuIcon(icon?: string | null): Component {
   if (icon.startsWith(CUSTOM_ICON_PREFIX)) {
     resolved = resolveCustomIcon(icon.slice(CUSTOM_ICON_PREFIX.length))
   } else {
-    resolved = epIcons[icon] ?? epIcons[toPascalCase(icon)]
-    if (!resolved) {
-      resolved = resolveCustomIcon(icon)
-    }
+    const antIconName = resolveAntdvIconName(icon)
+    resolved = antIconName ? antdvIcons[antIconName] : resolveCustomIcon(icon)
   }
 
-  const finalIcon = resolved ?? Menu
+  const finalIcon = resolved ?? MenuOutlined
   cache.set(icon, finalIcon)
   return finalIcon
 }
@@ -92,22 +184,28 @@ export function resolveMenuIcon(icon?: string | null): Component {
 export function isCustomMenuIcon(icon?: string | null): boolean {
   if (!icon) return false
   if (icon.startsWith(CUSTOM_ICON_PREFIX)) return true
-  if (epIcons[icon] || epIcons[toPascalCase(icon)]) return false
-  return Boolean(resolveCustomIcon(icon))
+  return !resolveAntdvIconName(icon) && Boolean(resolveCustomIcon(icon))
 }
 
 export function listCustomMenuIconNames(): string[] {
-  return [...new Set(
-    Object.keys(svgRawModules)
-      .map((path) => path.split('/').pop()?.replace(/\.svg$/i, ''))
-      .filter((name): name is string => Boolean(name)),
-  )].sort()
+  return [
+    ...new Set(
+      Object.keys(svgRawModules)
+        .map((path) =>
+          path
+            .split('/')
+            .pop()
+            ?.replace(/\.svg$/i, ''),
+        )
+        .filter((name): name is string => Boolean(name)),
+    ),
+  ].sort()
 }
 
-/** PascalCase names exported by `@element-plus/icons-vue`. */
-export function listElementPlusIconNames(): string[] {
-  return Object.keys(epIcons)
-    .filter((name) => name !== 'default' && Boolean(epIcons[name]))
+/** Names exported by `@antdv-next/icons` that can be persisted by the picker. */
+export function listAntdvIconNames(): string[] {
+  return Object.keys(antdvIcons)
+    .filter((name) => /(?:Filled|Outlined|TwoTone)$/.test(name) && Boolean(antdvIcons[name]))
     .sort((a, b) => a.localeCompare(b))
 }
 

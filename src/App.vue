@@ -1,18 +1,23 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ElConfigProvider } from 'element-plus'
-import en from 'element-plus/es/locale/lang/en'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import { ConfigProvider, type ThemeConfig } from 'antdv-next'
+import enUS from 'antdv-next/locale/en_US'
+import zhCN from 'antdv-next/locale/zh_CN'
 
 import { useAppConfigStore } from '@/stores/app-config'
 
 const appConfig = useAppConfigStore()
 
-const elementLocale = computed(() => (appConfig.locale === 'en-US' ? en : zhCn))
+const antdLocale = computed(() => (appConfig.locale === 'en-US' ? enUS : zhCN))
+const theme = computed<ThemeConfig>(() => ({
+  token: {
+    colorPrimary: appConfig.primaryColor,
+  },
+}))
 </script>
 
 <template>
-  <ElConfigProvider :locale="elementLocale">
+  <ConfigProvider :locale="antdLocale" :theme="theme">
     <RouterView />
-  </ElConfigProvider>
+  </ConfigProvider>
 </template>

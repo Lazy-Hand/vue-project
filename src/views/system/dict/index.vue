@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElButton, ElEmpty, ElMessage, ElMessageBox } from 'element-plus'
+import { Button, Empty, Modal, message } from 'antdv-next'
 
 import {
   createDictItem,
@@ -141,7 +141,7 @@ function errorMessage(error: unknown): string {
 }
 
 function handleRequestError(error: unknown): void {
-  ElMessage.error(errorMessage(error))
+  message.error(errorMessage(error))
 }
 
 function invalidateCache(typeCode?: string): void {
@@ -200,7 +200,7 @@ function openEditType(row: DictType): void {
 
 function openCreateItem(): void {
   if (!selectedType.value) {
-    ElMessage.warning(t('dict.selectTypeFirst'))
+    message.warning(t('dict.selectTypeFirst'))
     return
   }
   itemFormMode.value = 'create'
@@ -219,7 +219,7 @@ async function handleTypeSubmit(payload: DictTypePayload | UpdateDictTypePayload
   try {
     if (typeFormMode.value === 'create') {
       const created = await createDictType(payload as DictTypePayload)
-      ElMessage.success(t('dict.createSuccess'))
+      message.success(t('dict.createSuccess'))
       typeFormVisible.value = false
       selectedType.value = created
       await typeTableRef.value?.reload()
@@ -228,7 +228,7 @@ async function handleTypeSubmit(payload: DictTypePayload | UpdateDictTypePayload
 
     if (!editingType.value) return
     const updated = await updateDictType(editingType.value.id, payload as UpdateDictTypePayload)
-    ElMessage.success(t('dict.updateSuccess'))
+    message.success(t('dict.updateSuccess'))
     typeFormVisible.value = false
     invalidateCache(editingType.value.code)
     if (selectedType.value?.id === updated.id) {
@@ -236,7 +236,7 @@ async function handleTypeSubmit(payload: DictTypePayload | UpdateDictTypePayload
     }
     await typeTableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   } finally {
     typeFormRef.value?.setSubmitting(false)
   }
@@ -248,61 +248,65 @@ async function handleItemSubmit(payload: DictItemPayload | UpdateDictItemPayload
   try {
     if (itemFormMode.value === 'create') {
       await createDictItem(payload as DictItemPayload)
-      ElMessage.success(t('dict.createSuccess'))
+      message.success(t('dict.createSuccess'))
     } else if (editingItem.value) {
       await updateDictItem(editingItem.value.id, payload as UpdateDictItemPayload)
-      ElMessage.success(t('dict.updateSuccess'))
+      message.success(t('dict.updateSuccess'))
     }
     itemFormVisible.value = false
     invalidateCache(selectedType.value.code)
     await itemTableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   } finally {
     itemFormRef.value?.setSubmitting(false)
   }
 }
 
-async function handleDeleteType(row: DictType): Promise<void> {
-  try {
-    await ElMessageBox.confirm(t('dict.deleteTypeConfirm', { name: row.name }), t('common.tip'), {
-      type: 'warning',
+function confirmDelete(content: string): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: t('common.tip'),
+      content,
+      okType: 'danger',
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
     })
-  } catch {
-    return
-  }
+  })
+}
+
+async function handleDeleteType(row: DictType): Promise<void> {
+  const confirmed = await confirmDelete(t('dict.deleteTypeConfirm', { name: row.name }))
+  if (!confirmed) return
 
   try {
     await deleteDictType(row.id)
-    ElMessage.success(t('dict.deleteSuccess'))
+    message.success(t('dict.deleteSuccess'))
     invalidateCache(row.code)
     if (selectedType.value?.id === row.id) {
       selectedType.value = null
     }
     await typeTableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 
 async function handleDeleteItem(row: DictItem): Promise<void> {
-  try {
-    await ElMessageBox.confirm(t('dict.deleteItemConfirm', { name: row.label }), t('common.tip'), {
-      type: 'warning',
-    })
-  } catch {
-    return
-  }
+  const confirmed = await confirmDelete(t('dict.deleteItemConfirm', { name: row.label }))
+  if (!confirmed) return
 
   try {
     await deleteDictItem(row.id)
-    ElMessage.success(t('dict.deleteSuccess'))
+    message.success(t('dict.deleteSuccess'))
     if (selectedType.value) {
       invalidateCache(selectedType.value.code)
     }
     await itemTableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 
@@ -332,18 +336,18 @@ watch(
         @request-error="handleRequestError"
       >
         <template #toolbar-actions>
-          <el-button v-if="canCreate" type="primary" @click="openCreateType">
+          <Button v-if="canCreate" type="primary" @click="openCreateType">
             {{ t('dict.createType') }}
-          </el-button>
+          </Button>
         </template>
 
         <template #column-actions="{ row }">
-          <el-button v-if="canUpdate" link type="primary" @click.stop="openEditType(row)">
+          <Button v-if="canUpdate" type="link" @click.stop="openEditType(row)">
             {{ t('common.edit') }}
-          </el-button>
-          <el-button v-if="canDelete" link type="danger" @click.stop="handleDeleteType(row)">
+          </Button>
+          <Button v-if="canDelete" danger type="link" @click.stop="handleDeleteType(row)">
             {{ t('common.delete') }}
-          </el-button>
+          </Button>
         </template>
       </ProTable>
     </section>
@@ -357,7 +361,7 @@ watch(
         }}
       </div>
 
-      <el-empty v-if="!selectedType" :description="t('dict.selectTypeFirst')" />
+      <Empty v-if="!selectedType" :description="t('dict.selectTypeFirst')" />
 
       <ProTable
         v-else
@@ -371,18 +375,18 @@ watch(
         @request-error="handleRequestError"
       >
         <template #toolbar-actions>
-          <el-button v-if="canCreate" type="primary" @click="openCreateItem">
+          <Button v-if="canCreate" type="primary" @click="openCreateItem">
             {{ t('dict.createItem') }}
-          </el-button>
+          </Button>
         </template>
 
         <template #column-actions="{ row }">
-          <el-button v-if="canUpdate" link type="primary" @click="openEditItem(row)">
+          <Button v-if="canUpdate" type="link" @click="openEditItem(row)">
             {{ t('common.edit') }}
-          </el-button>
-          <el-button v-if="canDelete" link type="danger" @click="handleDeleteItem(row)">
+          </Button>
+          <Button v-if="canDelete" danger type="link" @click="handleDeleteItem(row)">
             {{ t('common.delete') }}
-          </el-button>
+          </Button>
         </template>
       </ProTable>
     </section>

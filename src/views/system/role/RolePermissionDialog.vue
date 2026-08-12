@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElButton, ElDialog, ElEmpty, ElInput, ElTree } from 'element-plus'
+import type { TreeProps } from 'antdv-next'
+import { Button, Empty, Input, Modal, Tree } from 'antdv-next'
 
 import type { PermissionTreeNode } from '@/types/permission'
 import type { Role } from '@/types/role'
@@ -21,8 +22,9 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const treeRef = ref<InstanceType<typeof ElTree>>()
 const keyword = ref('')
+const selectedIds = ref<string[]>([])
+const halfCheckedIds = ref<string[]>([])
 const submitting = ref(false)
 
 const visible = computed({
@@ -31,42 +33,71 @@ const visible = computed({
 })
 
 const title = computed(() =>
-  props.role ? t('role.assignPermissionsTitle', { name: props.role.name }) : t('role.assignPermissions'),
+  props.role
+    ? t('role.assignPermissionsTitle', { name: props.role.name })
+    : t('role.assignPermissions'),
 )
 
-const treeData = computed(() => {
-  const mapNodes = (nodes: PermissionTreeNode[]): Array<Record<string, unknown>> =>
+interface PermissionTreeDataNode {
+  key: string
+  title: string
+  children?: PermissionTreeDataNode[]
+}
+
+const treeData = computed<PermissionTreeDataNode[]>(() => {
+  const mapNodes = (nodes: PermissionTreeNode[]): PermissionTreeDataNode[] =>
     nodes.map((node) => ({
-      id: node.id,
-      label: `${node.name} (${node.code})`,
+      key: node.id,
+      title: `${node.name} (${node.code})`,
       children: mapNodes(node.children ?? []),
     }))
   return mapNodes(props.permissionTree)
 })
 
-function filterNode(value: string, data: { label?: string }): boolean {
-  if (!value) return true
-  return (data.label ?? '').toLowerCase().includes(value.toLowerCase())
+function filterTreeNodes(nodes: PermissionTreeDataNode[], query: string): PermissionTreeDataNode[] {
+  if (!query) return nodes
+  return nodes.flatMap((node) => {
+    const children = filterTreeNodes(node.children ?? [], query)
+    if (node.title.toLowerCase().includes(query) || children.length) {
+      return [{ ...node, children }]
+    }
+    return []
+  })
 }
 
-watch(keyword, (value) => {
-  treeRef.value?.filter(value)
-})
+const filteredTreeData = computed(() =>
+  filterTreeNodes(treeData.value, keyword.value.trim().toLowerCase()),
+)
+
+type TreeCheckHandler = NonNullable<TreeProps['onCheck']>
+
+function handleCheck(...args: Parameters<TreeCheckHandler>): void {
+  const [checked, info] = args
+  if (Array.isArray(checked)) {
+    selectedIds.value = checked.filter((key): key is string => typeof key === 'string')
+  } else {
+    selectedIds.value = checked.checked.filter((key): key is string => typeof key === 'string')
+    halfCheckedIds.value = checked.halfChecked.filter(
+      (key): key is string => typeof key === 'string',
+    )
+  }
+  halfCheckedIds.value = (info.halfCheckedKeys ?? []).filter(
+    (key): key is string => typeof key === 'string',
+  )
+}
 
 watch(
   () => [props.modelValue, props.checkedIds] as const,
-  async ([open]) => {
+  ([open]) => {
     if (!open) return
     keyword.value = ''
-    await nextTick()
-    treeRef.value?.setCheckedKeys(props.checkedIds)
+    selectedIds.value = [...props.checkedIds]
+    halfCheckedIds.value = []
   },
 )
 
 function collectPermissionIds(): string[] {
-  const checked = (treeRef.value?.getCheckedKeys(false) ?? []) as string[]
-  const half = (treeRef.value?.getHalfCheckedKeys() ?? []) as string[]
-  return [...new Set([...checked, ...half])]
+  return [...new Set([...selectedIds.value, ...halfCheckedIds.value])]
 }
 
 function handleSubmit(): void {
@@ -81,35 +112,33 @@ defineExpose({
 </script>
 
 <template>
-  <el-dialog v-model="visible" :title="title" width="520px" destroy-on-close>
-    <el-input
-      v-model="keyword"
-      clearable
+  <Modal v-model:open="visible" :title="title" width="520px" destroy-on-hidden>
+    <Input
+      v-model:value="keyword"
+      allow-clear
       class="role-permission-search"
       :placeholder="t('role.permissionSearch')"
     />
 
     <div class="role-permission-tree">
-      <el-tree
-        v-if="treeData.length"
-        ref="treeRef"
-        :data="treeData"
-        node-key="id"
-        show-checkbox
+      <Tree
+        v-if="filteredTreeData.length"
+        :tree-data="filteredTreeData"
+        :checked-keys="{ checked: selectedIds, halfChecked: halfCheckedIds }"
+        checkable
         default-expand-all
-        :filter-node-method="filterNode"
-        :props="{ label: 'label', children: 'children' }"
+        @check="handleCheck"
       />
-      <el-empty v-else :description="t('role.permissionEmpty')" :image-size="72" />
+      <Empty v-else :description="t('role.permissionEmpty')" />
     </div>
 
     <template #footer>
-      <el-button @click="visible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <Button @click="visible = false">{{ t('common.cancel') }}</Button>
+      <Button type="primary" :loading="submitting" @click="handleSubmit">
         {{ t('common.confirm') }}
-      </el-button>
+      </Button>
     </template>
-  </el-dialog>
+  </Modal>
 </template>
 
 <style scoped lang="scss">
@@ -121,7 +150,7 @@ defineExpose({
   max-height: 420px;
   overflow: auto;
   padding: 8px 4px;
-  border: 1px solid var(--el-border-color-lighter);
+  border: 1px solid var(--ant-color-border-secondary);
   border-radius: 8px;
 }
 </style>

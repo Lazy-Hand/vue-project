@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElButton, ElMessage, ElMessageBox } from 'element-plus'
+import { Button, Modal, message } from 'antdv-next'
 
 import { fetchDeptTree } from '@/api/dept'
 import { fetchPermissionTree } from '@/api/permission'
@@ -81,7 +81,7 @@ const columns = computed<ProTableColumn<Role>[]>(() => [
   { prop: 'enabled', label: t('role.enabled'), width: 90, type: 'tag' as const },
   {
     label: t('common.actions'),
-    width: 260,
+    width: 120,
     fixed: 'right' as const,
     type: 'slot' as const,
     slot: 'actions',
@@ -95,7 +95,7 @@ function errorMessage(error: unknown): string {
 }
 
 function handleRequestError(error: unknown): void {
-  ElMessage.error(errorMessage(error))
+  message.error(errorMessage(error))
 }
 
 function isSuperAdmin(role: Role): boolean {
@@ -130,7 +130,7 @@ async function ensurePermissionTree(): Promise<void> {
   try {
     permissionTree.value = await fetchPermissionTree()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 
@@ -153,7 +153,7 @@ async function openEdit(row: Role): Promise<void> {
       const depts = await fetchRoleDepts(row.id)
       initialDeptIds.value = depts.map((item) => item.id)
     } catch (error) {
-      ElMessage.error(errorMessage(error))
+      message.error(errorMessage(error))
       return
     }
   }
@@ -163,13 +163,13 @@ async function openEdit(row: Role): Promise<void> {
 
 async function openAssignPermissions(row: Role): Promise<void> {
   if (isSuperAdmin(row)) {
-    ElMessage.warning(t('role.superAdminProtected'))
+    message.warning(t('role.superAdminProtected'))
     return
   }
 
   await ensurePermissionTree()
   if (!permissionTree.value.length) {
-    ElMessage.warning(t('role.permissionEmpty'))
+    message.warning(t('role.permissionEmpty'))
     return
   }
 
@@ -179,7 +179,7 @@ async function openAssignPermissions(row: Role): Promise<void> {
     permissionCheckedIds.value = permissions.map((item) => item.id)
     permissionVisible.value = true
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 
@@ -188,15 +188,15 @@ async function handleFormSubmit(payload: RolePayload): Promise<void> {
   try {
     if (formMode.value === 'create') {
       await createRole(payload)
-      ElMessage.success(t('role.createSuccess'))
+      message.success(t('role.createSuccess'))
     } else if (editingRole.value) {
       await updateRole(editingRole.value.id, payload)
-      ElMessage.success(t('role.updateSuccess'))
+      message.success(t('role.updateSuccess'))
     }
     formVisible.value = false
     await tableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   } finally {
     formDialogRef.value?.setSubmitting(false)
   }
@@ -207,10 +207,10 @@ async function handlePermissionSubmit(permissionIds: string[]): Promise<void> {
   permissionDialogRef.value?.setSubmitting(true)
   try {
     await assignRolePermissions(permissionRole.value.id, permissionIds)
-    ElMessage.success(t('role.assignSuccess'))
+    message.success(t('role.assignSuccess'))
     permissionVisible.value = false
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   } finally {
     permissionDialogRef.value?.setSubmitting(false)
   }
@@ -218,24 +218,29 @@ async function handlePermissionSubmit(permissionIds: string[]): Promise<void> {
 
 async function handleDelete(row: Role): Promise<void> {
   if (isSuperAdmin(row)) {
-    ElMessage.warning(t('role.superAdminProtected'))
+    message.warning(t('role.superAdminProtected'))
     return
   }
 
-  try {
-    await ElMessageBox.confirm(t('role.deleteConfirm', { name: row.name }), t('common.tip'), {
-      type: 'warning',
+  const confirmed = await new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: t('common.tip'),
+      content: t('role.deleteConfirm', { name: row.name }),
+      okType: 'danger',
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
     })
-  } catch {
-    return
-  }
+  })
+  if (!confirmed) return
 
   try {
     await deleteRole(row.id)
-    ElMessage.success(t('role.deleteSuccess'))
+    message.success(t('role.deleteSuccess'))
     await tableRef.value?.reload()
   } catch (error) {
-    ElMessage.error(errorMessage(error))
+    message.error(errorMessage(error))
   }
 }
 </script>
@@ -252,31 +257,30 @@ async function handleDelete(row: Role): Promise<void> {
       @request-error="handleRequestError"
     >
       <template #toolbar-actions>
-        <el-button v-if="canCreate" type="primary" @click="openCreate">
+        <Button v-if="canCreate" type="primary" @click="openCreate">
           {{ t('role.create') }}
-        </el-button>
+        </Button>
       </template>
 
       <template #column-actions="{ row }">
-        <el-button v-if="canUpdate" link type="primary" @click="openEdit(row)">
+        <Button v-if="canUpdate" type="link" @click="openEdit(row)">
           {{ t('common.edit') }}
-        </el-button>
-        <el-button
+        </Button>
+        <Button
           v-if="canAssign && !isSuperAdmin(row)"
-          link
-          type="primary"
+          type="link"
           @click="openAssignPermissions(row)"
         >
           {{ t('role.assignPermissions') }}
-        </el-button>
-        <el-button
+        </Button>
+        <Button
           v-if="canDelete && !isSuperAdmin(row)"
-          link
-          type="danger"
+          danger
+          type="link"
           @click="handleDelete(row)"
         >
           {{ t('common.delete') }}
-        </el-button>
+        </Button>
       </template>
     </ProTable>
 

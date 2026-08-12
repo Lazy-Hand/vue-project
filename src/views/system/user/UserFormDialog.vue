@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormInstance, Rule } from 'antdv-next'
 import {
-  ElButton,
-  ElDialog,
-  ElForm,
-  ElFormItem,
-  ElInput,
-  ElOption,
-  ElSelect,
-  ElSwitch,
-  ElTreeSelect,
-} from 'element-plus'
+  Button,
+  Form,
+  FormItem,
+  Input,
+  InputPassword,
+  Select,
+  Switch,
+  TreeSelect,
+  Modal,
+} from 'antdv-next'
 
 import type { DeptTreeNode } from '@/types/dept'
 import type { Post } from '@/types/post'
@@ -81,8 +81,11 @@ const deptTreeData = computed(() => {
 })
 
 const postOptions = computed(() => props.posts.filter((item) => item.enabled))
+const postSelectOptions = computed(() =>
+  postOptions.value.map((item) => ({ label: item.name, value: item.id })),
+)
 
-const rules = computed<FormRules<FormModel>>(() => ({
+const rules = computed<Record<string, Rule[]>>(() => ({
   username: [
     { required: true, message: t('user.usernameRequired'), trigger: 'blur' },
     { min: 3, max: 255, message: t('user.usernameLength'), trigger: 'blur' },
@@ -92,11 +95,11 @@ const rules = computed<FormRules<FormModel>>(() => ({
       validator: (_rule, value: string, callback) => {
         if (props.mode === 'create') {
           if (!value) {
-            callback(new Error(t('user.passwordRequired')))
+            callback(t('user.passwordRequired'))
             return
           }
           if (value.length < 8 || value.length > 72) {
-            callback(new Error(t('user.passwordLength')))
+            callback(t('user.passwordLength'))
             return
           }
         }
@@ -113,7 +116,7 @@ const rules = computed<FormRules<FormModel>>(() => ({
           return
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
-          callback(new Error(t('user.emailInvalid')))
+          callback(t('user.emailInvalid'))
           return
         }
         callback()
@@ -201,77 +204,74 @@ defineExpose({
 </script>
 
 <template>
-  <el-dialog v-model="visible" :title="title" width="560px" destroy-on-close>
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="108px">
-      <el-form-item :label="t('user.username')" prop="username">
-        <el-input v-model="form.username" maxlength="255" :disabled="mode === 'edit'" />
-      </el-form-item>
+  <Modal v-model:open="visible" :title="title" width="560px" destroy-on-hidden>
+    <Form ref="formRef" :model="form" :rules="rules" class="user-form">
+      <FormItem :label="t('user.username')" name="username">
+        <Input v-model:value="form.username" :maxlength="255" :disabled="mode === 'edit'" />
+      </FormItem>
 
-      <el-form-item v-if="mode === 'create'" :label="t('user.password')" prop="password">
-        <el-input v-model="form.password" type="password" show-password maxlength="72" />
-      </el-form-item>
+      <FormItem v-if="mode === 'create'" :label="t('user.password')" name="password">
+        <InputPassword v-model:value="form.password" :maxlength="72" />
+      </FormItem>
 
-      <el-form-item :label="t('user.nickname')" prop="nickname">
-        <el-input v-model="form.nickname" maxlength="64" />
-      </el-form-item>
+      <FormItem :label="t('user.nickname')" name="nickname">
+        <Input v-model:value="form.nickname" :maxlength="64" />
+      </FormItem>
 
-      <el-form-item :label="t('user.email')" prop="email">
-        <el-input v-model="form.email" maxlength="255" />
-      </el-form-item>
+      <FormItem :label="t('user.email')" name="email">
+        <Input v-model:value="form.email" :maxlength="255" />
+      </FormItem>
 
-      <el-form-item :label="t('user.phone')" prop="phone">
-        <el-input v-model="form.phone" maxlength="255" />
-      </el-form-item>
+      <FormItem :label="t('user.phone')" name="phone">
+        <Input v-model:value="form.phone" :maxlength="255" />
+      </FormItem>
 
-      <el-form-item :label="t('user.dept')" prop="deptId">
-        <el-tree-select
-          v-model="form.deptId"
-          :data="deptTreeData"
-          clearable
-          check-strictly
-          filterable
-          :render-after-expand="false"
+      <FormItem :label="t('user.dept')" name="deptId">
+        <TreeSelect
+          v-model:value="form.deptId"
+          :tree-data="deptTreeData"
+          allow-clear
+          show-search
           :placeholder="t('user.deptPlaceholder')"
           class="w-full"
         />
-      </el-form-item>
+      </FormItem>
 
-      <el-form-item :label="t('user.posts')" prop="postIds">
-        <el-select
-          v-model="form.postIds"
-          multiple
-          clearable
-          filterable
-          collapse-tags
-          collapse-tags-tooltip
+      <FormItem :label="t('user.posts')" name="postIds">
+        <Select
+          v-model:value="form.postIds"
+          mode="multiple"
+          allow-clear
+          show-search
+          :options="postSelectOptions"
+          option-filter-prop="label"
           :placeholder="t('user.postsPlaceholder')"
           class="w-full"
-        >
-          <el-option
-            v-for="item in postOptions"
-            :key="item.id"
-            :label="item.name"
-            :value="item.id"
-          />
-        </el-select>
-      </el-form-item>
+        />
+      </FormItem>
 
-      <el-form-item :label="t('user.enabled')" prop="enabled">
-        <el-switch v-model="form.enabled" />
-      </el-form-item>
-    </el-form>
+      <FormItem :label="t('user.enabled')" name="enabled">
+        <Switch v-model:checked="form.enabled" />
+      </FormItem>
+    </Form>
 
     <template #footer>
-      <el-button @click="visible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <Button @click="visible = false">{{ t('common.cancel') }}</Button>
+      <Button type="primary" :loading="submitting" @click="handleSubmit">
         {{ t('common.confirm') }}
-      </el-button>
+      </Button>
     </template>
-  </el-dialog>
+  </Modal>
 </template>
 
 <style scoped lang="scss">
 .w-full {
   width: 100%;
+}
+
+.user-form {
+  :deep(.ant-form-item-label) {
+    width: 108px;
+  }
 }
 </style>

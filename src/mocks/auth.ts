@@ -137,7 +137,9 @@ function success<T>(data: T): ApiResponse<T> {
   }
 }
 
-function requestLocale(headers: Record<string, string | undefined> | undefined): string | undefined {
+function requestLocale(
+  headers: Record<string, string | undefined> | undefined,
+): string | undefined {
   return headers?.['X-Locale'] ?? headers?.['x-locale']
 }
 

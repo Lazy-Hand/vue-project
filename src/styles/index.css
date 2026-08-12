@@ -1,5 +1,6 @@
 @import 'tailwindcss';
-@import 'element-plus/dist/index.css';
+@import 'antdv-next/dist/reset.css';
+@import 'antdv-next/dist/antd.css';
 
 :root {
   --app-color-primary: #409eff;

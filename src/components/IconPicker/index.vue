@@ -1,23 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CircleClose, Search } from '@element-plus/icons-vue'
-import {
-  ElButton,
-  ElEmpty,
-  ElIcon,
-  ElInput,
-  ElPopover,
-  ElTabPane,
-  ElTabs,
-} from 'element-plus'
+import { CloseCircleOutlined, SearchOutlined } from '@antdv-next/icons'
+import { Button, Empty, Input, Popover, TabPane, Tabs } from 'antdv-next'
 
 import MenuIcon from '@/components/MenuIcon/index.vue'
 import {
   CUSTOM_ICON_PREFIX,
   isCustomMenuIcon,
+  listAntdvIconNames,
   listCustomMenuIconNames,
-  listElementPlusIconNames,
   toCustomIconValue,
 } from '@/utils/icons'
 
@@ -52,7 +44,7 @@ const visible = ref(false)
 const keyword = ref('')
 const activeTab = ref<IconTab>('element')
 
-const elementIcons = listElementPlusIconNames()
+const antdvIcons = listAntdvIconNames()
 const customIcons = listCustomMenuIconNames()
 
 const selected = computed(() => props.modelValue ?? null)
@@ -67,10 +59,10 @@ const triggerLabel = computed(() => {
   return selected.value
 })
 
-const filteredElementIcons = computed(() => {
+const filteredAntdvIcons = computed(() => {
   const q = keyword.value.trim().toLowerCase()
-  if (!q) return elementIcons
-  return elementIcons.filter((name) => name.toLowerCase().includes(q))
+  if (!q) return antdvIcons
+  return antdvIcons.filter((name) => name.toLowerCase().includes(q))
 })
 
 const filteredCustomIcons = computed(() => {
@@ -94,7 +86,7 @@ watch(visible, (open) => {
   }
 })
 
-function selectElementIcon(name: string): void {
+function selectAntdvIcon(name: string): void {
   emit('update:modelValue', name)
   visible.value = false
 }
@@ -115,80 +107,78 @@ function isActive(iconValue: string): boolean {
 </script>
 
 <template>
-  <el-popover
-    v-model:visible="visible"
-    :width="width"
+  <Popover
+    v-model:open="visible"
     :disabled="disabled"
-    :teleported="teleported"
+    :classes="{ root: 'icon-picker__popover' }"
     trigger="click"
-    placement="bottom-start"
+    placement="bottomLeft"
   >
-    <template #reference>
-      <el-button class="icon-picker__trigger" :disabled="disabled">
-        <span class="icon-picker__trigger-main">
-          <MenuIcon v-if="selected" :icon="selected" class="icon-picker__preview" />
-          <span class="icon-picker__label" :class="{ 'is-placeholder': !selected }">
-            {{ triggerLabel }}
-          </span>
+    <Button class="icon-picker__trigger" :disabled="disabled">
+      <span class="icon-picker__trigger-main">
+        <MenuIcon v-if="selected" :icon="selected" class="icon-picker__preview" />
+        <span class="icon-picker__label" :class="{ 'is-placeholder': !selected }">
+          {{ triggerLabel }}
         </span>
-        <el-icon
-          v-if="clearable && selected && !disabled"
-          class="icon-picker__clear"
-          @click="clearSelection"
-        >
-          <CircleClose />
-        </el-icon>
-      </el-button>
-    </template>
-
-    <div class="icon-picker__panel">
-      <el-input
-        v-model="keyword"
-        clearable
-        :prefix-icon="Search"
-        :placeholder="t('iconPicker.search')"
-        class="icon-picker__search"
+      </span>
+      <CloseCircleOutlined
+        v-if="clearable && selected && !disabled"
+        class="icon-picker__clear"
+        @click="clearSelection"
       />
+    </Button>
 
-      <el-tabs v-model="activeTab" class="icon-picker__tabs">
-        <el-tab-pane :label="t('iconPicker.tabElement')" name="element">
-          <div v-if="filteredElementIcons.length" class="icon-picker__grid">
-            <button
-              v-for="name in filteredElementIcons"
-              :key="name"
-              type="button"
-              class="icon-picker__item"
-              :class="{ 'is-active': isActive(name) }"
-              :title="name"
-              @click="selectElementIcon(name)"
-            >
-              <MenuIcon :icon="name" />
-              <span class="icon-picker__name">{{ name }}</span>
-            </button>
-          </div>
-          <el-empty v-else :description="t('iconPicker.empty')" :image-size="64" />
-        </el-tab-pane>
+    <template #content>
+      <div class="icon-picker__panel">
+        <Input
+          v-model:value="keyword"
+          allow-clear
+          :placeholder="t('iconPicker.search')"
+          class="icon-picker__search"
+        >
+          <template #prefix><SearchOutlined /></template>
+        </Input>
 
-        <el-tab-pane :label="t('iconPicker.tabCustom')" name="custom">
-          <div v-if="filteredCustomIcons.length" class="icon-picker__grid">
-            <button
-              v-for="name in filteredCustomIcons"
-              :key="name"
-              type="button"
-              class="icon-picker__item"
-              :class="{ 'is-active': isActive(toCustomIconValue(name)) }"
-              :title="toCustomIconValue(name)"
-              @click="selectCustomIcon(name)"
-            >
-              <MenuIcon :icon="toCustomIconValue(name)" />
-              <span class="icon-picker__name">{{ name }}</span>
-            </button>
-          </div>
-          <el-empty v-else :description="t('iconPicker.emptyCustom')" :image-size="64" />
-        </el-tab-pane>
-      </el-tabs>
-    </div>
-  </el-popover>
+        <Tabs v-model:active-key="activeTab" class="icon-picker__tabs">
+          <TabPane :tab="t('iconPicker.tabAntdv')" key="element">
+            <div v-if="filteredAntdvIcons.length" class="icon-picker__grid">
+              <button
+                v-for="name in filteredAntdvIcons"
+                :key="name"
+                type="button"
+                class="icon-picker__item"
+                :class="{ 'is-active': isActive(name) }"
+                :title="name"
+                @click="selectAntdvIcon(name)"
+              >
+                <MenuIcon :icon="name" />
+                <span class="icon-picker__name">{{ name }}</span>
+              </button>
+            </div>
+            <Empty v-else :description="t('iconPicker.empty')" />
+          </TabPane>
+
+          <TabPane :tab="t('iconPicker.tabCustom')" key="custom">
+            <div v-if="filteredCustomIcons.length" class="icon-picker__grid">
+              <button
+                v-for="name in filteredCustomIcons"
+                :key="name"
+                type="button"
+                class="icon-picker__item"
+                :class="{ 'is-active': isActive(toCustomIconValue(name)) }"
+                :title="toCustomIconValue(name)"
+                @click="selectCustomIcon(name)"
+              >
+                <MenuIcon :icon="toCustomIconValue(name)" />
+                <span class="icon-picker__name">{{ name }}</span>
+              </button>
+            </div>
+            <Empty v-else :description="t('iconPicker.emptyCustom')" />
+          </TabPane>
+        </Tabs>
+      </div>
+    </template>
+  </Popover>
 </template>
 
 <style scoped lang="scss">
@@ -196,6 +186,10 @@ function isActive(iconValue: string): boolean {
   width: 100%;
   justify-content: space-between;
   padding: 8px 12px;
+}
+
+:global(.icon-picker__popover) {
+  width: min(420px, calc(100vw - 32px));
 }
 
 .icon-picker__trigger-main {
@@ -207,26 +201,26 @@ function isActive(iconValue: string): boolean {
 
 .icon-picker__preview {
   font-size: 18px;
-  color: var(--el-color-primary);
+  color: var(--app-color-primary);
 }
 
 .icon-picker__label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--el-text-color-primary);
+  color: var(--app-text-color-primary);
 
   &.is-placeholder {
-    color: var(--el-text-color-placeholder);
+    color: var(--app-text-color-placeholder);
   }
 }
 
 .icon-picker__clear {
   margin-left: 8px;
-  color: var(--el-text-color-placeholder);
+  color: var(--app-text-color-placeholder);
 
   &:hover {
-    color: var(--el-text-color-regular);
+    color: var(--app-text-color-regular);
   }
 }
 
@@ -241,11 +235,11 @@ function isActive(iconValue: string): boolean {
 }
 
 .icon-picker__tabs {
-  :deep(.el-tabs__header) {
+  :deep(.ant-tabs-nav) {
     margin-bottom: 8px;
   }
 
-  :deep(.el-tabs__content) {
+  :deep(.ant-tabs-content) {
     max-height: 280px;
     overflow: auto;
   }
@@ -264,10 +258,10 @@ function isActive(iconValue: string): boolean {
   gap: 6px;
   min-width: 0;
   padding: 10px 6px;
-  border: 1px solid var(--el-border-color-lighter);
+  border: 1px solid var(--app-border-color-lighter);
   border-radius: 8px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-regular);
+  background: var(--app-bg-color);
+  color: var(--app-text-color-regular);
   cursor: pointer;
   transition:
     border-color 0.15s ease,
@@ -275,17 +269,17 @@ function isActive(iconValue: string): boolean {
     color 0.15s ease;
 
   &:hover {
-    border-color: var(--el-color-primary-light-5);
-    color: var(--el-color-primary);
+    border-color: var(--app-color-primary-light-5);
+    color: var(--app-color-primary);
   }
 
   &.is-active {
-    border-color: var(--el-color-primary);
-    background: var(--el-color-primary-light-9);
-    color: var(--el-color-primary);
+    border-color: var(--app-color-primary);
+    background: var(--app-color-primary-light-9);
+    color: var(--app-color-primary);
   }
 
-  :deep(.el-icon) {
+  :deep(.anticon) {
     font-size: 20px;
   }
 }

@@ -28,6 +28,8 @@ export default {
     selectionColumn: '选择列',
     indexColumn: '序号列',
     unnamedColumn: '未命名列',
+    more: '更多',
+    moreActions: '更多操作',
     loading: '加载中',
     empty: '暂无数据',
     requestFailed: '表格数据加载失败',
@@ -56,10 +58,14 @@ export default {
   iconPicker: {
     placeholder: '选择图标',
     search: '搜索图标名称',
-    tabElement: 'Element Plus',
+    tabAntdv: 'Antdv Next',
     tabCustom: '自定义',
     empty: '没有匹配的图标',
     emptyCustom: '暂无自定义图标，请将 SVG 放到 src/assets/icons/',
+  },
+  notFound: {
+    message: '页面不存在或无权访问',
+    backHome: '返回首页',
   },
   permission: {
     searchPlaceholder: '搜索名称或编码',

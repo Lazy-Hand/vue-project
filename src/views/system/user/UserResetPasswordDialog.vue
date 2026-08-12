@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { FormInstance, FormRules } from 'element-plus'
-import { ElButton, ElDialog, ElForm, ElFormItem, ElInput } from 'element-plus'
+import type { FormInstance, Rule } from 'antdv-next'
+import { Button, Form, FormItem, InputPassword, Modal } from 'antdv-next'
 
 import type { ManagedUser } from '@/types/user'
 
@@ -32,10 +32,12 @@ const visible = computed({
 })
 
 const title = computed(() =>
-  props.user ? t('user.resetPasswordTitle', { name: props.user.username }) : t('user.resetPassword'),
+  props.user
+    ? t('user.resetPasswordTitle', { name: props.user.username })
+    : t('user.resetPassword'),
 )
 
-const rules = computed<FormRules<typeof form>>(() => ({
+const rules = computed<Record<string, Rule[]>>(() => ({
   password: [
     { required: true, message: t('user.passwordRequired'), trigger: 'blur' },
     { min: 8, max: 72, message: t('user.passwordLength'), trigger: 'blur' },
@@ -44,11 +46,11 @@ const rules = computed<FormRules<typeof form>>(() => ({
     {
       validator: (_rule, value: string, callback) => {
         if (!value) {
-          callback(new Error(t('user.confirmPasswordRequired')))
+          callback(t('user.confirmPasswordRequired'))
           return
         }
         if (value !== form.password) {
-          callback(new Error(t('user.confirmPasswordMismatch')))
+          callback(t('user.confirmPasswordMismatch'))
           return
         }
         callback()
@@ -82,21 +84,29 @@ defineExpose({
 </script>
 
 <template>
-  <el-dialog v-model="visible" :title="title" width="480px" destroy-on-close>
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
-      <el-form-item :label="t('user.newPassword')" prop="password">
-        <el-input v-model="form.password" type="password" show-password maxlength="72" />
-      </el-form-item>
-      <el-form-item :label="t('user.confirmPassword')" prop="confirmPassword">
-        <el-input v-model="form.confirmPassword" type="password" show-password maxlength="72" />
-      </el-form-item>
-    </el-form>
+  <Modal v-model:open="visible" :title="title" width="480px" destroy-on-hidden>
+    <Form ref="formRef" :model="form" :rules="rules" class="user-reset-password-form">
+      <FormItem :label="t('user.newPassword')" name="password">
+        <InputPassword v-model:value="form.password" :maxlength="72" />
+      </FormItem>
+      <FormItem :label="t('user.confirmPassword')" name="confirmPassword">
+        <InputPassword v-model:value="form.confirmPassword" :maxlength="72" />
+      </FormItem>
+    </Form>
 
     <template #footer>
-      <el-button @click="visible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <Button @click="visible = false">{{ t('common.cancel') }}</Button>
+      <Button type="primary" :loading="submitting" @click="handleSubmit">
         {{ t('common.confirm') }}
-      </el-button>
+      </Button>
     </template>
-  </el-dialog>
+  </Modal>
 </template>
+
+<style scoped lang="scss">
+.user-reset-password-form {
+  :deep(.ant-form-item-label) {
+    width: 120px;
+  }
+}
+</style>

@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ColorPicker, Select } from 'antdv-next'
 
 import { useAppConfigStore } from '@/stores/app-config'
 import type { AppLocale } from '@/types/app-config'
 
 const appConfig = useAppConfigStore()
+
+const localeOptions = computed(() =>
+  appConfig.locales.map((item) => ({
+    label: item.label,
+    value: item.value,
+  })),
+)
 
 const locale = computed({
   get: () => appConfig.locale,
@@ -22,15 +30,8 @@ const primaryColor = computed({
 
 <template>
   <div class="app-config-controls">
-    <el-select v-model="locale" class="locale-select" size="default">
-      <el-option
-        v-for="item in appConfig.locales"
-        :key="item.value"
-        :label="item.label"
-        :value="item.value"
-      />
-    </el-select>
-    <el-color-picker v-model="primaryColor" size="default" />
+    <Select v-model:value="locale" class="locale-select" :options="localeOptions" size="middle" />
+    <ColorPicker v-model:value="primaryColor" format="hex" value-format="hex" />
   </div>
 </template>
 

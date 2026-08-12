@@ -1,24 +1,26 @@
-import { Menu, Setting, User } from '@element-plus/icons-vue'
+import { DashboardOutlined, MenuOutlined, SettingOutlined, UserOutlined } from '@antdv-next/icons'
 import { describe, expect, it } from 'vitest'
 
 import {
   CUSTOM_ICON_PREFIX,
   isCustomMenuIcon,
   listCustomMenuIconNames,
-  listElementPlusIconNames,
+  listAntdvIconNames,
   resolveMenuIcon,
   toCustomIconValue,
 } from './icons'
 
 describe('resolveMenuIcon', () => {
-  it('resolves Element Plus icons by PascalCase or kebab-case', () => {
-    expect(resolveMenuIcon('Setting')).toBe(Setting)
-    expect(resolveMenuIcon('user')).toBe(User)
+  it('resolves Antdv icons and legacy backend names', () => {
+    expect(resolveMenuIcon('Setting')).toBe(SettingOutlined)
+    expect(resolveMenuIcon('user')).toBe(UserOutlined)
+    expect(resolveMenuIcon('Odometer')).toBe(DashboardOutlined)
+    expect(resolveMenuIcon('UserFilled')).toBe(UserOutlined)
   })
 
   it('falls back to Menu when unknown', () => {
-    expect(resolveMenuIcon(null)).toBe(Menu)
-    expect(resolveMenuIcon('definitely-missing-icon-xyz')).toBe(Menu)
+    expect(resolveMenuIcon(null)).toBe(MenuOutlined)
+    expect(resolveMenuIcon('definitely-missing-icon-xyz')).toBe(MenuOutlined)
   })
 
   it('resolves custom svg icons from assets/icons', () => {
@@ -28,21 +30,19 @@ describe('resolveMenuIcon', () => {
     expect(isCustomMenuIcon('Setting')).toBe(false)
 
     const custom = resolveMenuIcon(`${CUSTOM_ICON_PREFIX}app-grid`)
-    expect(custom).not.toBe(Menu)
+    expect(custom).not.toBe(MenuOutlined)
     expect(custom).toBe(resolveMenuIcon('app-grid'))
   })
 
-  it('prefers Element Plus when the name collides with a custom file', () => {
-    // Without custom: prefix, PascalCase EP icons win over same-named SVGs.
+  it('prefers Antdv icons when the name collides with a custom file', () => {
+    // Without custom: prefix, Antdv icons win over same-named SVGs.
     expect(isCustomMenuIcon('Menu')).toBe(false)
-    expect(resolveMenuIcon('Menu')).toBe(Menu)
+    expect(resolveMenuIcon('Menu')).toBe(MenuOutlined)
   })
 
-  it('lists Element Plus icons and builds custom values', () => {
-    expect(listElementPlusIconNames()).toContain('Setting')
+  it('lists Antdv icons and builds custom values', () => {
+    expect(listAntdvIconNames()).toContain('SettingOutlined')
     expect(toCustomIconValue('app-grid')).toBe(`${CUSTOM_ICON_PREFIX}app-grid`)
-    expect(toCustomIconValue(`${CUSTOM_ICON_PREFIX}app-grid`)).toBe(
-      `${CUSTOM_ICON_PREFIX}app-grid`,
-    )
+    expect(toCustomIconValue(`${CUSTOM_ICON_PREFIX}app-grid`)).toBe(`${CUSTOM_ICON_PREFIX}app-grid`)
   })
 })

@@ -33,6 +33,17 @@ export interface ProTableSearchField {
 export type ProTableColumnType = 'text' | 'dict' | 'tag' | 'slot' | 'selection' | 'index'
 export type ProTableSortOrder = 'ascending' | 'descending' | null
 export type ProTableRequestSortOrder = 'asc' | 'desc'
+export type ProTableActionPlacement = 'inline' | 'menu'
+
+export interface ProTableAction<T = ProTableRow> {
+  key: string
+  label: string
+  placement?: ProTableActionPlacement
+  danger?: boolean
+  visible?: boolean | ((row: T) => boolean)
+  disabled?: boolean | ((row: T) => boolean)
+  onClick: (row: T) => void | Promise<void>
+}
 
 export interface ProTableColumn<T = ProTableRow> {
   key?: string

@@ -5,7 +5,7 @@ import { useDictStore } from './dict'
 import type { DictTypeWithItems } from '@/types/dict'
 
 vi.mock('@/api/dict', () => ({
-  fetchDictByCode: vi.fn(),
+  fetchDictByCode: vi.fn<(code: string) => Promise<DictTypeWithItems>>(),
 }))
 
 import { fetchDictByCode } from '@/api/dict'
