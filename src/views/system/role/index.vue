@@ -15,10 +15,12 @@ import {
   updateRole,
 } from '@/api/role'
 import ProTable from '@/components/ProTable/index.vue'
+import ProTableActions from '@/components/ProTableActions/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import type { DeptTreeNode } from '@/types/dept'
 import type { PermissionTreeNode } from '@/types/permission'
 import type {
+  ProTableAction,
   ProTableColumn,
   ProTableExpose,
   ProTableRequestParams,
@@ -80,11 +82,35 @@ const columns = computed<ProTableColumn<Role>[]>(() => [
   { prop: 'sort', label: t('role.sort'), width: 80 },
   { prop: 'enabled', label: t('role.enabled'), width: 90, type: 'tag' as const },
   {
+    key: 'actions',
     label: t('common.actions'),
     width: 120,
     fixed: 'right' as const,
     type: 'slot' as const,
     slot: 'actions',
+  },
+])
+
+const roleActions = computed<ProTableAction<Role>[]>(() => [
+  {
+    key: 'edit',
+    label: t('common.edit'),
+    placement: 'inline',
+    visible: canUpdate.value,
+    onClick: openEdit,
+  },
+  {
+    key: 'assignPermissions',
+    label: t('role.assignPermissions'),
+    visible: (row) => canAssign.value && !isSuperAdmin(row),
+    onClick: openAssignPermissions,
+  },
+  {
+    key: 'delete',
+    label: t('common.delete'),
+    danger: true,
+    visible: (row) => canDelete.value && !isSuperAdmin(row),
+    onClick: handleDelete,
   },
 ])
 
@@ -263,24 +289,7 @@ async function handleDelete(row: Role): Promise<void> {
       </template>
 
       <template #column-actions="{ row }">
-        <Button v-if="canUpdate" type="link" @click="openEdit(row)">
-          {{ t('common.edit') }}
-        </Button>
-        <Button
-          v-if="canAssign && !isSuperAdmin(row)"
-          type="link"
-          @click="openAssignPermissions(row)"
-        >
-          {{ t('role.assignPermissions') }}
-        </Button>
-        <Button
-          v-if="canDelete && !isSuperAdmin(row)"
-          danger
-          type="link"
-          @click="handleDelete(row)"
-        >
-          {{ t('common.delete') }}
-        </Button>
+        <ProTableActions :row="row" :actions="roleActions" />
       </template>
     </ProTable>
 

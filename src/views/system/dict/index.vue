@@ -14,6 +14,7 @@ import {
   updateDictType,
 } from '@/api/dict'
 import ProTable from '@/components/ProTable/index.vue'
+import ProTableActions from '@/components/ProTableActions/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import { useDictStore } from '@/stores/dict'
 import {
@@ -26,6 +27,7 @@ import {
   type UpdateDictTypePayload,
 } from '@/types/dict'
 import type {
+  ProTableAction,
   ProTableColumn,
   ProTableExpose,
   ProTableRequestParams,
@@ -104,7 +106,7 @@ const typeColumns = computed<ProTableColumn<DictType>[]>(() => [
   {
     key: 'actions',
     label: t('common.actions'),
-    width: 120,
+    width: 160,
     fixed: 'right',
     type: 'slot',
     slot: 'actions',
@@ -127,10 +129,44 @@ const itemColumns = computed<ProTableColumn<DictItem>[]>(() => [
   {
     key: 'actions',
     label: t('common.actions'),
-    width: 120,
+    width: 160,
     fixed: 'right',
     type: 'slot',
     slot: 'actions',
+  },
+])
+
+const typeActions = computed<ProTableAction<DictType>[]>(() => [
+  {
+    key: 'edit',
+    label: t('common.edit'),
+    placement: 'inline',
+    visible: canUpdate.value,
+    onClick: openEditType,
+  },
+  {
+    key: 'delete',
+    label: t('common.delete'),
+    danger: true,
+    visible: canDelete.value,
+    onClick: handleDeleteType,
+  },
+])
+
+const itemActions = computed<ProTableAction<DictItem>[]>(() => [
+  {
+    key: 'edit',
+    label: t('common.edit'),
+    placement: 'inline',
+    visible: canUpdate.value,
+    onClick: openEditItem,
+  },
+  {
+    key: 'delete',
+    label: t('common.delete'),
+    danger: true,
+    visible: canDelete.value,
+    onClick: handleDeleteItem,
   },
 ])
 
@@ -342,12 +378,7 @@ watch(
         </template>
 
         <template #column-actions="{ row }">
-          <Button v-if="canUpdate" type="link" @click.stop="openEditType(row)">
-            {{ t('common.edit') }}
-          </Button>
-          <Button v-if="canDelete" danger type="link" @click.stop="handleDeleteType(row)">
-            {{ t('common.delete') }}
-          </Button>
+          <ProTableActions :row="row" :actions="typeActions" />
         </template>
       </ProTable>
     </section>
@@ -381,12 +412,7 @@ watch(
         </template>
 
         <template #column-actions="{ row }">
-          <Button v-if="canUpdate" type="link" @click="openEditItem(row)">
-            {{ t('common.edit') }}
-          </Button>
-          <Button v-if="canDelete" danger type="link" @click="handleDeleteItem(row)">
-            {{ t('common.delete') }}
-          </Button>
+          <ProTableActions :row="row" :actions="itemActions" />
         </template>
       </ProTable>
     </section>

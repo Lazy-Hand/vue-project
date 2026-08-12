@@ -11,9 +11,11 @@ import {
 } from '@/api/permission'
 import MenuIcon from '@/components/MenuIcon/index.vue'
 import ProTable from '@/components/ProTable/index.vue'
+import ProTableActions from '@/components/ProTableActions/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import type { PermissionPayload, PermissionTreeNode, PermissionType } from '@/types/permission'
 import type {
+  ProTableAction,
   ProTableColumn,
   ProTableExpose,
   ProTableRequestParams,
@@ -99,6 +101,29 @@ function typeLabel(type: PermissionType): string {
   if (type === 'MENU') return t('permission.typeMenu')
   return t('permission.typeButton')
 }
+
+const nodeActions = computed<ProTableAction<PermissionTreeNode>[]>(() => [
+  {
+    key: 'createChild',
+    label: t('permission.createChild'),
+    visible: (row) => canCreate.value && row.type !== 'BUTTON',
+    onClick: (row) => openCreate(row.id),
+  },
+  {
+    key: 'edit',
+    label: t('common.edit'),
+    placement: 'inline',
+    visible: canUpdate.value,
+    onClick: openEdit,
+  },
+  {
+    key: 'delete',
+    label: t('common.delete'),
+    danger: true,
+    visible: canDelete.value,
+    onClick: handleDelete,
+  },
+])
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return error.message
@@ -216,15 +241,7 @@ function toggleExpand(): void {
       </template>
 
       <template #column-actions="{ row }">
-        <Button v-if="canCreate && row.type !== 'BUTTON'" type="link" @click="openCreate(row.id)">
-          {{ t('permission.createChild') }}
-        </Button>
-        <Button v-if="canUpdate" type="link" @click="openEdit(row)">
-          {{ t('common.edit') }}
-        </Button>
-        <Button v-if="canDelete" danger type="link" @click="handleDelete(row)">
-          {{ t('common.delete') }}
-        </Button>
+        <ProTableActions :row="row" :actions="nodeActions" />
       </template>
     </ProTable>
 
