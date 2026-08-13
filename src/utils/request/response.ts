@@ -28,6 +28,11 @@ async function readResponseBody(response: unknown): Promise<unknown> {
 export async function unwrapResponse<T>(response: Response | ApiResponse<T>): Promise<T> {
   const status =
     isRecord(response) && typeof response.status === 'number' ? response.status : undefined
+
+  if (response instanceof Response && (status === 204 || status === 205)) {
+    return undefined as T
+  }
+
   let body: unknown
 
   try {

@@ -33,8 +33,11 @@ import {
 
 import DictSelect from '@/components/DictSelect/index.vue'
 import DictTag from '@/components/DictTag/index.vue'
+import { pinia } from '@/stores'
+import { useDictStore } from '@/stores/dict'
 import type {
   ProTableColumn,
+  ProTableColumnFilter,
   ProTableDefaultSort,
   ProTablePaginationConfig,
   ProTableRequestData,
@@ -131,6 +134,17 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const dictStore = useDictStore(pinia)
+
+const dictFilterCodes = computed(() =>
+  Array.from(
+    new Set(
+      props.columns
+        .filter((column) => column.filters === 'dict' && column.dictTypeCode)
+        .map((column) => column.dictTypeCode as string),
+    ),
+  ),
+)
 
 const loading = ref(false)
 const requestFailed = ref(false)
@@ -145,6 +159,8 @@ const pageSize = ref(10)
 const sortField = ref<string>()
 const sortOrder = ref<'asc' | 'desc'>()
 const searchForm = reactive<Record<string, ProTableSearchValue>>({})
+const columnFilters = ref<Record<string, Array<string | number | boolean>>>({})
+const dataFilterOptions = ref<Record<string, ProTableColumnFilter[]>>({})
 const columnVisibility = reactive<Record<string, boolean>>({})
 const columnOrder = ref<string[]>([])
 const columnSettingVisible = ref(false)
@@ -158,6 +174,9 @@ const expandedRowsControlled = ref(false)
 const columnSourceHidden: Record<string, boolean> = {}
 
 let requestSequence = 0
+let lastRawItems: T[] = []
+let lastRawIsArray = false
+let lastRawTotal = 0
 
 const sourceColumnSettingItems = computed<ColumnSettingItem[]>(() =>
   props.columns.map((column, index) => {
@@ -230,6 +249,11 @@ const tableColumns = computed<TableColumnsType<T>>(() =>
         sortDirections: column.sortOrders?.map((order) =>
           order === 'ascending' ? 'ascend' : order === 'descending' ? 'descend' : null,
         ),
+        filters: column.filters
+          ? toAntdFilterItems(resolveColumnFilterOptions(column, key))
+          : undefined,
+        filterMultiple: column.filters ? (column.filterMultiple ?? true) : undefined,
+        filteredValue: column.filters ? (columnFilters.value[key] ?? null) : undefined,
       }
       if (column.type === 'index') {
         tableColumn.width = column.width ?? 70
@@ -277,7 +301,6 @@ const paginationConfig = computed<ProTablePaginationConfig>(() => {
   return props.pagination
 })
 const pageSizes = computed(() => paginationConfig.value.pageSizes ?? [10, 20, 50])
-const paginationSmall = computed(() => paginationConfig.value.small ?? false)
 const hidePaginationOnSinglePage = computed(() => paginationConfig.value.hideOnSinglePage ?? false)
 
 function cloneSearchValue(value: ProTableSearchValue | undefined): ProTableSearchValue {
@@ -301,6 +324,13 @@ function buildRequestParams(): ProTableRequestParams {
     const value = searchForm[field.prop] ?? null
     if (isEmptySearchValue(value)) continue
     params[field.prop] = field.transform ? field.transform(value) : value
+  }
+  for (const column of visibleColumns.value) {
+    if (!column.filters || column.filterMode !== 'custom') continue
+    const values = columnFilters.value[resolvedColumnKey(column)] ?? []
+    if (!values.length) continue
+    params[column.prop ?? resolvedColumnKey(column)] =
+      values.length === 1 ? values[0] : values
   }
   if (sortField.value && sortOrder.value) {
     params.sortField = sortField.value
@@ -334,10 +364,15 @@ async function loadData(): Promise<void> {
       }
     }
     const items = props.clientFilter ? props.clientFilter(result.items, params) : result.items
+    syncDataFilterOptions(items)
+    const filteredItems = applyColumnFilters(items)
     const nextResult = {
-      items,
-      total: Array.isArray(rawResult) && props.clientFilter ? items.length : result.total,
+      items: filteredItems,
+      total: Array.isArray(rawResult) ? filteredItems.length : result.total,
     }
+    lastRawItems = result.items
+    lastRawIsArray = Array.isArray(rawResult)
+    lastRawTotal = result.total
     tableData.value = nextResult.items
     total.value = nextResult.total
     if (props.defaultExpandAll && !expandedRowsControlled.value) {
@@ -734,7 +769,7 @@ function tableColumnConfig(key: string | number | undefined): ProTableColumn<T> 
 
 function onTableChange(
   _pagination: TablePaginationConfig,
-  _filters: Record<string, unknown>,
+  filters: Record<string, unknown>,
   sorter: TableSorterResult<T> | TableSorterResult<T>[],
 ): void {
   const currentSorter = Array.isArray(sorter) ? sorter[0] : sorter
@@ -747,6 +782,121 @@ function onTableChange(
         ? 'descending'
         : null
   onSortChange({ prop, order })
+  handleFilterChange(filters)
+}
+
+function toAntdFilterItems(
+  filters: ProTableColumnFilter[],
+): NonNullable<TableColumnType<T>['filters']> {
+  return filters.map((filter) => ({
+    text: filter.label,
+    value: filter.value,
+    children: filter.children ? toAntdFilterItems(filter.children) : undefined,
+  }))
+}
+
+function sameFilterValues(
+  left: Array<string | number | boolean> | undefined,
+  right: Array<string | number | boolean>,
+): boolean {
+  if ((left?.length ?? 0) !== right.length) return false
+  return (left ?? []).every((value, index) => value === right[index])
+}
+
+function resolveColumnFilterOptions(
+  column: ProTableColumn<T>,
+  key: string,
+): ProTableColumnFilter[] {
+  if (Array.isArray(column.filters)) return column.filters
+  if (column.filters === true) return dataFilterOptions.value[key] ?? []
+  if (column.filters === 'dict' && column.dictTypeCode) {
+    return dictStore.getOptions(column.dictTypeCode).map((item) => ({
+      label: item.label,
+      value: item.value,
+    }))
+  }
+  return []
+}
+
+function handleFilterChange(filters: Record<string, unknown>): void {
+  let hasCustomChange = false
+  let hasLocalChange = false
+
+  for (const column of visibleColumns.value) {
+    if (!resolveColumnFilterOptions(column, resolvedColumnKey(column)).length) continue
+    const key = resolvedColumnKey(column)
+    const rawValue = filters[key]
+    const nextValue = Array.isArray(rawValue)
+      ? rawValue.filter(
+          (item): item is string | number | boolean =>
+            typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean',
+        )
+      : []
+    if (sameFilterValues(columnFilters.value[key], nextValue)) continue
+    columnFilters.value[key] = nextValue
+    if (column.filterMode === 'custom') hasCustomChange = true
+    else hasLocalChange = true
+  }
+
+  if (hasCustomChange) {
+    page.value = 1
+    void loadData()
+  } else if (hasLocalChange) {
+    applyLocalFilter()
+  }
+}
+
+function applyColumnFilters(items: T[]): T[] {
+  const filterColumns = visibleColumns.value.filter(
+    (column) =>
+      column.prop && resolveColumnFilterOptions(column, resolvedColumnKey(column)).length > 0,
+  )
+  if (!filterColumns.length) return items
+  return items.filter((row) =>
+    filterColumns.every((column) => {
+      const values = columnFilters.value[resolvedColumnKey(column)] ?? []
+      if (!values.length) return true
+      const cellValue = getCellValue(row, column.prop)
+      if (column.dictTypeCode) {
+        const normalized = normalizeFilterValue(cellValue)
+        return values.some((value) => normalized === String(value))
+      }
+      return values.some((value) => cellValue === value)
+    }),
+  )
+}
+
+function normalizeFilterValue(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'boolean') return value ? '1' : '0'
+  return String(value)
+}
+
+function syncDataFilterOptions(items: T[]): void {
+  for (const column of props.columns) {
+    if (column.filters !== true || !column.prop) continue
+    const key = resolvedColumnKey(column)
+    const seen = new Set<string>()
+    const options: ProTableColumnFilter[] = []
+    for (const row of items) {
+      const value = getCellValue(row, column.prop)
+      if (value === null || value === undefined || typeof value === 'object') continue
+      const label = String(value)
+      if (seen.has(label)) continue
+      seen.add(label)
+      options.push({ label, value: value as string | number | boolean })
+    }
+    dataFilterOptions.value[key] = options
+  }
+}
+
+function applyLocalFilter(): void {
+  const items = props.clientFilter
+    ? props.clientFilter(lastRawItems, buildRequestParams())
+    : lastRawItems
+  const filteredItems = applyColumnFilters(items)
+  tableData.value = filteredItems
+  total.value = lastRawIsArray ? filteredItems.length : lastRawTotal
 }
 
 function onSortChange(change: TableSortChange): void {
@@ -847,6 +997,14 @@ watch(
 onMounted(() => {
   if (props.immediate) void loadData()
 })
+
+watch(
+  dictFilterCodes,
+  (codes) => {
+    if (codes.length) void dictStore.loadMany(codes)
+  },
+  { immediate: true },
+)
 
 defineExpose({
   reload: loadData,
@@ -1065,6 +1223,7 @@ defineExpose({
           :scroll="tableScroll"
           :expandable="tableExpandable"
           :pagination="false"
+          size="small"
           :class="['pro-table__table', { 'pro-table__table--stripe': stripe }]"
           :row-class-name="getRowClassName"
           @change="onTableChange"
@@ -1078,7 +1237,12 @@ defineExpose({
               :index="index"
               :config="tableColumnConfig(tableColumn.key)"
             />
-            <span v-else>{{ tableColumn.title }}</span>
+            <span v-else>
+              <template v-if="typeof tableColumn.title === 'string'">
+                {{ tableColumn.title }}
+              </template>
+              <component :is="tableColumn.title" v-else />
+            </span>
           </template>
           <template #bodyCell="{ column: tableColumn, record, index }">
             <template v-if="tableColumnConfig(tableColumn.key)">
@@ -1139,7 +1303,7 @@ defineExpose({
         :page-size-options="pageSizes"
         :show-size-changer="pageSizes.length > 1"
         :hide-on-single-page="hidePaginationOnSinglePage"
-        :size="paginationSmall ? 'small' : 'middle'"
+        size="small"
         @change="handlePageChange"
         @show-size-change="handleSizeChange"
       >

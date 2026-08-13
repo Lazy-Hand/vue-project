@@ -137,5 +137,25 @@ describe('SystemConfigFormDialog', () => {
     await submit(wrapper)
 
     expect(wrapper.emitted('submit')).toBeUndefined()
+    expect(nameRequiredMessages(wrapper)).toHaveLength(1)
   })
+
+  it('shows a single required message and blocks submit for an empty name', async () => {
+    const wrapper = mountDialog({ modelValue: true, mode: 'create' })
+    await flushPromises()
+
+    const inputs = wrapper.findAll('input.ant-input')
+    await inputs[0]!.setValue('site.title')
+
+    await submit(wrapper)
+
+    expect(wrapper.emitted('submit')).toBeUndefined()
+    expect(nameRequiredMessages(wrapper)).toHaveLength(1)
+  })
+
+  function nameRequiredMessages(wrapper: ReturnType<typeof mountDialog>): unknown[] {
+    return wrapper
+      .findAll('.ant-form-item-explain-error')
+      .filter((element) => element.text() === i18n.global.t('config.nameRequired'))
+  }
 })

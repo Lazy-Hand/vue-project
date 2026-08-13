@@ -364,7 +364,6 @@ watch(
         :columns="typeColumns"
         :search-fields="typeSearchFields"
         :request="requestTypes"
-        :pagination="{ small: true }"
         highlight-current-row
         :current-row-key="selectedType?.id"
         :show-request-error="false"
@@ -400,7 +399,6 @@ watch(
         :columns="itemColumns"
         :search-fields="itemSearchFields"
         :request="requestItems"
-        :pagination="{ small: true }"
         :immediate="false"
         :show-request-error="false"
         @request-error="handleRequestError"

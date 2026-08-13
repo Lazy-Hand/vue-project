@@ -68,7 +68,7 @@ async function handleSubmit() {
         :model="form"
         :rules="rules"
         layout="vertical"
-        size="large"
+        size="small"
         @finish="handleSubmit"
       >
         <FormItem name="username">

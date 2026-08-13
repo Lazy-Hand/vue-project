@@ -10,8 +10,10 @@ import {
   updateSystemConfig,
 } from '@/api/system-config'
 import ProTable from '@/components/ProTable/index.vue'
+import ProTableActions from '@/components/ProTableActions/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import type {
+  ProTableAction,
   ProTableColumn,
   ProTableExpose,
   ProTableRequestParams,
@@ -87,10 +89,27 @@ const columns = computed<ProTableColumn<SystemConfig>[]>(() => [
   {
     key: 'actions',
     label: t('common.actions'),
-    width: 150,
+    width: 160,
     fixed: 'right',
     type: 'slot',
     slot: 'actions',
+  },
+])
+
+const configActions = computed<ProTableAction<SystemConfig>[]>(() => [
+  {
+    key: 'edit',
+    label: t('common.edit'),
+    placement: 'inline',
+    visible: canUpdate.value,
+    onClick: openEdit,
+  },
+  {
+    key: 'delete',
+    label: t('common.delete'),
+    danger: true,
+    visible: canDelete.value,
+    onClick: handleDelete,
   },
 ])
 
@@ -186,12 +205,7 @@ async function handleDelete(row: SystemConfig): Promise<void> {
       </template>
 
       <template #column-actions="{ row }">
-        <Button v-if="canUpdate" type="link" @click="openEdit(row)">
-          {{ t('common.edit') }}
-        </Button>
-        <Button v-if="canDelete" danger type="link" @click="handleDelete(row)">
-          {{ t('common.delete') }}
-        </Button>
+        <ProTableActions :row="row" :actions="configActions" />
       </template>
     </ProTable>
 

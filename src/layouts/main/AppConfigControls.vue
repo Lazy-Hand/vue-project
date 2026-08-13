@@ -30,7 +30,7 @@ const primaryColor = computed({
 
 <template>
   <div class="app-config-controls">
-    <Select v-model:value="locale" class="locale-select" :options="localeOptions" size="middle" />
+    <Select v-model:value="locale" class="locale-select" :options="localeOptions" size="small" />
     <ColorPicker v-model:value="primaryColor" format="hex" value-format="hex" />
   </div>
 </template>

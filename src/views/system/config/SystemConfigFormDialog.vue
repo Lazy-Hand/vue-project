@@ -63,12 +63,13 @@ const title = computed(() =>
 
 const rules = computed<Partial<Record<keyof FormModel, Rule[]>>>(() => ({
   key: [
-    { required: true, message: t('config.keyRequired'), trigger: 'blur' },
     {
       validator: async (_rule, value) => {
-        const text = typeof value === 'string' ? value : ''
-        const length = text.trim().length
-        if (length < 2 || length > 128) {
+        const key = (typeof value === 'string' ? value : '').trim()
+        if (!key) {
+          throw new Error(t('config.keyRequired'))
+        }
+        if (key.length < 2 || key.length > 128) {
           throw new Error(t('config.keyLength'))
         }
       },
@@ -76,7 +77,6 @@ const rules = computed<Partial<Record<keyof FormModel, Rule[]>>>(() => ({
     },
   ],
   name: [
-    { required: true, message: t('config.nameRequired'), trigger: 'blur' },
     {
       validator: async (_rule, value) => {
         const name = (typeof value === 'string' ? value : '').trim()

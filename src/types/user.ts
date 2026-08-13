@@ -29,7 +29,8 @@ export interface UpdateUserPayload {
   nickname?: string
   email?: string
   phone?: string
-  avatar?: string
+  /** 传 null 表示清除头像 */
+  avatar?: string | null
   deptId?: string | null
   enabled?: boolean
 }

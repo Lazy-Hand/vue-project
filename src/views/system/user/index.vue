@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Modal, message } from 'antdv-next'
+import { Avatar, Button, Modal, message } from 'antdv-next'
+import { UserOutlined } from '@antdv-next/icons'
 
 import { fetchDeptTree } from '@/api/dept'
+import { buildFileUrl } from '@/api/file'
 import { fetchPosts } from '@/api/post'
 import { fetchRoles } from '@/api/role'
 import {
@@ -22,6 +24,7 @@ import ProTableActions from '@/components/ProTableActions/index.vue'
 import { usePermission } from '@/composables/usePermission'
 import { useAuthStore } from '@/stores/auth'
 import type { DeptTreeNode } from '@/types/dept'
+import { DICT_CODES } from '@/types/dict'
 import type { Post } from '@/types/post'
 import type {
   ProTableAction,
@@ -78,7 +81,19 @@ const searchFields = computed<ProTableSearchField[]>(() => [
 ])
 
 const columns = computed<ProTableColumn<ManagedUser>[]>(() => [
-  { prop: 'username', label: t('user.username'), minWidth: 120 },
+  {
+    key: 'avatar',
+    label: t('user.avatar'),
+    width: 64,
+    type: 'slot',
+    slot: 'avatar',
+  },
+  {
+    prop: 'username',
+    label: t('user.username'),
+    minWidth: 120,
+    filters: true,
+  },
   { prop: 'nickname', label: t('user.nickname'), minWidth: 120 },
   { prop: 'deptName', label: t('user.dept'), minWidth: 120 },
   {
@@ -88,7 +103,14 @@ const columns = computed<ProTableColumn<ManagedUser>[]>(() => [
     showOverflowTooltip: true,
   },
   { prop: 'phone', label: t('user.phone'), minWidth: 120 },
-  { prop: 'enabled', label: t('user.enabled'), width: 90, type: 'tag' },
+  {
+    prop: 'enabled',
+    label: t('user.enabled'),
+    width: 90,
+    type: 'tag',
+    dictTypeCode: DICT_CODES.COMMON_STATUS,
+    filters: 'dict',
+  },
   {
     key: 'actions',
     label: t('common.actions'),
@@ -329,6 +351,12 @@ async function handleDelete(row: ManagedUser): Promise<void> {
         <Button v-if="canCreate" type="primary" @click="openCreate">
           {{ t('user.create') }}
         </Button>
+      </template>
+
+      <template #column-avatar="{ row }">
+        <Avatar :size="32" :src="row.avatar ? buildFileUrl(row.avatar) : undefined">
+          <UserOutlined />
+        </Avatar>
       </template>
 
       <template #column-actions="{ row }">

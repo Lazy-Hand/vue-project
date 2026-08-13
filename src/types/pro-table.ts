@@ -34,6 +34,13 @@ export type ProTableColumnType = 'text' | 'dict' | 'tag' | 'slot' | 'selection' 
 export type ProTableSortOrder = 'ascending' | 'descending' | null
 export type ProTableRequestSortOrder = 'asc' | 'desc'
 export type ProTableActionPlacement = 'inline' | 'menu'
+export type ProTableFilterMode = 'local' | 'custom'
+
+export interface ProTableColumnFilter {
+  label: string
+  value: string | number | boolean
+  children?: ProTableColumnFilter[]
+}
 
 export interface ProTableAction<T = ProTableRow> {
   key: string
@@ -69,6 +76,16 @@ export interface ProTableColumn<T = ProTableRow> {
   ) => string | number
   sortable?: boolean | 'custom'
   sortOrders?: ProTableSortOrder[]
+  /**
+   * Header filter options: an explicit list, `true` to auto-generate options
+   * from loaded data, or `'dict'` to load options from the dictionary
+   * (`dictTypeCode`). Data/dict modes require `prop`.
+   */
+  filters?: ProTableColumnFilter[] | boolean | 'dict'
+  /** 'local' filters client-side without re-requesting; 'custom' sends values as request params. Defaults to 'local'. */
+  filterMode?: ProTableFilterMode
+  /** Allow multiple filter values. Defaults to true. */
+  filterMultiple?: boolean
   /** Custom index value, only used by an `index` column. */
   index?: number | ((index: number) => number)
   /** Row selection guard, only used by a `selection` column. */
@@ -86,7 +103,6 @@ export interface ProTablePaginationConfig {
   pageSize?: number
   pageSizes?: number[]
   layout?: string
-  small?: boolean
   background?: boolean
   hideOnSinglePage?: boolean
   pagerCount?: number

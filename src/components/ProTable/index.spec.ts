@@ -2,7 +2,11 @@ import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { Pagination, Popover, Select, Table } from 'antdv-next'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { fetchDictByCode } from '@/api/dict'
 import { i18n } from '@/i18n'
+import { pinia } from '@/stores'
+import { useDictStore } from '@/stores/dict'
+import type { DictTypeWithItems } from '@/types/dict'
 import type {
   ProTableColumn,
   ProTableExpose,
@@ -11,6 +15,10 @@ import type {
   ProTableSearchField,
 } from '@/types/pro-table'
 import ProTable from './index.vue'
+
+vi.mock('@/api/dict', () => ({
+  fetchDictByCode: vi.fn<() => Promise<DictTypeWithItems>>(),
+}))
 
 if (!window.matchMedia) {
   Object.defineProperty(window, 'matchMedia', {
@@ -83,6 +91,7 @@ function popup(): DOMWrapper<HTMLElement> {
 describe('ProTable', () => {
   beforeEach(() => {
     i18n.global.locale.value = 'zh-CN'
+    useDictStore(pinia).clear()
   })
 
   afterEach(() => {
@@ -368,5 +377,217 @@ describe('ProTable', () => {
 
     expect(wrapper.emitted('request-error')?.[0]?.[0]).toBe(error)
     expect(wrapper.text()).toContain('暂无数据')
+  })
+
+  it('filters rows client-side with local column filters without re-requesting', async () => {
+    const request = vi.fn<TableRequest>().mockResolvedValue({
+      items: [
+        { id: '1', name: 'Admin', status: true },
+        { id: '2', name: 'Guest', status: false },
+      ],
+      total: 2,
+    })
+    const filterableColumns: ProTableColumn<object>[] = [
+      { prop: 'name', label: 'Name' },
+      {
+        prop: 'status',
+        label: 'Status',
+        type: 'tag',
+        filters: [
+          { label: '启用', value: true },
+          { label: '禁用', value: false },
+        ],
+      },
+    ]
+    const wrapper = mountTable(request, { columns: filterableColumns })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Admin')
+    expect(wrapper.text()).toContain('Guest')
+
+    wrapper.findComponent(Table).vm.$emit('change', {}, { status: [true] }, {})
+    await flushPromises()
+
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Admin')
+    expect(wrapper.text()).not.toContain('Guest')
+    expect(wrapper.findComponent(Pagination).props('total')).toBe(2)
+
+    wrapper.findComponent(Table).vm.$emit('change', {}, { status: null }, {})
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Guest')
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
+  it('recomputes total for array request results after local filtering', async () => {
+    const request = vi.fn<TableRequest>().mockResolvedValue([
+      { id: '1', name: 'Admin', status: true },
+      { id: '2', name: 'Guest', status: false },
+    ])
+    const filterableColumns: ProTableColumn<object>[] = [
+      { prop: 'name', label: 'Name' },
+      { prop: 'status', label: 'Status', filters: [{ label: '启用', value: true }] },
+    ]
+    const wrapper = mountTable(request, { columns: filterableColumns })
+    await flushPromises()
+
+    expect(wrapper.findComponent(Pagination).props('total')).toBe(2)
+
+    wrapper.findComponent(Table).vm.$emit('change', {}, { status: [true] }, {})
+    await flushPromises()
+
+    expect(wrapper.findComponent(Pagination).props('total')).toBe(1)
+    expect(wrapper.text()).not.toContain('Guest')
+  })
+
+  it('reloads with single custom filter value as a request param', async () => {
+    const request = vi.fn<TableRequest>().mockResolvedValue({
+      items: [{ id: '1', name: 'Admin', status: true }],
+      total: 1,
+    })
+    const customColumns: ProTableColumn<object>[] = [
+      { prop: 'name', label: 'Name' },
+      {
+        prop: 'status',
+        label: 'Status',
+        filterMode: 'custom',
+        filterMultiple: false,
+        filters: [
+          { label: '启用', value: true },
+          { label: '禁用', value: false },
+        ],
+      },
+    ]
+    const wrapper = mountTable(request, { columns: customColumns })
+    await flushPromises()
+
+    wrapper.findComponent(Table).vm.$emit('change', {}, { status: [true] }, {})
+    await flushPromises()
+
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(request).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, status: true })
+  })
+
+  it('reloads with multiple custom filter values as an array param', async () => {
+    const request = vi.fn<TableRequest>().mockResolvedValue({
+      items: [{ id: '1', name: 'Admin', status: true }],
+      total: 1,
+    })
+    const customColumns: ProTableColumn<object>[] = [
+      { prop: 'name', label: 'Name' },
+      {
+        prop: 'status',
+        label: 'Status',
+        filterMode: 'custom',
+        filters: [
+          { label: '启用', value: true },
+          { label: '禁用', value: false },
+        ],
+      },
+    ]
+    const wrapper = mountTable(request, { columns: customColumns })
+    await flushPromises()
+
+    wrapper.findComponent(Table).vm.$emit('change', {}, { status: [true, false] }, {})
+    await flushPromises()
+
+    expect(request).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, status: [true, false] })
+  })
+
+  it('loads filter options from a dictionary and matches normalized cell values', async () => {
+    vi.mocked(fetchDictByCode).mockResolvedValue({
+      id: '1',
+      code: 'sys_common_status',
+      name: '通用状态',
+      description: null,
+      enabled: true,
+      items: [
+        {
+          id: '1',
+          dictTypeId: '1',
+          code: 'enabled',
+          label: '启用',
+          value: '1',
+          sort: 1,
+          enabled: true,
+        },
+        {
+          id: '2',
+          dictTypeId: '1',
+          code: 'enabled',
+          label: '禁用',
+          value: '0',
+          sort: 2,
+          enabled: true,
+        },
+      ],
+    })
+    const dictColumns: ProTableColumn<object>[] = [
+      { prop: 'name', label: 'Name' },
+      {
+        prop: 'enabled',
+        label: 'Status',
+        type: 'dict',
+        dictTypeCode: 'sys_common_status',
+        filters: 'dict',
+      },
+    ]
+    const request = vi.fn<TableRequest>().mockResolvedValue({
+      items: [
+        { id: '1', name: 'Admin', enabled: true },
+        { id: '2', name: 'Guest', enabled: false },
+      ],
+      total: 2,
+    })
+    const wrapper = mountTable(request, { columns: dictColumns })
+    await flushPromises()
+
+    const tableColumns = wrapper.findComponent(Table).props('columns') as Array<
+      Record<string, unknown>
+    >
+    const enabledColumn = tableColumns.find((column) => column.key === 'enabled')
+    expect(enabledColumn?.filters).toEqual([
+      { text: '启用', value: '1' },
+      { text: '禁用', value: '0' },
+    ])
+
+    // 筛选字典值 '1'（启用）：record.enabled === true 的行经归一化匹配保留
+    wrapper.findComponent(Table).vm.$emit('change', {}, { enabled: ['1'] }, {})
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Admin')
+    expect(wrapper.text()).not.toContain('Guest')
+  })
+
+  it('auto-generates deduplicated filter options from loaded data with filters: true', async () => {
+    const request = vi.fn<TableRequest>().mockResolvedValue({
+      items: [
+        { id: '1', name: 'Admin', status: true },
+        { id: '2', name: 'Admin', status: false },
+        { id: '3', name: 'Guest', status: true },
+      ],
+      total: 3,
+    })
+    const dataFilterColumns: ProTableColumn<object>[] = [
+      { prop: 'name', label: 'Name', filters: true },
+    ]
+    const wrapper = mountTable(request, { columns: dataFilterColumns })
+    await flushPromises()
+
+    const tableColumns = wrapper.findComponent(Table).props('columns') as Array<
+      Record<string, unknown>
+    >
+    const nameColumn = tableColumns.find((column) => column.key === 'name')
+    expect(nameColumn?.filters).toEqual([
+      { text: 'Admin', value: 'Admin' },
+      { text: 'Guest', value: 'Guest' },
+    ])
+
+    wrapper.findComponent(Table).vm.$emit('change', {}, { name: ['Admin'] }, {})
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Admin')
+    expect(wrapper.text()).not.toContain('Guest')
   })
 })

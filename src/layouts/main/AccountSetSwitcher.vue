@@ -35,7 +35,7 @@ const currentId = computed({
     class="account-set-switcher"
     :options="accountSetOptions"
     :placeholder="t('accountSet.placeholder')"
-    size="middle"
+    size="small"
   />
 </template>
 
