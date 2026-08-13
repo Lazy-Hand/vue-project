@@ -308,6 +308,37 @@ describe('ProTable', () => {
     })
   })
 
+  it('sorts rows locally when clicking a sortable column header', async () => {
+    const request = vi.fn<TableRequest>().mockResolvedValue({
+      items: [
+        { id: '1', name: 'banana', status: true },
+        { id: '2', name: 'apple', status: true },
+        { id: '3', name: 'cherry', status: true },
+      ],
+      total: 3,
+    })
+    const sortableColumns: ProTableColumn<object>[] = [
+      { prop: 'name', label: 'Name', sortable: true },
+    ]
+    const wrapper = mountTable(request, { columns: sortableColumns })
+    await flushPromises()
+
+    expect(wrapper.findAll('tbody tr td:first-child').map((cell) => cell.text())).toEqual([
+      'banana',
+      'apple',
+      'cherry',
+    ])
+
+    await wrapper.find('.ant-table-column-sorters').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('tbody tr td:first-child').map((cell) => cell.text())).toEqual([
+      'apple',
+      'banana',
+      'cherry',
+    ])
+  })
+
   it('falls back to the last valid page after data deletion', async () => {
     const request = vi.fn<TableRequest>(async (params) => {
       if (params.page === 2) {

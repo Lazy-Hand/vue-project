@@ -92,6 +92,7 @@ const columns = computed<ProTableColumn<ManagedUser>[]>(() => [
     prop: 'username',
     label: t('user.username'),
     minWidth: 120,
+    sortable: true,
     filters: true,
   },
   { prop: 'nickname', label: t('user.nickname'), minWidth: 120 },

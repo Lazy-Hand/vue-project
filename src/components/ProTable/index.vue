@@ -240,12 +240,9 @@ const tableColumns = computed<TableColumnsType<T>>(() =>
                   })
                 }
               : false,
-        sortOrder:
-          sortField.value === column.prop
-            ? sortOrder.value === 'asc'
-              ? 'ascend'
-              : 'descend'
-            : null,
+        ...(column.sortable === 'custom' && sortField.value === column.prop
+          ? { sortOrder: sortOrder.value === 'asc' ? 'ascend' : 'descend' }
+          : {}),
         sortDirections: column.sortOrders?.map((order) =>
           order === 'ascending' ? 'ascend' : order === 'descending' ? 'descend' : null,
         ),

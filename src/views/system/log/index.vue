@@ -1,26 +1,370 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import {
+  Button,
+  DateRangePicker,
+  Descriptions,
+  DescriptionsItem,
+  Modal,
+  Tag,
+  message,
+} from 'antdv-next'
+import { DeleteOutlined } from '@antdv-next/icons'
 
-const route = useRoute()
-const title = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : '页面'))
+import { cleanOperationLogs, fetchOperationLogList } from '@/api/log'
+import ProTable from '@/components/ProTable/index.vue'
+import ProTableActions from '@/components/ProTableActions/index.vue'
+import { usePermission } from '@/composables/usePermission'
+import type { OperationLog } from '@/types/log'
+import type {
+  ProTableAction,
+  ProTableColumn,
+  ProTableExpose,
+  ProTableRequestParams,
+  ProTableSearchField,
+} from '@/types/pro-table'
+import { ApiRequestError } from '@/utils/request'
+import { formatDuration, mapLogQuery, methodColor, statusColor } from './utils'
+
+const { locale, t } = useI18n()
+const { hasPermission } = usePermission()
+
+const tableRef = ref<ProTableExpose<OperationLog> | null>(null)
+const detailVisible = ref(false)
+const detailLog = ref<OperationLog | null>(null)
+
+const canQuery = computed(() => hasPermission('system:log:query'))
+const canDelete = computed(() => hasPermission('system:log:delete'))
+
+const resultOptions = computed(() => [
+  { label: t('log.successLabel'), value: true },
+  { label: t('log.failureLabel'), value: false },
+])
+
+const searchFields = computed<ProTableSearchField[]>(() => [
+  {
+    prop: 'keyword',
+    label: t('log.keyword'),
+    type: 'input',
+    placeholder: t('log.searchPlaceholder'),
+    defaultValue: '',
+  },
+  {
+    prop: 'module',
+    label: t('log.module'),
+    type: 'input',
+    placeholder: t('log.modulePlaceholder'),
+    defaultValue: '',
+  },
+  {
+    prop: 'action',
+    label: t('log.action'),
+    type: 'input',
+    placeholder: t('log.actionPlaceholder'),
+    defaultValue: '',
+  },
+  {
+    prop: 'success',
+    label: t('log.result'),
+    type: 'select',
+    options: resultOptions.value,
+    placeholder: t('log.resultPlaceholder'),
+    defaultValue: null,
+  },
+  {
+    prop: 'dateRange',
+    label: t('log.timeRange'),
+    type: 'slot',
+    slot: 'dateRange',
+    defaultValue: null,
+    searchOnChange: false,
+    fieldClass: 'log-page__date-range-field',
+  },
+])
+
+const columns = computed<ProTableColumn<OperationLog>[]>(() => [
+  {
+    prop: 'username',
+    label: t('log.username'),
+    minWidth: 120,
+    showOverflowTooltip: true,
+  },
+  { prop: 'module', label: t('log.module'), width: 110 },
+  { prop: 'action', label: t('log.action'), width: 110 },
+  {
+    prop: 'method',
+    label: t('log.method'),
+    width: 90,
+    type: 'slot',
+    slot: 'method',
+  },
+  {
+    prop: 'path',
+    label: t('log.path'),
+    minWidth: 180,
+    showOverflowTooltip: true,
+  },
+  {
+    prop: 'statusCode',
+    label: t('log.statusCode'),
+    width: 90,
+    align: 'center',
+    type: 'slot',
+    slot: 'statusCode',
+  },
+  {
+    prop: 'success',
+    label: t('log.result'),
+    width: 80,
+    type: 'tag',
+    trueLabel: t('log.successLabel'),
+    falseLabel: t('log.failureLabel'),
+  },
+  {
+    prop: 'durationMs',
+    label: t('log.duration'),
+    width: 90,
+    align: 'right',
+    formatter: (row) => formatDuration(row.durationMs),
+  },
+  {
+    prop: 'ip',
+    label: t('log.ip'),
+    minWidth: 120,
+    showOverflowTooltip: true,
+  },
+  {
+    prop: 'createdAt',
+    label: t('log.createdAt'),
+    minWidth: 175,
+    formatter: (row) => formatDateTime(row.createdAt, locale.value),
+  },
+  {
+    key: 'actions',
+    label: t('common.actions'),
+    width: 90,
+    fixed: 'right',
+    type: 'slot',
+    slot: 'actions',
+  },
+])
+
+const logActions = computed<ProTableAction<OperationLog>[]>(() => [
+  {
+    key: 'detail',
+    label: t('log.detail'),
+    placement: 'inline',
+    onClick: openDetail,
+  },
+])
+
+function formatDateTime(value: string, localeCode: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  try {
+    return new Intl.DateTimeFormat(localeCode, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date)
+  } catch {
+    return value
+  }
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof ApiRequestError) return error.message
+  if (error instanceof Error) return error.message
+  return t('log.requestFailed')
+}
+
+function handleRequestError(error: unknown): void {
+  message.error(errorMessage(error))
+}
+
+async function requestLogs(params: ProTableRequestParams) {
+  if (!canQuery.value) return { items: [], total: 0 }
+  return fetchOperationLogList(mapLogQuery(params))
+}
+
+function openDetail(log: OperationLog): void {
+  detailLog.value = log
+  detailVisible.value = true
+}
+
+function formatParams(log: OperationLog): string {
+  if (!log.params) return '-'
+  try {
+    return JSON.stringify(JSON.parse(log.params), null, 2)
+  } catch {
+    return log.params
+  }
+}
+
+async function handleClean(): Promise<void> {
+  const confirmed = await new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: t('common.tip'),
+      content: t('log.cleanConfirm'),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      okType: 'danger',
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
+    })
+  })
+  if (!confirmed) return
+
+  try {
+    const result = await cleanOperationLogs()
+    message.success(t('log.cleanSuccess', { count: result.count }))
+    await tableRef.value?.reload()
+  } catch (error) {
+    message.error(errorMessage(error))
+  }
+}
+
+function handleDateRangeChange(
+  dates: unknown[] | null,
+  setValue: (value: string[] | null) => void,
+  search: () => Promise<void>,
+): void {
+  if (!dates || dates.length < 2) {
+    setValue(null)
+    void search()
+    return
+  }
+
+  const values = dates.map((value) => {
+    if (value instanceof Date) return value.toISOString()
+    if (typeof value === 'object' && value !== null && 'toISOString' in value) {
+      const toISOString = value.toISOString
+      return typeof toISOString === 'function' ? toISOString.call(value) : ''
+    }
+    return ''
+  })
+  if (!values[0] || !values[1]) {
+    setValue(null)
+    return
+  }
+  setValue([values[0], values[1]])
+  void search()
+}
 </script>
 
 <template>
-  <div class="page">
-    <h2>{{ title }}</h2>
-    <p>功能开发中，当前为占位页面。</p>
+  <div class="log-page">
+    <ProTable
+      ref="tableRef"
+      :columns="columns"
+      :search-fields="searchFields"
+      :request="requestLogs"
+      :immediate="canQuery"
+      :show-request-error="false"
+      @request-error="handleRequestError"
+    >
+      <template #toolbar-actions>
+        <Button v-if="canDelete" danger @click="handleClean">
+          <DeleteOutlined />
+          {{ t('log.clean') }}
+        </Button>
+      </template>
+
+      <template #search-dateRange="{ setValue, search }">
+        <DateRangePicker
+          class="log-page__date-range"
+          show-time
+          :placeholder="[t('log.startTime'), t('log.endTime')]"
+          @change="handleDateRangeChange($event, setValue, search)"
+        />
+      </template>
+
+      <template #column-method="{ row }">
+        <Tag :color="methodColor(row.method)">{{ row.method }}</Tag>
+      </template>
+
+      <template #column-statusCode="{ row }">
+        <Tag v-if="row.statusCode !== null" :color="statusColor(row.statusCode)">
+          {{ row.statusCode }}
+        </Tag>
+        <span v-else>-</span>
+      </template>
+
+      <template #column-actions="{ row }">
+        <ProTableActions :row="row" :actions="logActions" />
+      </template>
+    </ProTable>
+
+    <Modal
+      v-model:open="detailVisible"
+      :title="t('log.detailTitle')"
+      width="720px"
+      destroy-on-hidden
+      :footer="null"
+    >
+      <Descriptions v-if="detailLog" :column="2" size="small" bordered>
+        <DescriptionsItem :label="t('log.username')">
+          {{ detailLog.username ?? '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('log.module')">{{ detailLog.module }}</DescriptionsItem>
+        <DescriptionsItem :label="t('log.action')">{{ detailLog.action }}</DescriptionsItem>
+        <DescriptionsItem :label="t('log.method')">{{ detailLog.method }}</DescriptionsItem>
+        <DescriptionsItem :label="t('log.path')" :span="2">
+          {{ detailLog.path }}
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('log.statusCode')">
+          {{ detailLog.statusCode ?? '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('log.result')">
+          {{ detailLog.success ? t('log.successLabel') : t('log.failureLabel') }}
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('log.duration')">
+          {{ formatDuration(detailLog.durationMs) }}
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('log.ip')">{{ detailLog.ip ?? '-' }}</DescriptionsItem>
+        <DescriptionsItem :label="t('log.userAgent')" :span="2">
+          {{ detailLog.userAgent ?? '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('log.createdAt')" :span="2">
+          {{ formatDateTime(detailLog.createdAt, locale) }}
+        </DescriptionsItem>
+        <DescriptionsItem v-if="detailLog.errorMessage" :label="t('log.errorMessage')" :span="2">
+          <span class="log-page__error">{{ detailLog.errorMessage }}</span>
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('log.params')" :span="2">
+          <pre class="log-page__params">{{ formatParams(detailLog) }}</pre>
+        </DescriptionsItem>
+      </Descriptions>
+    </Modal>
   </div>
 </template>
 
-<style scoped>
-.page h2 {
-  margin: 0 0 8px;
-  font-size: 20px;
+<style scoped lang="scss">
+.log-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page p {
+.log-page__date-range {
+  width: 100%;
+}
+
+.log-page__params {
   margin: 0;
-  color: #6b7280;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 12px;
+  line-height: 1.6;
+  background: #fafafa;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.log-page__error {
+  color: #cf1322;
 }
 </style>
