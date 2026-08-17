@@ -5,7 +5,7 @@ import { Avatar, Button, Modal, message } from 'antdv-next'
 import { UserOutlined } from '@antdv-next/icons'
 
 import { fetchDeptTree } from '@/api/dept'
-import { buildFileUrl } from '@/api/file'
+import { bindFileBusiness, buildFileUrl } from '@/api/file'
 import { fetchPosts } from '@/api/post'
 import { fetchRoles } from '@/api/role'
 import {
@@ -22,6 +22,7 @@ import {
 import ProTable from '@/components/ProTable/index.vue'
 import ProTableActions from '@/components/ProTableActions/index.vue'
 import { usePermission } from '@/composables/usePermission'
+import { USER_AVATAR_BUSINESS_TYPE } from '@/constants/business'
 import { useAuthStore } from '@/stores/auth'
 import type { DeptTreeNode } from '@/types/dept'
 import { DICT_CODES } from '@/types/dict'
@@ -74,6 +75,7 @@ const canAssignPosts = computed(() => hasPermission('system:user:assignPosts'))
 const searchFields = computed<ProTableSearchField[]>(() => [
   {
     prop: 'keyword',
+    label: t('user.keyword'),
     type: 'input',
     placeholder: t('user.searchPlaceholder'),
     defaultValue: '',
@@ -258,11 +260,23 @@ async function openAssignRoles(row: ManagedUser): Promise<void> {
 async function handleFormSubmit(
   payload: CreateUserPayload | UpdateUserPayload,
   postIds: string[],
+  avatarFileId: string | null,
 ): Promise<void> {
   formDialogRef.value?.setSubmitting(true)
   try {
     if (formMode.value === 'create') {
-      await createUser(payload as CreateUserPayload)
+      const created = await createUser(payload as CreateUserPayload)
+      if (avatarFileId) {
+        try {
+          await bindFileBusiness(avatarFileId, {
+            businessType: USER_AVATAR_BUSINESS_TYPE,
+            businessId: created.id,
+          })
+        } catch {
+          // 用户已创建成功，头像文件关联失败不阻塞主流程
+          message.warning(t('user.avatarBindFailed'))
+        }
+      }
       message.success(t('user.createSuccess'))
     } else if (editingUser.value) {
       await updateUser(editingUser.value.id, payload as UpdateUserPayload)

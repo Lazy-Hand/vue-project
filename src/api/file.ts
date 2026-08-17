@@ -3,6 +3,7 @@ import type { ProgressHandler } from 'alova'
 import { API_BASE_URL, request } from '@/utils/request'
 import type { PaginatedResult } from '@/types/common'
 import type {
+  BindFileBusinessPayload,
   FileListQuery,
   InitiateMultipartUploadPayload,
   ManagedFile,
@@ -105,7 +106,17 @@ export function fetchFileList(query: FileListQuery = {}): Promise<PaginatedResul
 }
 
 export function deleteFile(id: string): Promise<void> {
-  return request.Delete<void>(`/file/${encodeURIComponent(id)}`, undefined, { cacheFor: 0 })
+  return request.Delete<void>(`/file/${encodeURIComponent(id)}`, {}, { cacheFor: 0 })
+}
+
+/** 为已上传文件补绑业务关联（如头像 USER_AVATAR + 用户 ID） */
+export function bindFileBusiness(
+  id: string,
+  payload: BindFileBusinessPayload,
+): Promise<ManagedFile> {
+  return request.Patch<ManagedFile>(`/file/${encodeURIComponent(id)}/bind`, payload, {
+    cacheFor: 0,
+  })
 }
 
 export function buildFileUrl(path: string): string {
@@ -246,7 +257,7 @@ export function completeMultipartUpload(
 export function abortMultipartUpload(kind: MultipartUploadKind, uploadId: string): Promise<void> {
   return request.Delete<void>(
     `${multipartBasePaths[kind]}/${encodeURIComponent(uploadId)}`,
-    undefined,
+    {},
     { cacheFor: 0 },
   )
 }

@@ -31,5 +31,5 @@ export function updateSystemConfig(
 }
 
 export function deleteSystemConfig(id: string): Promise<void> {
-  return request.Delete<void>(`/system-config/${id}`, { cacheFor: 0 })
+  return request.Delete<void>(`/system-config/${id}`, {}, { cacheFor: 0 })
 }

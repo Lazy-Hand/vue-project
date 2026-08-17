@@ -27,7 +27,7 @@ export function updateRole(id: string, payload: UpdateRolePayload): Promise<Role
 }
 
 export function deleteRole(id: string): Promise<void> {
-  return request.Delete<void>(`/role/${id}`, { cacheFor: 0 })
+  return request.Delete<void>(`/role/${id}`, {}, { cacheFor: 0 })
 }
 
 export function fetchRolePermissions(id: string): Promise<Permission[]> {

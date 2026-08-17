@@ -52,9 +52,10 @@ export async function unwrapResponse<T>(response: Response | ApiResponse<T>): Pr
   const message = typeof body.message === 'string' ? body.message : '请求失败'
   const isHttpError = status !== undefined && (status < 200 || status >= 300)
 
-  if (isHttpError || code !== 0 || !('data' in body)) {
+  if (isHttpError || code !== 0) {
     throw new ApiRequestError(message, { status, code, errors: body.errors })
   }
 
-  return body.data as T
+  // 部分接口（如删除）可能返回缺失 data 字段的成功信封，视为成功并返回 undefined
+  return ('data' in body ? body.data : undefined) as T
 }

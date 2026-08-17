@@ -32,3 +32,14 @@ export interface NoticePayload {
 }
 
 export type UpdateNoticePayload = Partial<NoticePayload>
+
+/** 已发布公告 + 当前用户已读状态（用户端通知列表） */
+export interface PublishedNotice extends Notice {
+  /** 当前用户是否已读 */
+  read: boolean
+}
+
+/** 公告数量统计结果（未读数 / 本次标记已读条数） */
+export interface NoticeCountResult {
+  count: number
+}

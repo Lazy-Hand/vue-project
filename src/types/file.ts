@@ -43,6 +43,12 @@ export interface UploadBusinessContext {
   businessId?: string
 }
 
+/** 为已上传文件补绑业务关联（如 USER_AVATAR + 用户 ID） */
+export interface BindFileBusinessPayload {
+  businessType: string
+  businessId: string
+}
+
 export interface InitiateMultipartUploadPayload extends UploadBusinessContext {
   originalName: string
   mimeType: string

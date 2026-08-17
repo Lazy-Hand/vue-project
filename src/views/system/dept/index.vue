@@ -54,6 +54,7 @@ function formatDateTime(value: string | undefined, localeCode: string): string {
 const searchFields = computed<ProTableSearchField[]>(() => [
   {
     prop: 'keyword',
+    label: t('dept.keyword'),
     type: 'input',
     placeholder: t('dept.searchPlaceholder'),
     defaultValue: '',

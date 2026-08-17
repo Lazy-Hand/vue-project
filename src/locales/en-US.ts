@@ -15,6 +15,19 @@ export default {
     enabled: 'Enabled',
     disabled: 'Disabled',
   },
+  dashboard: {
+    refresh: 'Refresh',
+    userCount: 'Total users',
+    enabledUserCount: 'Enabled users',
+    roleCount: 'Roles',
+    deptCount: 'Departments',
+    fileCount: 'Files',
+    todayOperationCount: 'Operations today',
+    todayFailedOperationCount: 'Failed today',
+    successRate: 'Success rate today',
+    periodLabel: 'Period',
+    requestFailed: 'Failed to load dashboard',
+  },
   proTable: {
     search: 'Search',
     reset: 'Reset',
@@ -51,6 +64,7 @@ export default {
   accountSet: {
     placeholder: 'Account set',
     switchFailed: 'Failed to switch account set',
+    keyword: 'Keyword',
     searchPlaceholder: 'Search account set code or name',
     create: 'Add account set',
     createTitle: 'Add account set',
@@ -81,6 +95,7 @@ export default {
     requestFailed: 'Request failed',
   },
   dept: {
+    keyword: 'Keyword',
     searchPlaceholder: 'Search department name or code',
     create: 'Add department',
     createChild: 'Add child department',
@@ -111,6 +126,7 @@ export default {
     requestFailed: 'Request failed',
   },
   post: {
+    keyword: 'Keyword',
     searchPlaceholder: 'Search post name or code',
     create: 'Add post',
     createTitle: 'Add post',
@@ -149,6 +165,7 @@ export default {
     backHome: 'Back home',
   },
   permission: {
+    keyword: 'Keyword',
     searchPlaceholder: 'Search by name or code',
     create: 'Add permission',
     createChild: 'Add child',
@@ -183,6 +200,7 @@ export default {
     requestFailed: 'Request failed',
   },
   role: {
+    keyword: 'Keyword',
     searchPlaceholder: 'Search by name or code',
     create: 'Add role',
     createTitle: 'Add role',
@@ -218,6 +236,7 @@ export default {
     requestFailed: 'Request failed',
   },
   user: {
+    keyword: 'Keyword',
     searchPlaceholder: 'Search username, nickname, email, phone',
     create: 'Add user',
     createTitle: 'Add user',
@@ -227,6 +246,7 @@ export default {
     avatarRemove: 'Remove avatar',
     avatarTypeError: 'Avatar must be an image ({extensions})',
     avatarSizeError: 'Avatar size must not exceed {size}',
+    avatarBindFailed: 'User created, but failed to bind the avatar file',
     username: 'Username',
     password: 'Password',
     newPassword: 'New password',
@@ -295,6 +315,7 @@ export default {
     requestFailed: 'Request failed',
   },
   config: {
+    keyword: 'Keyword',
     searchPlaceholder: 'Search parameter key or name',
     create: 'Add parameter',
     createTitle: 'Add parameter',
@@ -432,6 +453,10 @@ export default {
     contentRequired: 'Please enter content',
     contentLength: 'Content must not exceed 100000 characters',
     requestFailed: 'Failed to load notices',
+    notifications: 'Notifications',
+    markAllRead: 'Mark all read',
+    readAllSuccess: 'All notices marked as read',
+    empty: 'No notices',
   },
   metrics: {
     refresh: 'Refresh',

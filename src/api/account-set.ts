@@ -41,7 +41,7 @@ export function updateAccountSet(
 }
 
 export function deleteAccountSet(id: string): Promise<void> {
-  return request.Delete<void>(`/account-set/${id}`, { cacheFor: 0 })
+  return request.Delete<void>(`/account-set/${id}`, {}, { cacheFor: 0 })
 }
 
 export function fetchAccountSetUsers(id: string): Promise<AccountSetMember[]> {

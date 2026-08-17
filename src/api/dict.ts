@@ -42,7 +42,7 @@ export function updateDictType(id: string, payload: UpdateDictTypePayload): Prom
 }
 
 export function deleteDictType(id: string): Promise<void> {
-  return request.Delete<void>(`/dict-type/${id}`, { cacheFor: 0 })
+  return request.Delete<void>(`/dict-type/${id}`, {}, { cacheFor: 0 })
 }
 
 export function fetchDictItemList(
@@ -68,5 +68,5 @@ export function updateDictItem(id: string, payload: UpdateDictItemPayload): Prom
 }
 
 export function deleteDictItem(id: string): Promise<void> {
-  return request.Delete<void>(`/dict-item/${id}`, { cacheFor: 0 })
+  return request.Delete<void>(`/dict-item/${id}`, {}, { cacheFor: 0 })
 }

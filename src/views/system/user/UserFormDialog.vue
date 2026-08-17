@@ -26,6 +26,7 @@ import {
   validateFile,
 } from '@/components/FileUpload/utils'
 import { usePermission } from '@/composables/usePermission'
+import { USER_AVATAR_BUSINESS_TYPE } from '@/constants/business'
 import type { DeptTreeNode } from '@/types/dept'
 import type { Post } from '@/types/post'
 import type { CreateUserPayload, ManagedUser, UpdateUserPayload } from '@/types/user'
@@ -44,7 +45,11 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  submit: [payload: CreateUserPayload | UpdateUserPayload, postIds: string[]]
+  submit: [
+    payload: CreateUserPayload | UpdateUserPayload,
+    postIds: string[],
+    avatarFileId: string | null,
+  ]
 }>()
 
 const { t } = useI18n()
@@ -157,6 +162,7 @@ function resetForm(): void {
   form.deptId = undefined
   form.postIds = []
   form.enabled = true
+  avatarFileId.value = null
 }
 
 function fillFromEditing(user: ManagedUser): void {
@@ -169,6 +175,7 @@ function fillFromEditing(user: ManagedUser): void {
   form.deptId = user.deptId ?? undefined
   form.postIds = [...(props.initialPostIds ?? [])]
   form.enabled = user.enabled
+  avatarFileId.value = null
 }
 
 watch(
@@ -237,14 +244,22 @@ interface AvatarUploadRequestOption {
   file: string | Blob | File
 }
 
+/** create 模式下用户 ID 尚不存在，暂存文件 ID，待创建成功后补绑业务关联 */
+const avatarFileId = ref<string | null>(null)
+
 function handleAvatarUpload(options: AvatarUploadRequestOption): void {
   if (typeof options.file === 'string') return
-  const file =
-    options.file instanceof File ? options.file : new File([options.file], 'avatar')
+  const file = options.file instanceof File ? options.file : new File([options.file], 'avatar')
   uploadingAvatar.value = true
-  createImageUploadRequest(file)
+  // edit 模式直接携带业务关联；create 模式由父组件在用户创建后补绑
+  const context =
+    props.mode === 'edit' && props.editing
+      ? { businessType: USER_AVATAR_BUSINESS_TYPE, businessId: props.editing.id }
+      : undefined
+  createImageUploadRequest(file, context)
     .response.then((response) => {
       form.avatar = toStoredAvatarPath(response.path)
+      avatarFileId.value = response.id
     })
     .catch((error: unknown) => {
       message.error(errorMessage(error))
@@ -256,13 +271,14 @@ function handleAvatarUpload(options: AvatarUploadRequestOption): void {
 
 function removeAvatar(): void {
   form.avatar = null
+  avatarFileId.value = null
 }
 
 async function handleSubmit(): Promise<void> {
   if (!formRef.value) return
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
-  emit('submit', buildPayload(), [...form.postIds])
+  emit('submit', buildPayload(), [...form.postIds], avatarFileId.value)
 }
 
 defineExpose({
@@ -273,7 +289,13 @@ defineExpose({
 </script>
 
 <template>
-  <Modal v-model:open="visible" :title="title" width="560px" destroy-on-hidden>
+  <Modal
+    v-model:open="visible"
+    :title="title"
+    width="560px"
+    destroy-on-hidden
+    :get-container="false"
+  >
     <Form ref="formRef" :model="form" :rules="rules" class="user-form">
       <FormItem :label="t('user.username')" name="username">
         <Input v-model:value="form.username" :maxlength="255" :disabled="mode === 'edit'" />

@@ -32,5 +32,5 @@ export function updatePost(id: string, payload: UpdatePostPayload): Promise<Post
 }
 
 export function deletePost(id: string): Promise<void> {
-  return request.Delete<void>(`/post/${id}`, { cacheFor: 0 })
+  return request.Delete<void>(`/post/${id}`, {}, { cacheFor: 0 })
 }

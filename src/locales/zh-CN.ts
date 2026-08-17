@@ -15,6 +15,19 @@ export default {
     enabled: '启用',
     disabled: '禁用',
   },
+  dashboard: {
+    refresh: '刷新',
+    userCount: '用户总数',
+    enabledUserCount: '启用用户',
+    roleCount: '角色数',
+    deptCount: '部门数',
+    fileCount: '文件数',
+    todayOperationCount: '今日操作',
+    todayFailedOperationCount: '今日失败',
+    successRate: '今日成功率',
+    periodLabel: '统计周期',
+    requestFailed: '仪表盘数据加载失败',
+  },
   proTable: {
     search: '查询',
     reset: '重置',
@@ -51,6 +64,7 @@ export default {
   accountSet: {
     placeholder: '选择账套',
     switchFailed: '切换账套失败',
+    keyword: '关键字',
     searchPlaceholder: '搜索账套编码或名称',
     create: '新增账套',
     createTitle: '新增账套',
@@ -81,6 +95,7 @@ export default {
     requestFailed: '请求失败',
   },
   dept: {
+    keyword: '关键字',
     searchPlaceholder: '搜索部门名称或编码',
     create: '新增部门',
     createChild: '新增子部门',
@@ -111,6 +126,7 @@ export default {
     requestFailed: '请求失败',
   },
   post: {
+    keyword: '关键字',
     searchPlaceholder: '搜索岗位名称或编码',
     create: '新增岗位',
     createTitle: '新增岗位',
@@ -149,6 +165,7 @@ export default {
     backHome: '返回首页',
   },
   permission: {
+    keyword: '关键字',
     searchPlaceholder: '搜索名称或编码',
     create: '新增权限',
     createChild: '新增子级',
@@ -183,6 +200,7 @@ export default {
     requestFailed: '请求失败',
   },
   role: {
+    keyword: '关键字',
     searchPlaceholder: '搜索名称或编码',
     create: '新增角色',
     createTitle: '新增角色',
@@ -218,6 +236,7 @@ export default {
     requestFailed: '请求失败',
   },
   user: {
+    keyword: '关键字',
     searchPlaceholder: '搜索用户名、昵称、邮箱、手机号',
     create: '新增用户',
     createTitle: '新增用户',
@@ -227,6 +246,7 @@ export default {
     avatarRemove: '移除头像',
     avatarTypeError: '头像仅支持图片格式（{extensions}）',
     avatarSizeError: '头像大小不能超过 {size}',
+    avatarBindFailed: '用户已创建，但头像文件业务关联失败',
     username: '用户名',
     password: '密码',
     newPassword: '新密码',
@@ -295,6 +315,7 @@ export default {
     requestFailed: '请求失败',
   },
   config: {
+    keyword: '关键字',
     searchPlaceholder: '搜索参数键或名称',
     create: '新增参数',
     createTitle: '新增参数',
@@ -431,6 +452,10 @@ export default {
     contentRequired: '请输入公告正文',
     contentLength: '正文长度不能超过 100000 个字符',
     requestFailed: '公告列表加载失败',
+    notifications: '通知',
+    markAllRead: '全部已读',
+    readAllSuccess: '已全部标记为已读',
+    empty: '暂无公告',
   },
   metrics: {
     refresh: '刷新',

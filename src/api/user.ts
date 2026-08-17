@@ -23,7 +23,7 @@ export function updateUser(id: string, payload: UpdateUserPayload): Promise<Mana
 }
 
 export function deleteUser(id: string): Promise<void> {
-  return request.Delete<void>(`/user/${id}`, { cacheFor: 0 })
+  return request.Delete<void>(`/user/${id}`, {}, { cacheFor: 0 })
 }
 
 export function resetUserPassword(id: string, password: string): Promise<void> {

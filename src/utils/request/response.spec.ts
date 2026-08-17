@@ -24,6 +24,24 @@ describe('request response handling', () => {
     await expect(unwrapResponse<{ ok: boolean }>(response)).resolves.toEqual({ ok: true })
   })
 
+  it('treats a success envelope without data as undefined (void endpoints)', async () => {
+    const response = new Response(
+      JSON.stringify({ code: 0, message: 'success' }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    )
+
+    await expect(unwrapResponse<void>(response)).resolves.toBeUndefined()
+  })
+
+  it('unwraps a success envelope with explicit null data', async () => {
+    const response = new Response(
+      JSON.stringify({ code: 0, message: 'success', data: null }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    )
+
+    await expect(unwrapResponse<void>(response)).resolves.toBeNull()
+  })
+
   it('exposes HTTP and business error details', async () => {
     const response = new Response(
       JSON.stringify({

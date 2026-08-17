@@ -22,5 +22,5 @@ export function updateDept(id: string, payload: UpdateDeptPayload): Promise<Dept
 }
 
 export function deleteDept(id: string): Promise<void> {
-  return request.Delete<void>(`/dept/${id}`, { cacheFor: 0 })
+  return request.Delete<void>(`/dept/${id}`, {}, { cacheFor: 0 })
 }

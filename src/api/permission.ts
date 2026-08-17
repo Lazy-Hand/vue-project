@@ -26,5 +26,5 @@ export function updatePermission(
 }
 
 export function deletePermission(id: string): Promise<void> {
-  return request.Delete<void>(`/permission/${id}`, { cacheFor: 0 })
+  return request.Delete<void>(`/permission/${id}`, {}, { cacheFor: 0 })
 }

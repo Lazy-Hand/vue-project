@@ -20,7 +20,5 @@ export function fetchOnlineSessionList(
 
 /** 强制下线指定会话（幂等） */
 export function revokeSession(sessionId: string): Promise<void> {
-  return request.Delete<void>(`/session/${encodeURIComponent(sessionId)}`, undefined, {
-    cacheFor: 0,
-  })
+  return request.Delete<void>(`/session/${encodeURIComponent(sessionId)}`, {}, { cacheFor: 0 })
 }

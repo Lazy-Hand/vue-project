@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/auth'
 import AccountSetSwitcher from './AccountSetSwitcher.vue'
 import AppConfigControls from './AppConfigControls.vue'
 import LayoutMenu from './Menu.vue'
+import NoticeBell from './NoticeBell.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -38,6 +39,7 @@ async function handleLogout() {
       <LayoutHeader class="main-header">
         <div class="header-title">{{ route.meta.title || t('common.console') }}</div>
         <div class="header-actions">
+          <NoticeBell />
           <AppConfigControls />
           <AccountSetSwitcher />
           <span class="user-name">{{ displayName }}</span>

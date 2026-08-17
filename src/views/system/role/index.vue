@@ -58,6 +58,7 @@ const canAssign = computed(() => hasPermission('system:role:assignPermissions'))
 const searchFields = computed<ProTableSearchField[]>(() => [
   {
     prop: 'keyword',
+    label: t('role.keyword'),
     type: 'input',
     placeholder: t('role.searchPlaceholder'),
     defaultValue: '',

@@ -45,6 +45,7 @@ const canDelete = computed(() => hasPermission('system:permission:delete'))
 const searchFields = computed<ProTableSearchField[]>(() => [
   {
     prop: 'keyword',
+    label: t('permission.keyword'),
     type: 'input',
     placeholder: t('permission.searchPlaceholder'),
     defaultValue: '',

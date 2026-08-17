@@ -6,12 +6,14 @@ import {
   Button,
   Checkbox,
   CheckboxGroup,
+  Col,
   Empty,
   Form,
   FormItem,
   Input,
   Pagination,
   Popover,
+  Row,
   Select,
   Spin,
   Table,
@@ -73,6 +75,8 @@ interface Props {
   searchCollapsible?: boolean
   searchCollapseThreshold?: number
   defaultSearchCollapsed?: boolean
+  /** 搜索区每行字段列数（24 栅格），默认 4 */
+  searchColumnCount?: number
   showRequestError?: boolean
   emptyText?: string
   emptyCellText?: string
@@ -117,6 +121,7 @@ const props = withDefaults(defineProps<Props>(), {
   searchCollapsible: true,
   searchCollapseThreshold: 3,
   defaultSearchCollapsed: true,
+  searchColumnCount: 4,
   showRequestError: true,
   emptyText: undefined,
   emptyCellText: '-',
@@ -290,6 +295,8 @@ const visibleSearchFields = computed(() => {
   if (!searchCanCollapse.value || !searchCollapsed.value) return props.searchFields
   return props.searchFields.slice(0, searchCollapseThreshold.value)
 })
+/** 搜索区每行字段列数对应的 24 栅格 span（列数须整除 24：2/3/4/6/8/12） */
+const fieldSpan = computed(() => Math.floor(24 / Math.max(1, Math.floor(props.searchColumnCount))))
 const paginationEnabled = computed(() => props.pagination !== false)
 const resolvedEmptyText = computed(() => props.emptyText ?? t('proTable.empty'))
 
@@ -326,8 +333,7 @@ function buildRequestParams(): ProTableRequestParams {
     if (!column.filters || column.filterMode !== 'custom') continue
     const values = columnFilters.value[resolvedColumnKey(column)] ?? []
     if (!values.length) continue
-    params[column.prop ?? resolvedColumnKey(column)] =
-      values.length === 1 ? values[0] : values
+    params[column.prop ?? resolvedColumnKey(column)] = values.length === 1 ? values[0] : values
   }
   if (sortField.value && sortOrder.value) {
     params.sortField = sortField.value
@@ -1032,80 +1038,95 @@ defineExpose({
         class="pro-table__search"
         @submit.prevent="handleSearch"
       >
-        <FormItem
-          v-for="field in visibleSearchFields"
-          :key="field.prop"
-          :name="field.prop"
-          :label="field.label"
-          class="pro-table__search-item"
-        >
-          <Input
-            v-if="(field.type ?? 'input') === 'input'"
-            :value="inputValue(field.prop) ?? undefined"
-            :allow-clear="field.clearable ?? true"
-            :class="['pro-table__field', field.fieldClass]"
-            :placeholder="field.placeholder"
-            @update:value="setInputValue(field.prop, $event)"
-            @keyup.enter="handleSearch"
-            @clear="handleInputClear(field)"
-          />
-          <Select
-            v-else-if="field.type === 'select'"
-            :value="selectValue(field)"
-            :allow-clear="field.clearable ?? true"
-            :mode="field.multiple ? 'multiple' : undefined"
-            :class="['pro-table__field', field.fieldClass]"
-            :options="selectOptions(field)"
-            :placeholder="field.placeholder"
-            @update:value="setSelectValue(field, $event)"
-            @change="handleFieldChange(field)"
-          />
-          <DictSelect
-            v-else-if="field.type === 'dict-select' && field.dictTypeCode"
-            :model-value="String(searchForm[field.prop] ?? '') || null"
-            :type-code="field.dictTypeCode"
-            :clearable="field.clearable ?? true"
-            :class="['pro-table__field', field.fieldClass]"
-            :placeholder="field.placeholder"
-            @update:model-value="setDictSelectValue(field, $event)"
-          />
-          <slot
-            v-else-if="field.type === 'slot'"
-            :name="`search-${field.slot ?? field.prop}`"
-            v-bind="getSearchSlotProps(field)"
-          />
-        </FormItem>
-
-        <FormItem v-if="showSearchActions || searchCanCollapse" class="pro-table__search-actions">
-          <slot
-            v-if="showSearchActions"
-            name="search-actions"
-            :search="handleSearch"
-            :reset="handleReset"
-            :loading="loading"
-            :collapsible="searchCanCollapse"
-            :collapsed="searchCollapsed"
-            :toggle-collapse="toggleSearchCollapse"
+        <Row :gutter="[16, 16]" class="pro-table__search-row">
+          <Col
+            v-for="field in visibleSearchFields"
+            :key="field.prop"
+            :xs="12"
+            :md="8"
+            :lg="fieldSpan"
+            class="pro-table__search-col"
           >
-            <Space>
-              <Button type="primary" :loading="loading" @click="handleSearch">
-                {{ t('proTable.search') }}
+            <FormItem :name="field.prop" :label="field.label" class="pro-table__search-item">
+              <Input
+                v-if="(field.type ?? 'input') === 'input'"
+                :value="inputValue(field.prop) ?? undefined"
+                :allow-clear="field.clearable ?? true"
+                :class="['pro-table__field', field.fieldClass]"
+                :placeholder="field.placeholder"
+                @update:value="setInputValue(field.prop, $event)"
+                @keyup.enter="handleSearch"
+                @clear="handleInputClear(field)"
+              />
+              <Select
+                v-else-if="field.type === 'select'"
+                :value="selectValue(field)"
+                :allow-clear="field.clearable ?? true"
+                :mode="field.multiple ? 'multiple' : undefined"
+                :class="['pro-table__field', field.fieldClass]"
+                :options="selectOptions(field)"
+                :placeholder="field.placeholder"
+                @update:value="setSelectValue(field, $event)"
+                @change="handleFieldChange(field)"
+              />
+              <DictSelect
+                v-else-if="field.type === 'dict-select' && field.dictTypeCode"
+                :model-value="String(searchForm[field.prop] ?? '') || null"
+                :type-code="field.dictTypeCode"
+                :clearable="field.clearable ?? true"
+                :class="['pro-table__field', field.fieldClass]"
+                :placeholder="field.placeholder"
+                @update:model-value="setDictSelectValue(field, $event)"
+              />
+              <slot
+                v-else-if="field.type === 'slot'"
+                :name="`search-${field.slot ?? field.prop}`"
+                v-bind="getSearchSlotProps(field)"
+              />
+            </FormItem>
+          </Col>
+
+          <Col
+            v-if="showSearchActions || searchCanCollapse"
+            :flex="'auto'"
+            class="pro-table__search-col pro-table__search-col--actions"
+          >
+            <FormItem
+              v-if="showSearchActions || searchCanCollapse"
+              class="pro-table__search-actions"
+            >
+              <slot
+                v-if="showSearchActions"
+                name="search-actions"
+                :search="handleSearch"
+                :reset="handleReset"
+                :loading="loading"
+                :collapsible="searchCanCollapse"
+                :collapsed="searchCollapsed"
+                :toggle-collapse="toggleSearchCollapse"
+              >
+                <Space>
+                  <Button type="primary" :loading="loading" @click="handleSearch">
+                    {{ t('proTable.search') }}
+                  </Button>
+                  <Button :disabled="loading" @click="handleReset">{{
+                    t('proTable.reset')
+                  }}</Button>
+                </Space>
+              </slot>
+              <Button
+                v-if="searchCanCollapse"
+                class="pro-table__collapse-button"
+                type="link"
+                @click="toggleSearchCollapse"
+              >
+                {{ searchCollapsed ? t('proTable.expand') : t('proTable.collapse') }}
+                <ArrowDownOutlined v-if="searchCollapsed" />
+                <ArrowUpOutlined v-else />
               </Button>
-              <Button :disabled="loading" @click="handleReset">{{ t('proTable.reset') }}</Button>
-            </Space>
-
-          </slot>
-          <Button
-            v-if="searchCanCollapse"
-            class="pro-table__collapse-button"
-            type="link"
-            @click="toggleSearchCollapse"
-          >
-            {{ searchCollapsed ? t('proTable.expand') : t('proTable.collapse') }}
-            <ArrowDownOutlined v-if="searchCollapsed" />
-            <ArrowUpOutlined v-else />
-          </Button>
-        </FormItem>
+            </FormItem>
+          </Col>
+        </Row>
       </Form>
 
       <div v-if="$slots['toolbar-actions'] || columnSettingAvailable" class="pro-table__actions">
@@ -1325,21 +1346,49 @@ defineExpose({
 }
 
 .pro-table__search {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
   margin: 0;
 }
 
-.pro-table__search-item,
-.pro-table__search-actions {
+.pro-table__search-row {
+  width: 100%;
+}
+
+.pro-table__search-col {
+  min-width: 0;
+}
+
+/* 栅格列内 FormItem 撑满列宽，label 与控件同行 */
+.pro-table__search-item {
+  display: flex;
+  width: 100%;
   margin-right: 0;
   margin-bottom: 0;
+
+  :deep(.ant-form-item-row) {
+    width: 100%;
+  }
+
+  :deep(.ant-form-item-label) {
+    min-width: 72px;
+    padding-right: 12px;
+  }
+
+  :deep(.ant-form-item-control) {
+    flex: 1;
+  }
 }
 
 .pro-table__field {
-  width: 220px;
+  width: 100%;
+}
+
+/* 查询/重置按钮列：占满剩余栅格宽度并靠右 */
+.pro-table__search-col--actions .pro-table__search-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-right: 0;
+  margin-bottom: 0;
 }
 
 .pro-table__actions {
