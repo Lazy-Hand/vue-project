@@ -29,6 +29,17 @@ export default {
     breadcrumb: 'Breadcrumb navigation',
     shortcut: 'Shortcut',
   },
+  tabs: {
+    refresh: 'Refresh current',
+    close: 'Close current',
+    closeLeft: 'Close left',
+    closeRight: 'Close right',
+    closeOther: 'Close others',
+    closeAll: 'Close all',
+    maximize: 'Maximize content',
+    exitMaximize: 'Exit maximize',
+    more: 'More actions',
+  },
   request: {
     invalidJson: 'The response is not valid JSON',
     invalidFormat: 'Invalid response format',

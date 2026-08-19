@@ -12,6 +12,7 @@ import {
   LayoutSider,
 } from 'antdv-next'
 import {
+  CompressOutlined,
   FullscreenExitOutlined,
   FullscreenOutlined,
   LogoutOutlined,
@@ -25,16 +26,19 @@ import {
 import { buildFileUrl } from '@/api/file'
 import { logoutAuth } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { useTabsStore } from '@/stores/tabs'
 import AccountSetSwitcher from './AccountSetSwitcher.vue'
 import AppConfigControls from './AppConfigControls.vue'
 import LayoutBreadcrumb from './Breadcrumb.vue'
 import LayoutMenu from './Menu.vue'
 import MenuSearchDialog from './MenuSearchDialog.vue'
 import NoticeBell from './NoticeBell.vue'
+import TabsBar from './TabsBar.vue'
 
 const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
+const tabsStore = useTabsStore()
 
 const collapsed = ref(false)
 const isFullscreen = ref(false)
@@ -93,8 +97,15 @@ function toggleFullscreen() {
   }
 }
 
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && tabsStore.isContentMaximized) {
+    tabsStore.toggleContentMaximize(false)
+  }
+}
+
 async function handleLogout() {
   await logoutAuth()
+  tabsStore.resetTabs()
   await router.replace('/login')
 }
 
@@ -108,16 +119,19 @@ function handleUserMenuClick({ key }: { key: string }) {
 
 onMounted(() => {
   document.addEventListener('fullscreenchange', handleFullscreenChange)
+  window.addEventListener('keydown', handleKeydown)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
 <template>
   <Layout class="main-layout">
     <LayoutSider
+      v-show="!tabsStore.isContentMaximized"
       :width="220"
       :collapsed-width="64"
       :collapsed="collapsed"
@@ -136,7 +150,7 @@ onBeforeUnmount(() => {
     </LayoutSider>
 
     <Layout class="main-body">
-      <LayoutHeader class="main-header">
+      <LayoutHeader v-show="!tabsStore.isContentMaximized" class="main-header">
         <div class="header-left">
           <Button
             type="text"
@@ -209,8 +223,28 @@ onBeforeUnmount(() => {
         </div>
       </LayoutHeader>
 
-      <LayoutContent class="main-content">
-        <RouterView v-if="routerAlive" />
+      <TabsBar @refresh="handleRefresh" />
+
+      <LayoutContent class="main-content" :class="{ 'is-maximized': tabsStore.isContentMaximized }">
+        <Button
+          v-if="tabsStore.isContentMaximized"
+          type="primary"
+          shape="circle"
+          class="exit-maximize-float-btn"
+          :title="t('tabs.exitMaximize')"
+          :aria-label="t('tabs.exitMaximize')"
+          @click="tabsStore.toggleContentMaximize(false)"
+        >
+          <CompressOutlined />
+        </Button>
+
+        <RouterView v-if="routerAlive" v-slot="{ Component, route: currentRoute }">
+          <Transition name="fade-slide" mode="out-in">
+            <KeepAlive :include="tabsStore.cachedViews">
+              <component :is="Component" :key="currentRoute.fullPath" />
+            </KeepAlive>
+          </Transition>
+        </RouterView>
       </LayoutContent>
     </Layout>
 
@@ -289,6 +323,8 @@ onBeforeUnmount(() => {
 .main-body {
   min-width: 0;
   height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -382,5 +418,33 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: auto;
   padding: 20px;
+  position: relative;
+
+  &.is-maximized {
+    padding: 16px;
+  }
+}
+
+.exit-maximize-float-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.2s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(10px);
 }
 </style>

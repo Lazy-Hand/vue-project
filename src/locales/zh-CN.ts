@@ -29,6 +29,17 @@ export default {
     breadcrumb: '面包屑导航',
     shortcut: '快捷键',
   },
+  tabs: {
+    refresh: '刷新当前页',
+    close: '关闭当前',
+    closeLeft: '关闭左侧',
+    closeRight: '关闭右侧',
+    closeOther: '关闭其他',
+    closeAll: '关闭全部',
+    maximize: '内容最大化',
+    exitMaximize: '退出最大化',
+    more: '更多操作',
+  },
   request: {
     invalidJson: '响应不是有效的 JSON 数据',
     invalidFormat: '响应格式无效',
