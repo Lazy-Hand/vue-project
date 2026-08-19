@@ -6,8 +6,10 @@ import { requestAdapter } from '@/mocks'
 import { pinia } from '@/stores'
 import { useAppConfigStore } from '@/stores/app-config'
 import { useAuthStore } from '@/stores/auth'
+import router from '@/router'
 import type { AuthTokenData } from '@/types/auth'
 import { unwrapResponse, ApiRequestError, normalizeRequestError } from './response'
+import { LOGIN_PATH } from '@/router/guards/auth'
 
 export const authMeta = {
   visitor: { authRole: null },
@@ -44,6 +46,11 @@ async function refreshAccessToken(): Promise<AuthTokenData> {
     return tokenData
   } catch (error) {
     authStore.clearSession()
+    router.push({
+      path: LOGIN_PATH,
+      query: { redirect: router.currentRoute.value.fullPath },
+      replace: true,
+    })
     throw error
   }
 }
