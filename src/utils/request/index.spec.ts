@@ -111,9 +111,55 @@ describe('authenticated requests', () => {
     expect(protectedCall).toBeDefined()
     if (!refreshCall || !protectedCall) throw new Error('expected refresh and protected calls')
     expect(refreshCall.init.credentials).toBe('include')
-    expect(protectedCall.init.headers).toMatchObject({
-      Authorization: 'Bearer refreshed-token',
-      'X-Locale': 'zh-CN',
+    const sentHeaders = new Headers(protectedCall.init.headers)
+    expect(sentHeaders.get('authorization')).toBe('Bearer refreshed-token')
+    expect(sentHeaders.get('x-locale')).toBe('zh-CN')
+  })
+
+  it('omits Content-Type for write requests without a body', async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = []
+    const fetchMock = vi.fn<typeof fetch>(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init: init ?? {} })
+      return new Response(JSON.stringify({ code: 0, message: 'success', data: { ok: true } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
     })
+    vi.stubGlobal('fetch', fetchMock)
+    authStore.setSession(tokenData)
+
+    const publish = request.Post<{ ok: boolean }>('/notice/7/publish', undefined)
+    const remove = request.Delete<{ ok: boolean }>('/notice/7', undefined)
+    await expect(publish).resolves.toEqual({ ok: true })
+    await expect(remove).resolves.toEqual({ ok: true })
+
+    expect(calls).toHaveLength(2)
+    for (const call of calls) {
+      expect(call.init.body).toBeUndefined()
+      const sentHeaders = new Headers(call.init.headers)
+      expect(sentHeaders.has('content-type')).toBe(false)
+    }
+  })
+
+  it('keeps Content-Type for write requests with a JSON body', async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = []
+    const fetchMock = vi.fn<typeof fetch>(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init: init ?? {} })
+      return new Response(JSON.stringify({ code: 0, message: 'success', data: { ok: true } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    authStore.setSession(tokenData)
+
+    await expect(
+      request.Post<{ ok: boolean }>('/notice', { title: '公告' }, { cacheFor: 0 }),
+    ).resolves.toEqual({ ok: true })
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]!.init.body).toBe(JSON.stringify({ title: '公告' }))
+    const sentHeaders = new Headers(calls[0]!.init.headers)
+    expect(sentHeaders.has('content-type')).toBe(true)
   })
 })
