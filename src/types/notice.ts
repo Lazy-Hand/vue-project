@@ -1,5 +1,17 @@
 export type NoticeStatus = 'DRAFT' | 'PUBLISHED'
 
+/** 公告发布受众范围：全员 / 指定用户 / 按角色 / 按岗位 / 按部门（含下级部门） */
+export type NoticeTargetScope = 'ALL' | 'USER' | 'ROLE' | 'POST' | 'DEPT'
+
+/** 发布公告时的受众选择；targetScope 非 ALL 时需提供对应的 id 列表 */
+export interface NoticeTargetPayload {
+  targetScope?: NoticeTargetScope
+  userIds?: string[]
+  roleIds?: string[]
+  postIds?: string[]
+  deptIds?: string[]
+}
+
 export interface Notice {
   /** 公告 ID；BigInt 以字符串返回 */
   id: string
@@ -9,6 +21,8 @@ export interface Notice {
   content: string
   /** 公告状态 */
   status: NoticeStatus
+  /** 发布受众范围 */
+  targetScope: NoticeTargetScope
   /** 发布时间；草稿为空 */
   publishedAt: string | null
   /** 创建时间 */

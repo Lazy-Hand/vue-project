@@ -5,6 +5,7 @@ import type {
   NoticeCountResult,
   NoticePayload,
   NoticeQuery,
+  NoticeTargetPayload,
   PublishedNotice,
   UpdateNoticePayload,
 } from '@/types/notice'
@@ -36,8 +37,8 @@ export function deleteNotice(id: string): Promise<void> {
   return request.Delete<void>(`/notice/${encodeURIComponent(id)}`, {}, { cacheFor: 0 })
 }
 
-export function publishNotice(id: string): Promise<Notice> {
-  return request.Post<Notice>(`/notice/${encodeURIComponent(id)}/publish`, undefined, {
+export function publishNotice(id: string, payload: NoticeTargetPayload = {}): Promise<Notice> {
+  return request.Post<Notice>(`/notice/${encodeURIComponent(id)}/publish`, payload, {
     cacheFor: 0,
   })
 }

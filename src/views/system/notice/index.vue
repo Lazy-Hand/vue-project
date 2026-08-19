@@ -4,17 +4,17 @@ import { useI18n } from 'vue-i18n'
 import { Button, Descriptions, DescriptionsItem, Modal, Tag, message } from 'antdv-next'
 import { PlusOutlined } from '@antdv-next/icons'
 
-import {
-  createNotice,
-  deleteNotice,
-  fetchNoticeList,
-  publishNotice,
-  updateNotice,
-} from '@/api/notice'
+import { createNotice, deleteNotice, fetchNoticeList, updateNotice } from '@/api/notice'
 import ProTable from '@/components/ProTable/index.vue'
 import ProTableActions from '@/components/ProTableActions/index.vue'
 import { usePermission } from '@/composables/usePermission'
-import type { Notice, NoticePayload, NoticeStatus, UpdateNoticePayload } from '@/types/notice'
+import type {
+  Notice,
+  NoticePayload,
+  NoticeStatus,
+  NoticeTargetScope,
+  UpdateNoticePayload,
+} from '@/types/notice'
 import type {
   ProTableAction,
   ProTableColumn,
@@ -24,6 +24,7 @@ import type {
 } from '@/types/pro-table'
 import { ApiRequestError } from '@/utils/request'
 import NoticeFormDialog from './NoticeFormDialog.vue'
+import PublishNoticeDialog from './PublishNoticeDialog.vue'
 import { mapNoticeQuery } from './utils'
 
 const { locale, t } = useI18n()
@@ -36,6 +37,8 @@ const editingNotice = ref<Notice | null>(null)
 const formDialogRef = ref<InstanceType<typeof NoticeFormDialog> | null>(null)
 const detailVisible = ref(false)
 const detailNotice = ref<Notice | null>(null)
+const publishVisible = ref(false)
+const publishingNotice = ref<Notice | null>(null)
 
 const canQuery = computed(() => hasPermission('system:notice:query'))
 const canCreate = computed(() => hasPermission('system:notice:create'))
@@ -80,6 +83,14 @@ const columns = computed<ProTableColumn<Notice>[]>(() => [
     align: 'center',
     type: 'slot',
     slot: 'status',
+  },
+  {
+    prop: 'targetScope',
+    label: t('notice.targetScope'),
+    width: 120,
+    align: 'center',
+    type: 'slot',
+    slot: 'targetScope',
   },
   {
     prop: 'publishedAt',
@@ -158,6 +169,18 @@ function statusLabel(status: NoticeStatus): string {
   return status === 'PUBLISHED' ? t('notice.published') : t('notice.draft')
 }
 
+const targetScopeLabelKeys: Record<NoticeTargetScope, string> = {
+  ALL: 'scopeAll',
+  USER: 'scopeUser',
+  ROLE: 'scopeRole',
+  POST: 'scopePost',
+  DEPT: 'scopeDept',
+}
+
+function targetScopeLabel(scope: NoticeTargetScope): string {
+  return t(`notice.${targetScopeLabelKeys[scope]}`)
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return error.message
   if (error instanceof Error) return error.message
@@ -209,26 +232,13 @@ async function handleFormSubmit(payload: NoticePayload | UpdateNoticePayload): P
   }
 }
 
-async function handlePublish(row: Notice): Promise<void> {
-  const confirmed = await new Promise<boolean>((resolve) => {
-    Modal.confirm({
-      title: t('common.tip'),
-      content: t('notice.publishConfirm', { title: row.title }),
-      okText: t('common.confirm'),
-      cancelText: t('common.cancel'),
-      onOk: () => resolve(true),
-      onCancel: () => resolve(false),
-    })
-  })
-  if (!confirmed) return
+function handlePublish(row: Notice): void {
+  publishingNotice.value = row
+  publishVisible.value = true
+}
 
-  try {
-    await publishNotice(row.id)
-    message.success(t('notice.publishSuccess'))
-    await tableRef.value?.reload()
-  } catch (error) {
-    message.error(errorMessage(error))
-  }
+async function handlePublishSuccess(): Promise<void> {
+  await tableRef.value?.reload()
 }
 
 async function handleDelete(row: Notice): Promise<void> {
@@ -279,6 +289,10 @@ async function handleDelete(row: Notice): Promise<void> {
         </Tag>
       </template>
 
+      <template #column-targetScope="{ row }">
+        <Tag>{{ targetScopeLabel(row.targetScope) }}</Tag>
+      </template>
+
       <template #column-actions="{ row }">
         <ProTableActions :row="row" :actions="noticeActions" />
       </template>
@@ -290,6 +304,13 @@ async function handleDelete(row: Notice): Promise<void> {
       :mode="formMode"
       :editing="editingNotice"
       @submit="handleFormSubmit"
+    />
+
+    <PublishNoticeDialog
+      v-if="publishingNotice"
+      v-model="publishVisible"
+      :notice-id="publishingNotice.id"
+      @success="handlePublishSuccess"
     />
 
     <Modal
