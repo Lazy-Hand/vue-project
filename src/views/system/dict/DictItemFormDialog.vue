@@ -116,22 +116,41 @@ defineExpose({
   <Modal v-model:open="visible" :title="title" width="520px" destroy-on-hidden>
     <Form ref="formRef" :model="form" :rules="rules" class="dict-item-form">
       <FormItem :label="t('dict.itemCode')" name="code">
-        <Input v-model:value="form.code" :maxlength="64" :disabled="mode === 'edit'" />
+        <Input
+          v-model:value="form.code"
+          :maxlength="64"
+          :disabled="mode === 'edit'"
+          :placeholder="t('dict.itemCodePlaceholder')"
+        />
       </FormItem>
       <FormItem :label="t('dict.itemLabel')" name="label">
-        <Input v-model:value="form.label" :maxlength="64" />
+        <Input
+          v-model:value="form.label"
+          :maxlength="64"
+          :placeholder="t('dict.itemLabelPlaceholder')"
+        />
       </FormItem>
       <FormItem :label="t('dict.itemValue')" name="value">
-        <Input v-model:value="form.value" :maxlength="255" />
+        <Input
+          v-model:value="form.value"
+          :maxlength="255"
+          :placeholder="t('dict.itemValuePlaceholder')"
+        />
       </FormItem>
       <FormItem :label="t('dict.sort')" name="sort">
-        <InputNumber v-model:value="form.sort" :min="0" :max="9999" />
+        <InputNumber
+          v-model:value="form.sort"
+          :min="0"
+          :max="9999"
+          :placeholder="t('dict.sortPlaceholder')"
+        />
       </FormItem>
       <FormItem :label="t('dict.enabled')" name="enabled">
         <DictSelect
           v-model="enabledValue"
           :type-code="DICT_CODES.COMMON_STATUS"
           :clearable="false"
+          :placeholder="t('dict.enabledPlaceholder')"
         />
       </FormItem>
     </Form>

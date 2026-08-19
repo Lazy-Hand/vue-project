@@ -180,5 +180,7 @@ async function handleRevoke(row: OnlineSession): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 </style>

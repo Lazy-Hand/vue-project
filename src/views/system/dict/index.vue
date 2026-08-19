@@ -440,7 +440,8 @@ watch(
   display: grid;
   grid-template-columns: minmax(320px, 2fr) minmax(360px, 3fr);
   gap: 16px;
-  align-items: start;
+  height: 100%;
+  min-height: 0;
 }
 
 .dict-page__panel {
@@ -448,6 +449,7 @@ watch(
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  min-height: 0;
   padding: 16px;
   background: #fff;
   border-radius: 8px;

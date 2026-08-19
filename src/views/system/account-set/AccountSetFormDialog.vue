@@ -122,19 +122,41 @@ defineExpose({
   >
     <Form ref="formRef" :model="form" :rules="rules" class="account-set-form">
       <FormItem :label="t('accountSet.code')" name="code">
-        <Input v-model:value="form.code" :maxlength="64" show-count :disabled="mode === 'edit'" />
+        <Input
+          v-model:value="form.code"
+          :maxlength="64"
+          show-count
+          :disabled="mode === 'edit'"
+          :placeholder="t('accountSet.codePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('accountSet.name')" name="name">
-        <Input v-model:value="form.name" :maxlength="64" show-count />
+        <Input
+          v-model:value="form.name"
+          :maxlength="64"
+          show-count
+          :placeholder="t('accountSet.namePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('accountSet.sort')" name="sort">
-        <InputNumber v-model:value="form.sort" :min="0" :max="9999" />
+        <InputNumber
+          v-model:value="form.sort"
+          :min="0"
+          :max="9999"
+          :placeholder="t('accountSet.sortPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('accountSet.description')" name="description">
-        <TextArea v-model:value="form.description" :rows="2" :maxlength="255" show-count />
+        <TextArea
+          v-model:value="form.description"
+          :rows="2"
+          :maxlength="255"
+          show-count
+          :placeholder="t('accountSet.descriptionPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('accountSet.enabled')" name="enabled">

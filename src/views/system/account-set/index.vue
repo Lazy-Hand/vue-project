@@ -325,5 +325,7 @@ async function handleUsersSubmit(payload: AccountSetUserAssignment): Promise<voi
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 </style>

@@ -35,12 +35,16 @@ const currentId = computed({
     class="account-set-switcher"
     :options="accountSetOptions"
     :placeholder="t('accountSet.placeholder')"
-    size="small"
   />
 </template>
 
-<style scoped>
+<style>
+/* 非 scoped：antdv-next 的 Select 会把 class 渲染到内部 .ant-select 元素上，
+   scoped 的 data-v 标记不会带走，宽高类样式必须用全局选择器才生效 */
 .account-set-switcher {
-  width: 160px;
+  flex-shrink: 0;
+  width: auto;
+  min-width: 180px;
+  max-width: 320px;
 }
 </style>

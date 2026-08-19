@@ -198,27 +198,59 @@ defineExpose({
       </FormItem>
 
       <FormItem :label="t('dept.name')" name="name">
-        <Input v-model:value="form.name" :maxlength="64" show-count />
+        <Input
+          v-model:value="form.name"
+          :maxlength="64"
+          show-count
+          :placeholder="t('dept.namePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('dept.code')" name="code">
-        <Input v-model:value="form.code" :maxlength="64" show-count />
+        <Input
+          v-model:value="form.code"
+          :maxlength="64"
+          show-count
+          :placeholder="t('dept.codePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('dept.leader')" name="leader">
-        <Input v-model:value="form.leader" :maxlength="64" show-count />
+        <Input
+          v-model:value="form.leader"
+          :maxlength="64"
+          show-count
+          :placeholder="t('dept.leaderPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('dept.phone')" name="phone">
-        <Input v-model:value="form.phone" :maxlength="32" show-count />
+        <Input
+          v-model:value="form.phone"
+          :maxlength="32"
+          show-count
+          :placeholder="t('dept.phonePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('dept.description')" name="description">
-        <TextArea v-model:value="form.description" :rows="2" :maxlength="255" show-count />
+        <TextArea
+          v-model:value="form.description"
+          :rows="2"
+          :maxlength="255"
+          show-count
+          :placeholder="t('dept.descriptionPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('dept.sort')" name="sort">
-        <InputNumber v-model:value="form.sort" :min="0" :max="9999" controls />
+        <InputNumber
+          v-model:value="form.sort"
+          :min="0"
+          :max="9999"
+          controls
+          :placeholder="t('dept.sortPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('dept.enabled')" name="enabled">

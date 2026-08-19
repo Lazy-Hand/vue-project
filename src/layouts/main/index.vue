@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, Layout, LayoutContent, LayoutHeader, LayoutSider } from 'antdv-next'
+import { Avatar, Dropdown, Layout, LayoutContent, LayoutHeader, LayoutSider } from 'antdv-next'
+import { LogoutOutlined, UserOutlined } from '@antdv-next/icons'
 
+import { buildFileUrl } from '@/api/file'
 import { logoutAuth } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import AccountSetSwitcher from './AccountSetSwitcher.vue'
@@ -20,9 +22,37 @@ const displayName = computed(
   () => authStore.user?.nickname || authStore.user?.username || t('common.user'),
 )
 
+const avatarSrc = computed(() =>
+  authStore.user?.avatar ? buildFileUrl(authStore.user.avatar) : undefined,
+)
+
+const userMenuItems = computed(() => [
+  {
+    key: 'profile',
+    label: t('common.personalInfo'),
+    icon: () => h(UserOutlined),
+  },
+  {
+    type: 'divider' as const,
+  },
+  {
+    key: 'logout',
+    label: t('common.logout'),
+    icon: () => h(LogoutOutlined),
+  },
+])
+
 async function handleLogout() {
   await logoutAuth()
   await router.replace('/login')
+}
+
+function handleUserMenuClick({ key }: { key: string }) {
+  if (key === 'logout') {
+    handleLogout()
+  } else if (key === 'profile') {
+    router.push('/profile')
+  }
 }
 </script>
 
@@ -39,11 +69,24 @@ async function handleLogout() {
       <LayoutHeader class="main-header">
         <div class="header-title">{{ route.meta.title || t('common.console') }}</div>
         <div class="header-actions">
+          <AccountSetSwitcher />
           <NoticeBell />
           <AppConfigControls />
-          <AccountSetSwitcher />
-          <span class="user-name">{{ displayName }}</span>
-          <Button type="link" @click="handleLogout">{{ t('common.logout') }}</Button>
+          <Dropdown
+            :menu="{ items: userMenuItems }"
+            :trigger="['click']"
+            placement="bottomRight"
+            @menu-click="handleUserMenuClick"
+          >
+            <div class="user-avatar-trigger">
+              <Avatar :size="32" :src="avatarSrc">
+                <template v-if="!avatarSrc" #icon>
+                  <UserOutlined />
+                </template>
+              </Avatar>
+              <span class="user-name">{{ displayName }}</span>
+            </div>
+          </Dropdown>
         </div>
       </LayoutHeader>
       <LayoutContent class="main-content">
@@ -114,6 +157,20 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.user-avatar-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f3f4f6;
+  }
 }
 
 .user-name {

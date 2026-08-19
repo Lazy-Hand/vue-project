@@ -503,7 +503,11 @@ function handleDateRangeChange(
 
 <style scoped lang="scss">
 .file-page {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  height: 100%;
+  min-height: 0;
 }
 
 .file-page__date-range {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { unwrapResponse } from './response'
+import { i18n } from '@/i18n'
+import { normalizeRequestError, ApiRequestError, unwrapResponse } from './response'
 
 describe('request response handling', () => {
   it.each([204, 205])(
@@ -59,6 +60,71 @@ describe('request response handling', () => {
       code: 1001,
       errors: { field: 'username' },
       message: 'invalid credentials',
+    })
+  })
+
+  describe('non-JSON error bodies (backend unreachable)', () => {
+    it('reports 502 gateway errors instead of "not valid JSON"', async () => {
+      const response = new Response('<html><body>502 Bad Gateway</body></html>', {
+        status: 502,
+        headers: { 'Content-Type': 'text/html' },
+      })
+
+      await expect(unwrapResponse(response)).rejects.toMatchObject({
+        name: 'ApiRequestError',
+        status: 502,
+        message: i18n.global.t('request.serviceUnavailable', { status: 502 }),
+      })
+    })
+
+    it('reports generic 5xx gateway errors with the status', async () => {
+      const response = new Response('Internal Server Error', {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+
+      await expect(unwrapResponse(response)).rejects.toMatchObject({
+        name: 'ApiRequestError',
+        status: 500,
+        message: i18n.global.t('request.serverError', { status: 500 }),
+      })
+    })
+
+    it('reports generic 4xx errors with the status', async () => {
+      const response = new Response('Not Found', {
+        status: 404,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+
+      await expect(unwrapResponse(response)).rejects.toMatchObject({
+        name: 'ApiRequestError',
+        status: 404,
+        message: i18n.global.t('request.httpError', { status: 404 }),
+      })
+    })
+  })
+
+  it('keeps "not valid JSON" only for success statuses with a malformed body', async () => {
+    const response = new Response('<html>unexpected</html>', { status: 200 })
+
+    await expect(unwrapResponse(response)).rejects.toMatchObject({
+      name: 'ApiRequestError',
+      status: 200,
+      message: i18n.global.t('request.invalidJson'),
+    })
+  })
+
+  describe('normalizeRequestError', () => {
+    it('passes business errors through unchanged', () => {
+      const businessError = new ApiRequestError('invalid credentials', { status: 401 })
+
+      expect(() => normalizeRequestError(businessError)).toThrow(businessError)
+    })
+
+    it('converts network-level failures into a localized message', () => {
+      expect(() => normalizeRequestError(new TypeError('Failed to fetch'))).toThrowError(
+        i18n.global.t('request.networkError'),
+      )
     })
   })
 })

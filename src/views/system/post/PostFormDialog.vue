@@ -148,19 +148,42 @@ defineExpose({
   >
     <Form ref="formRef" :model="form" :rules="rules" class="post-form">
       <FormItem :label="t('post.code')" name="code">
-        <Input v-model:value="form.code" :maxlength="64" show-count :disabled="mode === 'edit'" />
+        <Input
+          v-model:value="form.code"
+          :maxlength="64"
+          show-count
+          :disabled="mode === 'edit'"
+          :placeholder="t('post.codePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('post.name')" name="name">
-        <Input v-model:value="form.name" :maxlength="64" show-count />
+        <Input
+          v-model:value="form.name"
+          :maxlength="64"
+          show-count
+          :placeholder="t('post.namePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('post.sort')" name="sort">
-        <InputNumber v-model:value="form.sort" :min="0" :max="9999" class="w-full" />
+        <InputNumber
+          v-model:value="form.sort"
+          :min="0"
+          :max="9999"
+          class="w-full"
+          :placeholder="t('post.sortPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('post.description')" name="description">
-        <TextArea v-model:value="form.description" :rows="2" :maxlength="255" show-count />
+        <TextArea
+          v-model:value="form.description"
+          :rows="2"
+          :maxlength="255"
+          show-count
+          :placeholder="t('post.descriptionPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('post.enabled')" name="enabled">

@@ -214,5 +214,7 @@ async function handleDelete(row: Post): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 </style>

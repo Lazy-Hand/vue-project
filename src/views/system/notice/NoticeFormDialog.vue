@@ -152,11 +152,22 @@ defineExpose({
       :wrapper-col="{ span: 19 }"
     >
       <FormItem :label="t('notice.title')" name="title">
-        <Input v-model:value="form.title" :maxlength="255" show-count />
+        <Input
+          v-model:value="form.title"
+          :maxlength="255"
+          show-count
+          :placeholder="t('notice.titlePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('notice.content')" name="content">
-        <TextArea v-model:value="form.content" :rows="8" :maxlength="100000" show-count />
+        <TextArea
+          v-model:value="form.content"
+          :rows="8"
+          :maxlength="100000"
+          show-count
+          :placeholder="t('notice.contentPlaceholder')"
+        />
       </FormItem>
     </Form>
 

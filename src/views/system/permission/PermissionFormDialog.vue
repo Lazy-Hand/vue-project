@@ -247,6 +247,7 @@ defineExpose({
           class="w-full"
           :disabled="mode === 'edit'"
           :options="permissionTypeOptions"
+          :placeholder="t('permission.typePlaceholder')"
         />
       </FormItem>
 
@@ -262,15 +263,31 @@ defineExpose({
       </FormItem>
 
       <FormItem :label="t('permission.name')" name="name">
-        <Input v-model:value="form.name" :maxlength="64" show-count />
+        <Input
+          v-model:value="form.name"
+          :maxlength="64"
+          show-count
+          :placeholder="t('permission.namePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('permission.nameEn')" name="nameEn">
-        <Input v-model:value="form.nameEn" :maxlength="64" show-count />
+        <Input
+          v-model:value="form.nameEn"
+          :maxlength="64"
+          show-count
+          :placeholder="t('permission.nameEnPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('permission.code')" name="code">
-        <Input v-model:value="form.code" :maxlength="128" show-count :disabled="mode === 'edit'" />
+        <Input
+          v-model:value="form.code"
+          :maxlength="128"
+          show-count
+          :disabled="mode === 'edit'"
+          :placeholder="t('permission.codePlaceholder')"
+        />
       </FormItem>
 
       <FormItem v-if="showIconField" :label="t('permission.icon')" name="icon">
@@ -286,7 +303,13 @@ defineExpose({
       </FormItem>
 
       <FormItem :label="t('permission.sort')" name="sort">
-        <InputNumber v-model:value="form.sort" :min="0" :max="9999" controls />
+        <InputNumber
+          v-model:value="form.sort"
+          :min="0"
+          :max="9999"
+          controls
+          :placeholder="t('permission.sortPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('permission.enabled')" name="enabled">

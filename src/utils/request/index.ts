@@ -7,7 +7,7 @@ import { pinia } from '@/stores'
 import { useAppConfigStore } from '@/stores/app-config'
 import { useAuthStore } from '@/stores/auth'
 import type { AuthTokenData } from '@/types/auth'
-import { unwrapResponse, ApiRequestError } from './response'
+import { unwrapResponse, ApiRequestError, normalizeRequestError } from './response'
 
 export const authMeta = {
   visitor: { authRole: null },
@@ -77,6 +77,7 @@ const alovaInstance = createAlova({
   }),
   responded: onResponseRefreshToken({
     onSuccess: (response) => unwrapResponse(response),
+    onError: (error: unknown) => normalizeRequestError(error),
   }),
 })
 
@@ -116,6 +117,7 @@ const textAlovaInstance = createAlova({
       }
       return String(response)
     },
+    onError: (error: unknown) => normalizeRequestError(error),
   }),
 })
 

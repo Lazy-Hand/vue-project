@@ -1,5 +1,14 @@
 <script setup lang="ts" generic="T extends object = ProTableRow">
-import { computed, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  shallowRef,
+  useSlots,
+  watch,
+} from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Alert,
@@ -7,6 +16,7 @@ import {
   Checkbox,
   CheckboxGroup,
   Col,
+  Dropdown,
   Empty,
   Form,
   FormItem,
@@ -16,6 +26,7 @@ import {
   Row,
   Select,
   Spin,
+  Switch,
   Table,
   Tag,
   Space,
@@ -28,8 +39,12 @@ import {
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
+  ColumnHeightOutlined,
+  FullscreenExitOutlined,
+  FullscreenOutlined,
   HolderOutlined,
-  LoadingOutlined,
+  ProfileOutlined,
+  ReloadOutlined,
   SettingOutlined,
 } from '@antdv-next/icons'
 
@@ -72,6 +87,10 @@ interface Props {
   treeProps?: ProTableTreeProps
   showSearchActions?: boolean
   showColumnSetting?: boolean
+  showRefresh?: boolean
+  showDensity?: boolean
+  showFullscreen?: boolean
+  showSettings?: boolean
   searchCollapsible?: boolean
   searchCollapseThreshold?: number
   defaultSearchCollapsed?: boolean
@@ -118,6 +137,10 @@ const props = withDefaults(defineProps<Props>(), {
   treeProps: undefined,
   showSearchActions: true,
   showColumnSetting: true,
+  showRefresh: true,
+  showDensity: true,
+  showFullscreen: true,
+  showSettings: true,
   searchCollapsible: true,
   searchCollapseThreshold: 3,
   defaultSearchCollapsed: true,
@@ -139,6 +162,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const slots = useSlots()
 const dictStore = useDictStore(pinia)
 
 const dictFilterCodes = computed(() =>
@@ -176,6 +200,16 @@ const dragOverColumnKey = ref<string>()
 const expandedRowKeys = ref<Array<string | number>>([])
 const expandedRowsControlled = ref(false)
 
+const tableSize = ref<'large' | 'middle' | 'small'>('small')
+const isFullscreen = ref(false)
+const rootRef = ref<HTMLElement | null>(null)
+const tableWrapRef = ref<HTMLElement | null>(null)
+const tableScrollY = ref<number>()
+const tableSettingsVisible = ref(false)
+const tableBorder = ref(props.border)
+const tableStripe = ref(props.stripe)
+const showHeaderBackground = ref(true)
+
 const columnSourceHidden: Record<string, boolean> = {}
 
 let requestSequence = 0
@@ -206,6 +240,15 @@ const selectedDraftColumnKeys = computed<string[]>({
 })
 const draftVisibleColumnCount = computed(() => draftVisibleColumnKeys.value.length)
 const columnSettingAvailable = computed(() => props.showColumnSetting && props.columns.length > 0)
+const showToolbar = computed(
+  () =>
+    Boolean(slots['toolbar-actions']) ||
+    columnSettingAvailable.value ||
+    props.showRefresh ||
+    props.showDensity ||
+    props.showFullscreen ||
+    props.showSettings,
+)
 const visibleColumns = computed(() => {
   const columnMap = new Map(
     props.columns.map((column, index) => [columnKey(column, index), column] as const),
@@ -439,6 +482,44 @@ function setSearchCollapsed(collapsed: boolean): void {
 
 function toggleSearchCollapse(): void {
   setSearchCollapsed(!searchCollapsed.value)
+}
+
+const densityMenuItems = computed(() =>
+  (
+    [
+      ['large', t('proTable.densityDefault')],
+      ['middle', t('proTable.densityMiddle')],
+      ['small', t('proTable.densityCompact')],
+    ] as const
+  ).map(([key, label]) => ({ key, label })),
+)
+
+function handleDensityChange(info: { key: string | number }): void {
+  const key = String(info.key)
+  if (key === 'large' || key === 'middle' || key === 'small') tableSize.value = key
+}
+
+function toggleFullscreen(): void {
+  const element = rootRef.value
+  if (!element || typeof element.requestFullscreen !== 'function') return
+  if (document.fullscreenElement === element) {
+    void document.exitFullscreen()
+    return
+  }
+  void element.requestFullscreen()
+}
+
+function handleFullscreenChange(): void {
+  isFullscreen.value = document.fullscreenElement === rootRef.value
+}
+
+/** 表格容器垂直内边距（上 8px + 下 16px），计算滚动高度时扣除 */
+const TABLE_WRAP_PADDING_Y = 24
+
+function measureTableScrollY(): void {
+  const wrap = tableWrapRef.value
+  if (!wrap) return
+  tableScrollY.value = Math.max(0, wrap.clientHeight - TABLE_WRAP_PADDING_Y)
 }
 
 function setSearchValue(prop: string, value: ProTableSearchValue): void {
@@ -924,8 +1005,8 @@ const tableExpandable = computed(() => ({
 }))
 
 const tableScroll = computed(() => {
-  const value = props.maxHeight ?? props.height
-  return value === undefined ? undefined : { y: value }
+  const fixed = props.maxHeight ?? props.height
+  return { y: fixed ?? tableScrollY.value }
 })
 
 watch(
@@ -997,8 +1078,34 @@ watch(
   },
 )
 
+watch(
+  () => props.border,
+  (border) => {
+    tableBorder.value = border
+  },
+)
+
+watch(
+  () => props.stripe,
+  (stripe) => {
+    tableStripe.value = stripe
+  },
+)
+
+let tableResizeObserver: ResizeObserver | undefined
+
 onMounted(() => {
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  if (typeof ResizeObserver !== 'undefined') {
+    tableResizeObserver = new ResizeObserver(measureTableScrollY)
+    if (tableWrapRef.value) tableResizeObserver.observe(tableWrapRef.value)
+  }
   if (props.immediate) void loadData()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  tableResizeObserver?.disconnect()
 })
 
 watch(
@@ -1026,13 +1133,9 @@ defineExpose({
 </script>
 
 <template>
-  <div class="pro-table">
-    <div
-      v-if="searchFields.length || $slots['toolbar-actions'] || columnSettingAvailable"
-      class="pro-table__toolbar"
-    >
+  <div ref="rootRef" class="pro-table">
+    <div v-if="searchFields.length" class="pro-table__search-card">
       <Form
-        v-if="searchFields.length"
         layout="inline"
         :model="searchForm"
         class="pro-table__search"
@@ -1128,221 +1231,336 @@ defineExpose({
           </Col>
         </Row>
       </Form>
+    </div>
 
-      <div v-if="$slots['toolbar-actions'] || columnSettingAvailable" class="pro-table__actions">
-        <slot name="toolbar-actions" />
-        <Popover
-          v-if="columnSettingAvailable"
-          v-model:open="columnSettingVisible"
-          placement="bottomRight"
-          :classes="{ root: 'pro-table__column-setting-popover' }"
-          trigger="click"
-        >
-          <Button class="pro-table__column-setting-trigger">
-            <SettingOutlined />
-            {{ t('proTable.columnSetting') }}
+    <div class="pro-table__body-card">
+      <div v-if="showToolbar" class="pro-table__toolbar">
+        <div v-if="$slots['toolbar-actions']" class="pro-table__toolbar-left">
+          <slot name="toolbar-actions" />
+        </div>
+        <div class="pro-table__toolbar-spacer" />
+        <div class="pro-table__toolbar-right">
+          <Button
+            v-if="showRefresh"
+            class="pro-table__tool-btn"
+            :title="t('proTable.refresh')"
+            :aria-label="t('proTable.refresh')"
+            :loading="loading"
+            @click="loadData"
+          >
+            <ReloadOutlined />
           </Button>
+          <Dropdown
+            v-if="showDensity"
+            :menu="{
+              items: densityMenuItems,
+              selectedKeys: [tableSize],
+            }"
+            :trigger="['click']"
+            placement="bottomRight"
+            @menu-click="handleDensityChange"
+          >
+            <Button
+              class="pro-table__tool-btn"
+              :title="t('proTable.density')"
+              :aria-label="t('proTable.density')"
+            >
+              <ColumnHeightOutlined />
+            </Button>
+          </Dropdown>
+          <Button
+            v-if="showFullscreen"
+            class="pro-table__tool-btn"
+            :title="t(isFullscreen ? 'proTable.fullscreenExit' : 'proTable.fullscreen')"
+            :aria-label="t(isFullscreen ? 'proTable.fullscreenExit' : 'proTable.fullscreen')"
+            @click="toggleFullscreen"
+          >
+            <FullscreenExitOutlined v-if="isFullscreen" />
+            <FullscreenOutlined v-else />
+          </Button>
+          <Popover
+            v-if="columnSettingAvailable"
+            v-model:open="columnSettingVisible"
+            placement="bottomRight"
+            :classes="{ root: 'pro-table__column-setting-popover' }"
+            trigger="click"
+          >
+            <Button
+              class="pro-table__tool-btn"
+              :title="t('proTable.columnSetting')"
+              :aria-label="t('proTable.columnSetting')"
+            >
+              <ProfileOutlined />
+            </Button>
 
-          <template #content>
-            <div class="pro-table__column-setting">
-              <div class="pro-table__column-setting-header">
-                <div>
-                  <div class="pro-table__column-setting-title">
-                    {{ t('proTable.columnSetting') }}
-                  </div>
-                  <div class="pro-table__column-setting-summary" aria-live="polite">
-                    {{
-                      t('proTable.visibleColumns', {
-                        visible: draftVisibleColumnCount,
-                        total: draftColumnSettingItems.length,
-                      })
-                    }}
+            <template #content>
+              <div class="pro-table__column-setting">
+                <div class="pro-table__column-setting-header">
+                  <div>
+                    <div class="pro-table__column-setting-title">
+                      {{ t('proTable.columnSetting') }}
+                    </div>
+                    <div class="pro-table__column-setting-summary" aria-live="polite">
+                      {{
+                        t('proTable.visibleColumns', {
+                          visible: draftVisibleColumnCount,
+                          total: draftColumnSettingItems.length,
+                        })
+                      }}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <CheckboxGroup
-                v-model:value="selectedDraftColumnKeys"
-                class="pro-table__column-setting-list"
-              >
-                <div
-                  v-for="item in draftColumnSettingItems"
-                  :key="item.key"
-                  :class="[
-                    'pro-table__column-setting-option',
-                    {
-                      'is-dragging': draggedColumnKey === item.key,
-                      'is-drag-over': dragOverColumnKey === item.key,
-                    },
-                  ]"
-                  @dragenter.prevent="handleColumnDragEnter(item.key)"
-                  @dragover.prevent
-                  @drop.prevent="handleColumnDrop($event, item.key)"
+                <CheckboxGroup
+                  v-model:value="selectedDraftColumnKeys"
+                  class="pro-table__column-setting-list"
                 >
-                  <button
-                    type="button"
-                    class="pro-table__column-drag-handle"
-                    draggable="true"
-                    :aria-label="t('proTable.dragColumn', { label: item.label })"
-                    :title="t('proTable.dragColumn', { label: item.label })"
-                    @dragstart="handleColumnDragStart($event, item.key)"
-                    @dragend="handleColumnDragEnd"
-                    @keydown.up.prevent="moveDraftColumn(item.key, -1)"
-                    @keydown.down.prevent="moveDraftColumn(item.key, 1)"
+                  <div
+                    v-for="item in draftColumnSettingItems"
+                    :key="item.key"
+                    :class="[
+                      'pro-table__column-setting-option',
+                      {
+                        'is-dragging': draggedColumnKey === item.key,
+                        'is-drag-over': dragOverColumnKey === item.key,
+                      },
+                    ]"
+                    @dragenter.prevent="handleColumnDragEnter(item.key)"
+                    @dragover.prevent
+                    @drop.prevent="handleColumnDrop($event, item.key)"
                   >
-                    <HolderOutlined class="pro-table__column-drag-icon" />
-                  </button>
-                  <Checkbox
-                    :value="item.key"
-                    :disabled="item.visible && draftVisibleColumnCount === 1"
-                    class="pro-table__column-setting-checkbox"
+                    <button
+                      type="button"
+                      class="pro-table__column-drag-handle"
+                      draggable="true"
+                      :aria-label="t('proTable.dragColumn', { label: item.label })"
+                      :title="t('proTable.dragColumn', { label: item.label })"
+                      @dragstart="handleColumnDragStart($event, item.key)"
+                      @dragend="handleColumnDragEnd"
+                      @keydown.up.prevent="moveDraftColumn(item.key, -1)"
+                      @keydown.down.prevent="moveDraftColumn(item.key, 1)"
+                    >
+                      <HolderOutlined class="pro-table__column-drag-icon" />
+                    </button>
+                    <Checkbox
+                      :value="item.key"
+                      :disabled="item.visible && draftVisibleColumnCount === 1"
+                      class="pro-table__column-setting-checkbox"
+                    >
+                      {{ item.label }}
+                    </Checkbox>
+                  </div>
+                </CheckboxGroup>
+
+                <div class="pro-table__column-setting-footer">
+                  <Button class="pro-table__column-setting-reset" @click="resetColumnSettings">
+                    {{ t('proTable.resetColumns') }}
+                  </Button>
+                  <Button
+                    type="primary"
+                    class="pro-table__column-setting-save"
+                    @click="saveColumnSettings"
                   >
-                    {{ item.label }}
-                  </Checkbox>
+                    {{ t('proTable.saveColumns') }}
+                  </Button>
                 </div>
-              </CheckboxGroup>
-
-              <div class="pro-table__column-setting-footer">
-                <Button class="pro-table__column-setting-reset" @click="resetColumnSettings">
-                  {{ t('proTable.resetColumns') }}
-                </Button>
-                <Button
-                  type="primary"
-                  class="pro-table__column-setting-save"
-                  @click="saveColumnSettings"
-                >
-                  {{ t('proTable.saveColumns') }}
-                </Button>
               </div>
-            </div>
-          </template>
-        </Popover>
-      </div>
-    </div>
-
-    <slot
-      v-if="requestFailed && showRequestError"
-      name="request-error"
-      :error="lastRequestError"
-      :retry="loadData"
-    >
-      <Alert :message="t('proTable.requestFailed')" type="error" show-icon />
-    </slot>
-
-    <div class="pro-table__table-wrap" :aria-busy="loading">
-      <Spin :spinning="loading">
-        <Table
-          :data-source="tableData"
-          :columns="tableColumns"
-          :row-key="rowKey"
-          :bordered="border"
-          :show-header="showHeader"
-          :row-selection="tableRowSelection"
-          :scroll="tableScroll"
-          :expandable="tableExpandable"
-          :pagination="false"
-          size="small"
-          :class="['pro-table__table', { 'pro-table__table--stripe': stripe }]"
-          :row-class-name="getRowClassName"
-          @change="onTableChange"
-          :on-row="getRowProps"
-        >
-          <template #headerCell="{ column: tableColumn, index }">
-            <slot
-              v-if="tableColumnConfig(tableColumn.key)?.headerSlot"
-              :name="`header-${tableColumnConfig(tableColumn.key)?.headerSlot}`"
-              :column="tableColumn"
-              :index="index"
-              :config="tableColumnConfig(tableColumn.key)"
-            />
-            <span v-else>
-              <template v-if="typeof tableColumn.title === 'string'">
-                {{ tableColumn.title }}
-              </template>
-              <component :is="tableColumn.title" v-else />
-            </span>
-          </template>
-          <template #bodyCell="{ column: tableColumn, record, index }">
-            <template v-if="tableColumnConfig(tableColumn.key)">
-              <slot
-                v-if="
-                  tableColumnConfig(tableColumn.key)?.type === 'slot' &&
-                  tableColumnConfig(tableColumn.key)?.slot
-                "
-                :name="`column-${tableColumnConfig(tableColumn.key)?.slot}`"
-                :row="record"
-                :index="index"
-                :column="tableColumnConfig(tableColumn.key)"
-              />
-              <DictTag
-                v-else-if="
-                  tableColumnConfig(tableColumn.key)?.type === 'dict' &&
-                  tableColumnConfig(tableColumn.key)?.dictTypeCode
-                "
-                :type-code="tableColumnConfig(tableColumn.key)?.dictTypeCode ?? ''"
-                :value="dictValue(record, tableColumnConfig(tableColumn.key)?.prop)"
-                :tag-type-map="tableColumnConfig(tableColumn.key)?.tagTypeMap"
-              />
-              <Tag
-                v-else-if="tableColumnConfig(tableColumn.key)?.type === 'tag'"
-                :color="tagColor(record, tableColumnConfig(tableColumn.key)!)"
-              >
-                {{ tagLabel(record, tableColumnConfig(tableColumn.key)!, index) }}
-              </Tag>
-              <span v-else-if="tableColumnConfig(tableColumn.key)?.type === 'index'">
-                {{ indexValue(tableColumnConfig(tableColumn.key)!, index) }}
-              </span>
-              <span v-else>{{
-                formatCell(record, tableColumnConfig(tableColumn.key)!, index)
-              }}</span>
             </template>
-          </template>
-          <template #emptyText>
-            <slot name="empty"><Empty :description="resolvedEmptyText" /></slot>
-          </template>
-        </Table>
-      </Spin>
+          </Popover>
+          <Popover
+            v-if="showSettings"
+            v-model:open="tableSettingsVisible"
+            placement="bottomRight"
+            :classes="{ root: 'pro-table__settings-popover' }"
+            trigger="click"
+          >
+            <Button
+              class="pro-table__tool-btn"
+              :title="t('proTable.settings')"
+              :aria-label="t('proTable.settings')"
+            >
+              <SettingOutlined />
+            </Button>
 
-      <div v-if="$slots.append" class="pro-table__append">
-        <slot name="append" />
+            <template #content>
+              <div class="pro-table__settings">
+                <div class="pro-table__settings-title">{{ t('proTable.settings') }}</div>
+                <div class="pro-table__settings-item">
+                  <span>{{ t('proTable.settingsStripe') }}</span>
+                  <Switch v-model:checked="tableStripe" size="small" />
+                </div>
+                <div class="pro-table__settings-item">
+                  <span>{{ t('proTable.settingsBorder') }}</span>
+                  <Switch v-model:checked="tableBorder" size="small" />
+                </div>
+                <div class="pro-table__settings-item">
+                  <span>{{ t('proTable.settingsHeaderBackground') }}</span>
+                  <Switch v-model:checked="showHeaderBackground" size="small" />
+                </div>
+              </div>
+            </template>
+          </Popover>
+        </div>
       </div>
 
-      <div v-if="loading" class="pro-table__loading" role="status">
-        <LoadingOutlined spin />
-        <span>{{ t('proTable.loading') }}</span>
-      </div>
-    </div>
-
-    <div v-if="paginationEnabled" class="pro-table__pagination">
-      <Pagination
-        v-model:current="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :page-size-options="pageSizes"
-        :show-size-changer="pageSizes.length > 1"
-        :hide-on-single-page="hidePaginationOnSinglePage"
-        size="small"
-        @change="handlePageChange"
-        @show-size-change="handleSizeChange"
+      <slot
+        v-if="requestFailed && showRequestError"
+        name="request-error"
+        :error="lastRequestError"
+        :retry="loadData"
       >
-        <template #showTotal="{ total: count }">{{ count }}</template>
-      </Pagination>
+        <Alert :message="t('proTable.requestFailed')" type="error" show-icon />
+      </slot>
+
+      <div ref="tableWrapRef" class="pro-table__table-wrap" :aria-busy="loading">
+        <Spin :spinning="loading">
+          <Table
+            :data-source="tableData"
+            :columns="tableColumns"
+            :row-key="rowKey"
+            :bordered="tableBorder"
+            :show-header="showHeader"
+            :row-selection="tableRowSelection"
+            :scroll="tableScroll"
+            :expandable="tableExpandable"
+            :pagination="false"
+            :size="tableSize"
+            :class="[
+              'pro-table__table',
+              {
+                'pro-table__table--stripe': tableStripe,
+                'pro-table__table--no-header-bg': !showHeaderBackground,
+              },
+            ]"
+            :row-class-name="getRowClassName"
+            @change="onTableChange"
+            :on-row="getRowProps"
+          >
+            <template #headerCell="{ column: tableColumn, index }">
+              <slot
+                v-if="tableColumnConfig(tableColumn.key)?.headerSlot"
+                :name="`header-${tableColumnConfig(tableColumn.key)?.headerSlot}`"
+                :column="tableColumn"
+                :index="index"
+                :config="tableColumnConfig(tableColumn.key)"
+              />
+              <span v-else>
+                <template v-if="typeof tableColumn.title === 'string'">
+                  {{ tableColumn.title }}
+                </template>
+                <component :is="tableColumn.title" v-else />
+              </span>
+            </template>
+            <template #bodyCell="{ column: tableColumn, record, index }">
+              <template v-if="tableColumnConfig(tableColumn.key)">
+                <slot
+                  v-if="
+                    tableColumnConfig(tableColumn.key)?.type === 'slot' &&
+                    tableColumnConfig(tableColumn.key)?.slot
+                  "
+                  :name="`column-${tableColumnConfig(tableColumn.key)?.slot}`"
+                  :row="record"
+                  :index="index"
+                  :column="tableColumnConfig(tableColumn.key)"
+                />
+                <DictTag
+                  v-else-if="
+                    tableColumnConfig(tableColumn.key)?.type === 'dict' &&
+                    tableColumnConfig(tableColumn.key)?.dictTypeCode
+                  "
+                  :type-code="tableColumnConfig(tableColumn.key)?.dictTypeCode ?? ''"
+                  :value="dictValue(record, tableColumnConfig(tableColumn.key)?.prop)"
+                  :tag-type-map="tableColumnConfig(tableColumn.key)?.tagTypeMap"
+                />
+                <Tag
+                  v-else-if="tableColumnConfig(tableColumn.key)?.type === 'tag'"
+                  :color="tagColor(record, tableColumnConfig(tableColumn.key)!)"
+                >
+                  {{ tagLabel(record, tableColumnConfig(tableColumn.key)!, index) }}
+                </Tag>
+                <span v-else-if="tableColumnConfig(tableColumn.key)?.type === 'index'">
+                  {{ indexValue(tableColumnConfig(tableColumn.key)!, index) }}
+                </span>
+                <span v-else>{{
+                  formatCell(record, tableColumnConfig(tableColumn.key)!, index)
+                }}</span>
+              </template>
+            </template>
+            <template #emptyText>
+              <slot name="empty"><Empty :description="resolvedEmptyText" /></slot>
+            </template>
+          </Table>
+        </Spin>
+
+        <div v-if="$slots.append" class="pro-table__append">
+          <slot name="append" />
+        </div>
+      </div>
+
+      <div v-if="paginationEnabled" class="pro-table__pagination">
+        <Pagination
+          v-model:current="page"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-size-options="pageSizes"
+          :show-size-changer="pageSizes.length > 1"
+          :hide-on-single-page="hidePaginationOnSinglePage"
+          size="small"
+          @change="handlePageChange"
+          @show-size-change="handleSizeChange"
+        >
+          <template #showTotal="{ total: count }">{{ count }}</template>
+        </Pagination>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
 .pro-table {
+  /* 撑满父级剩余高度，表格内部滚动（由父级高度链路配合） */
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pro-table__search-card {
+  margin-bottom: 16px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 4%),
+    0 4px 12px rgb(0 0 0 / 4%);
+}
+
+.pro-table__body-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 4%),
+    0 4px 12px rgb(0 0 0 / 4%);
+  overflow: hidden;
+}
+
+.pro-table:fullscreen {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  padding: 16px;
+  background: var(--app-fill-color);
+  overflow: auto;
 }
 
-.pro-table__toolbar {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
+.pro-table:fullscreen .pro-table__search-card {
+  margin-bottom: 0;
 }
 
 .pro-table__search {
@@ -1357,7 +1575,7 @@ defineExpose({
   min-width: 0;
 }
 
-/* 栅格列内 FormItem 撑满列宽，label 与控件同行 */
+/* 栅格列内 FormItem 撑满列宽，label 固定宽度右对齐，保证各查询控件起点一致 */
 .pro-table__search-item {
   display: flex;
   width: 100%;
@@ -1369,12 +1587,23 @@ defineExpose({
   }
 
   :deep(.ant-form-item-label) {
-    min-width: 72px;
-    padding-right: 12px;
+    flex: none;
+    width: 88px;
+    padding-right: 8px;
+    overflow: hidden;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  :deep(.ant-form-item-label label) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   :deep(.ant-form-item-control) {
     flex: 1;
+    min-width: 0;
   }
 }
 
@@ -1391,12 +1620,42 @@ defineExpose({
   margin-bottom: 0;
 }
 
-.pro-table__actions {
+.pro-table__toolbar {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--app-border-color-lighter);
+}
+
+.pro-table__toolbar-left {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
+}
+
+.pro-table__toolbar-spacer {
+  flex: 1;
+}
+
+.pro-table__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pro-table__tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--app-text-color-secondary);
+}
+
+.pro-table__tool-btn:hover {
+  color: var(--app-color-primary);
 }
 
 .pro-table__column-setting {
@@ -1515,8 +1774,43 @@ defineExpose({
   border-top: 1px solid var(--app-border-color-lighter);
 }
 
+.pro-table__settings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 220px;
+}
+
+.pro-table__settings-title {
+  padding-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--app-text-color-primary);
+  border-bottom: 1px solid var(--app-border-color-lighter);
+}
+
+.pro-table__settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--app-text-color-primary);
+}
+
 .pro-table__table {
   width: 100%;
+}
+
+/* 表头浅灰背景，干净简洁 */
+.pro-table__table :deep(.ant-table-thead > tr > th) {
+  background: var(--app-fill-color-lighter);
+}
+
+.pro-table__table--no-header-bg :deep(.ant-table-thead > tr > th) {
+  background: transparent;
 }
 
 .pro-table__table--stripe :deep(.ant-table-tbody > tr:nth-child(even) > td) {
@@ -1528,40 +1822,29 @@ defineExpose({
 }
 
 .pro-table__table-wrap {
-  position: relative;
-}
-
-.pro-table__loading {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--app-color-primary);
-  pointer-events: none;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 20px 16px;
 }
 
 .pro-table__pagination {
   display: flex;
   justify-content: flex-end;
   overflow-x: auto;
+  padding: 16px 20px;
+  border-top: 1px solid var(--app-border-color-lighter);
 }
 
 @media (width <= 768px) {
-  .pro-table__toolbar,
-  .pro-table__search {
-    align-items: stretch;
+  .pro-table__toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .pro-table__search,
   .pro-table__search-item,
   .pro-table__field {
-    width: 100%;
-  }
-
-  .pro-table__actions {
     width: 100%;
   }
 

@@ -101,6 +101,30 @@ async function handleCreated(): Promise<void> {
 
 `UserRow` 会从 `request`、`columns` 传递到列插槽和组件实例方法，因此 `row`、`formatter`、选中行都保留业务类型。
 
+## 布局与工具栏
+
+组件采用卡片式布局：搜索区与表格区各自为独立卡片（白底、圆角、微阴影），卡片间距 16px。表格卡片内部自上而下为工具栏、表格、分页。
+
+ProTable 默认撑满页面可用高度（页面外壳需设置为 `height: 100%`）：表头固定在顶部、分页固定在底部，表格数据在表内垂直滚动，页面本身不整页滚动。可用高度会随窗口缩放与全屏切换自动重测。不想铺满时可通过 `height` / `maxHeight` 指定固定或最大高度。
+
+工具栏左侧是 `toolbar-actions` 插槽（新增、删除等业务操作），右侧为工具按钮：
+
+| 按钮 | 说明 |
+| --- | --- |
+| 刷新 | 使用当前查询参数重新请求；加载期间按钮自身显示加载态 |
+| 密度 | 切换表格行高：默认 / 中等 / 紧凑，实时生效，初始为紧凑（`small`） |
+| 全屏 | 将整个 ProTable（含搜索区与表格）切换为全屏，再次点击或按 `Esc` 退出 |
+| 列设置 | 显隐与排序列，见「列设置」，受 `showColumnSetting` 控制 |
+| 设置 | 切换斑马纹、边框、表头背景等显示选项 |
+
+每个工具按钮都有独立的显示开关，默认全部开启：`showRefresh`、`showDensity`、`showFullscreen`、`showSettings`、`showColumnSetting`。当工具栏上没有 `toolbar-actions` 且所有工具按钮都被关闭时，工具栏整行不渲染。
+
+加载状态统一由表格上的 Spin 遮罩呈现；刷新按钮的加载态只是按钮自身的反馈，不阻塞页面其他操作。
+
+“设置”面板里的斑马纹、边框、表头背景开关只作用于当前组件实例，实时生效；页面通过 `:stripe`、`:border` 传入的初始值会与面板状态同步。
+
+全屏使用浏览器 Fullscreen API，作用于整个 ProTable（搜索区与表格区一起全屏，查询条件始终可用）；不支持该 API 的环境下按钮无任何操作。组件卸载时会自动清理全屏状态监听。
+
 ## 请求约定
 
 `request` 每次接收 `ProTableRequestParams`：
@@ -147,8 +171,8 @@ rows
 | `clientFilter`            | `(items, params) => items`                      | -                | 对本次响应做客户端过滤                           |
 | `border`                  | `boolean`                                       | `false`          | 是否显示纵向边框                                 |
 | `stripe`                  | `boolean`                                       | `false`          | 是否显示斑马纹                                   |
-| `height`                  | `string \| number`                              | -                | 表格固定高度                                     |
-| `maxHeight`               | `string \| number`                              | -                | 表格最大高度                                     |
+| `height`                  | `string \| number`                              | -                | 表格固定高度；传入后覆盖默认的铺满自适应     |
+| `maxHeight`               | `string \| number`                              | -                | 表格最大高度；传入后覆盖默认的铺满自适应     |
 | `showHeader`              | `boolean`                                       | `true`           | 是否显示表头                                     |
 | `highlightCurrentRow`     | `boolean`                                       | `false`          | 是否高亮当前行                                   |
 | `currentRowKey`           | `string \| number`                              | -                | 当前行的 key                                     |
@@ -156,6 +180,10 @@ rows
 | `treeProps`               | `ProTableTreeProps`                             | -                | 树节点字段配置                                   |
 | `showSearchActions`       | `boolean`                                       | `true`           | 是否显示查询和重置区域                           |
 | `showColumnSetting`       | `boolean`                                       | `true`           | 是否显示列设置入口                               |
+| `showRefresh`             | `boolean`                                       | `true`           | 是否显示刷新按钮                                 |
+| `showDensity`             | `boolean`                                       | `true`           | 是否显示密度按钮                                 |
+| `showFullscreen`          | `boolean`                                       | `true`           | 是否显示全屏按钮                                 |
+| `showSettings`            | `boolean`                                       | `true`           | 是否显示设置按钮（斑马纹/边框/表头背景）         |
 | `searchCollapsible`       | `boolean`                                       | `true`           | 查询条件超出阈值时是否允许折叠                   |
 | `searchCollapseThreshold` | `number`                                        | `3`              | 折叠状态下显示的查询项数量                       |
 | `defaultSearchCollapsed`  | `boolean`                                       | `true`           | 查询条件是否默认折叠                             |
@@ -285,7 +313,7 @@ const searchFields = computed<ProTableSearchField[]>(() => [
 
 ### 列设置
 
-列设置默认显示在 `toolbar-actions` 所在操作行的右侧。用户可以拖动列名调整顺序，也可以勾选显示列、隐藏列或按 `columns[].hidden` 重置初始状态；至少保留一列可见。
+列设置默认显示在表格工具栏右侧，与刷新、密度、全屏等工具按钮并排。用户可以拖动列名调整顺序，也可以勾选显示列、隐藏列或按 `columns[].hidden` 重置初始状态；至少保留一列可见。
 
 拖动、显隐和重置操作只修改弹窗内的草稿，点击“保存”后才会统一应用到表格；直接关闭弹窗会放弃未保存修改。设置仅作用于当前组件实例，组件重新挂载后恢复列配置的初始状态。拖动把手获得焦点后，也可以使用方向键上、下调整顺序。
 
@@ -363,7 +391,7 @@ const userActions = computed<ProTableAction<UserRow>[]>(() => [
 
 | 插槽              | 参数                                                                       | 说明                   |
 | ----------------- | -------------------------------------------------------------------------- | ---------------------- |
-| `toolbar-actions` | -                                                                          | 表格右上角业务操作     |
+| `toolbar-actions` | -                                                                          | 表格工具栏左侧业务操作按钮   |
 | `search-actions`  | `search`、`reset`、`loading`、`collapsible`、`collapsed`、`toggleCollapse` | 替换默认查询/重置按钮  |
 | `search-{name}`   | `field`、`modelValue`、`setValue`、`search`                                | 自定义查询控件         |
 | `column-{name}`   | `row`、`index`、`column`                                                   | 自定义单元格           |

@@ -179,19 +179,40 @@ defineExpose({
       :wrapper-col="{ span: 19 }"
     >
       <FormItem :label="t('config.key')" name="key">
-        <Input v-model:value="form.key" :maxlength="128" show-count :disabled="mode === 'edit'" />
+        <Input
+          v-model:value="form.key"
+          :maxlength="128"
+          show-count
+          :disabled="mode === 'edit'"
+          :placeholder="t('config.keyPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('config.name')" name="name">
-        <Input v-model:value="form.name" :maxlength="64" show-count />
+        <Input
+          v-model:value="form.name"
+          :maxlength="64"
+          show-count
+          :placeholder="t('config.namePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('config.value')" name="value">
-        <TextArea v-model:value="form.value" :rows="3" />
+        <TextArea
+          v-model:value="form.value"
+          :rows="3"
+          :placeholder="t('config.valuePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('config.description')" name="description">
-        <TextArea v-model:value="form.description" :rows="2" :maxlength="255" show-count />
+        <TextArea
+          v-model:value="form.description"
+          :rows="2"
+          :maxlength="255"
+          show-count
+          :placeholder="t('config.descriptionPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('config.enabled')" name="enabled">

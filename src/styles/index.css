@@ -4,6 +4,16 @@
 
 :root {
   --app-color-primary: #409eff;
+  --app-color-primary-light-5: #79bbff;
+  --app-color-primary-light-9: #ecf5ff;
+  --app-text-color-primary: #303133;
+  --app-text-color-secondary: #909399;
+  --app-border-color: #dcdfe6;
+  --app-border-color-light: #e4e7ed;
+  --app-border-color-lighter: #ebeef5;
+  --app-fill-color: #f0f2f5;
+  --app-fill-color-light: #f5f7fa;
+  --app-fill-color-lighter: #fafafa;
 }
 
 html,

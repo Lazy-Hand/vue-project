@@ -234,15 +234,27 @@ defineExpose({
           :maxlength="64"
           show-count
           :disabled="isSuperAdmin || mode === 'edit'"
+          :placeholder="t('role.codePlaceholder')"
         />
       </FormItem>
 
       <FormItem :label="t('role.name')" name="name">
-        <Input v-model:value="form.name" :maxlength="64" show-count />
+        <Input
+          v-model:value="form.name"
+          :maxlength="64"
+          show-count
+          :placeholder="t('role.namePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('role.description')" name="description">
-        <TextArea v-model:value="form.description" :rows="2" :maxlength="255" show-count />
+        <TextArea
+          v-model:value="form.description"
+          :rows="2"
+          :maxlength="255"
+          show-count
+          :placeholder="t('role.descriptionPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('role.dataScope')" name="dataScope">
@@ -251,6 +263,7 @@ defineExpose({
           class="w-full"
           :disabled="isSuperAdmin"
           :options="dataScopeOptions"
+          :placeholder="t('role.dataScopePlaceholder')"
         />
       </FormItem>
 
@@ -269,7 +282,12 @@ defineExpose({
       </FormItem>
 
       <FormItem :label="t('role.sort')" name="sort">
-        <InputNumber v-model:value="form.sort" :min="0" :max="9999" />
+        <InputNumber
+          v-model:value="form.sort"
+          :min="0"
+          :max="9999"
+          :placeholder="t('role.sortPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('role.enabled')" name="enabled">

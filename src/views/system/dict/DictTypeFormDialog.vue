@@ -111,19 +111,34 @@ defineExpose({
   <Modal v-model:open="visible" :title="title" width="520px" destroy-on-hidden>
     <Form ref="formRef" :model="form" :rules="rules" class="dict-type-form">
       <FormItem :label="t('dict.typeCode')" name="code">
-        <Input v-model:value="form.code" :maxlength="64" :disabled="mode === 'edit'" />
+        <Input
+          v-model:value="form.code"
+          :maxlength="64"
+          :disabled="mode === 'edit'"
+          :placeholder="t('dict.typeCodePlaceholder')"
+        />
       </FormItem>
       <FormItem :label="t('dict.typeName')" name="name">
-        <Input v-model:value="form.name" :maxlength="64" />
+        <Input
+          v-model:value="form.name"
+          :maxlength="64"
+          :placeholder="t('dict.typeNamePlaceholder')"
+        />
       </FormItem>
       <FormItem :label="t('dict.description')" name="description">
-        <TextArea v-model:value="form.description" :rows="2" :maxlength="255" />
+        <TextArea
+          v-model:value="form.description"
+          :rows="2"
+          :maxlength="255"
+          :placeholder="t('dict.descriptionPlaceholder')"
+        />
       </FormItem>
       <FormItem :label="t('dict.enabled')" name="enabled">
         <DictSelect
           v-model="enabledValue"
           :type-code="DICT_CODES.COMMON_STATUS"
           :clearable="false"
+          :placeholder="t('dict.enabledPlaceholder')"
         />
       </FormItem>
     </Form>

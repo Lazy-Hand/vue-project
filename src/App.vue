@@ -17,7 +17,7 @@ const theme = computed<ThemeConfig>(() => ({
 </script>
 
 <template>
-  <ConfigProvider :locale="antdLocale" :theme="theme" component-size="small">
+  <ConfigProvider :locale="antdLocale" :theme="theme">
     <RouterView />
   </ConfigProvider>
 </template>

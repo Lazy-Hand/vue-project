@@ -345,6 +345,8 @@ function handleDateRangeChange(
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .log-page__date-range {

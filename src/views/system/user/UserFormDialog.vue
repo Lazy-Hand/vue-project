@@ -298,11 +298,20 @@ defineExpose({
   >
     <Form ref="formRef" :model="form" :rules="rules" class="user-form">
       <FormItem :label="t('user.username')" name="username">
-        <Input v-model:value="form.username" :maxlength="255" :disabled="mode === 'edit'" />
+        <Input
+          v-model:value="form.username"
+          :maxlength="255"
+          :disabled="mode === 'edit'"
+          :placeholder="t('user.usernamePlaceholder')"
+        />
       </FormItem>
 
       <FormItem v-if="mode === 'create'" :label="t('user.password')" name="password">
-        <InputPassword v-model:value="form.password" :maxlength="72" />
+        <InputPassword
+          v-model:value="form.password"
+          :maxlength="72"
+          :placeholder="t('user.passwordPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('user.avatar')" name="avatar">
@@ -334,15 +343,27 @@ defineExpose({
       </FormItem>
 
       <FormItem :label="t('user.nickname')" name="nickname">
-        <Input v-model:value="form.nickname" :maxlength="64" />
+        <Input
+          v-model:value="form.nickname"
+          :maxlength="64"
+          :placeholder="t('user.nicknamePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('user.email')" name="email">
-        <Input v-model:value="form.email" :maxlength="255" />
+        <Input
+          v-model:value="form.email"
+          :maxlength="255"
+          :placeholder="t('user.emailPlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('user.phone')" name="phone">
-        <Input v-model:value="form.phone" :maxlength="255" />
+        <Input
+          v-model:value="form.phone"
+          :maxlength="255"
+          :placeholder="t('user.phonePlaceholder')"
+        />
       </FormItem>
 
       <FormItem :label="t('user.dept')" name="deptId">

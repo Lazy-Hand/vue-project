@@ -87,10 +87,18 @@ defineExpose({
   <Modal v-model:open="visible" :title="title" width="480px" destroy-on-hidden>
     <Form ref="formRef" :model="form" :rules="rules" class="user-reset-password-form">
       <FormItem :label="t('user.newPassword')" name="password">
-        <InputPassword v-model:value="form.password" :maxlength="72" />
+        <InputPassword
+          v-model:value="form.password"
+          :maxlength="72"
+          :placeholder="t('user.newPasswordPlaceholder')"
+        />
       </FormItem>
       <FormItem :label="t('user.confirmPassword')" name="confirmPassword">
-        <InputPassword v-model:value="form.confirmPassword" :maxlength="72" />
+        <InputPassword
+          v-model:value="form.confirmPassword"
+          :maxlength="72"
+          :placeholder="t('user.confirmPasswordPlaceholder')"
+        />
       </FormItem>
     </Form>
 
