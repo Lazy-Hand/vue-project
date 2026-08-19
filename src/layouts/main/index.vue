@@ -1,22 +1,46 @@
 <script setup lang="ts">
-import { computed, h } from 'vue'
+import { computed, h, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
-import { Avatar, Dropdown, Layout, LayoutContent, LayoutHeader, LayoutSider } from 'antdv-next'
-import { LogoutOutlined, UserOutlined } from '@antdv-next/icons'
+import { useRouter } from 'vue-router'
+import {
+  Avatar,
+  Button,
+  Dropdown,
+  Layout,
+  LayoutContent,
+  LayoutHeader,
+  LayoutSider,
+} from 'antdv-next'
+import {
+  FullscreenExitOutlined,
+  FullscreenOutlined,
+  LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  UserOutlined,
+} from '@antdv-next/icons'
 
 import { buildFileUrl } from '@/api/file'
 import { logoutAuth } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import AccountSetSwitcher from './AccountSetSwitcher.vue'
 import AppConfigControls from './AppConfigControls.vue'
+import LayoutBreadcrumb from './Breadcrumb.vue'
 import LayoutMenu from './Menu.vue'
+import MenuSearchDialog from './MenuSearchDialog.vue'
 import NoticeBell from './NoticeBell.vue'
 
 const { t } = useI18n()
-const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+const collapsed = ref(false)
+const isFullscreen = ref(false)
+const searchOpen = ref(false)
+const routerAlive = ref(true)
+const isRefreshing = ref(false)
 
 const displayName = computed(
   () => authStore.user?.nickname || authStore.user?.username || t('common.user'),
@@ -42,6 +66,33 @@ const userMenuItems = computed(() => [
   },
 ])
 
+function toggleCollapse() {
+  collapsed.value = !collapsed.value
+}
+
+async function handleRefresh() {
+  if (isRefreshing.value) return
+  isRefreshing.value = true
+  routerAlive.value = false
+  await nextTick()
+  routerAlive.value = true
+  setTimeout(() => {
+    isRefreshing.value = false
+  }, 500)
+}
+
+function handleFullscreenChange() {
+  isFullscreen.value = Boolean(document.fullscreenElement)
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    void document.documentElement.requestFullscreen().catch(() => {})
+  } else {
+    void document.exitFullscreen().catch(() => {})
+  }
+}
+
 async function handleLogout() {
   await logoutAuth()
   await router.replace('/login')
@@ -49,29 +100,97 @@ async function handleLogout() {
 
 function handleUserMenuClick({ key }: { key: string }) {
   if (key === 'logout') {
-    handleLogout()
+    void handleLogout()
   } else if (key === 'profile') {
-    router.push('/profile')
+    void router.push('/profile')
   }
 }
+
+onMounted(() => {
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+})
 </script>
 
 <template>
   <Layout class="main-layout">
-    <LayoutSider :width="220" theme="light" class="main-aside">
-      <div class="brand">{{ t('common.appName') }}</div>
+    <LayoutSider
+      :width="220"
+      :collapsed-width="64"
+      :collapsed="collapsed"
+      :trigger="null"
+      collapsible
+      theme="light"
+      class="main-aside"
+    >
+      <div class="brand" :class="{ 'is-collapsed': collapsed }">
+        <div class="brand-logo">V</div>
+        <span v-show="!collapsed" class="brand-title">{{ t('common.appName') }}</span>
+      </div>
       <div class="main-aside__menu">
-        <LayoutMenu />
+        <LayoutMenu :collapsed="collapsed" />
       </div>
     </LayoutSider>
 
     <Layout class="main-body">
       <LayoutHeader class="main-header">
-        <div class="header-title">{{ route.meta.title || t('common.console') }}</div>
+        <div class="header-left">
+          <Button
+            type="text"
+            class="header-icon-btn"
+            :title="collapsed ? t('layout.expand') : t('layout.collapse')"
+            :aria-label="collapsed ? t('layout.expand') : t('layout.collapse')"
+            @click="toggleCollapse"
+          >
+            <MenuUnfoldOutlined v-if="collapsed" />
+            <MenuFoldOutlined v-else />
+          </Button>
+
+          <Button
+            type="text"
+            class="header-icon-btn"
+            :class="{ 'is-spinning': isRefreshing }"
+            :title="t('layout.refresh')"
+            :aria-label="t('layout.refresh')"
+            @click="handleRefresh"
+          >
+            <ReloadOutlined />
+          </Button>
+
+          <div class="header-divider" />
+
+          <LayoutBreadcrumb />
+        </div>
+
         <div class="header-actions">
+          <Button
+            type="text"
+            class="header-icon-btn"
+            :title="`${t('layout.searchMenu')} (⌘K)`"
+            :aria-label="t('layout.searchMenu')"
+            @click="searchOpen = true"
+          >
+            <SearchOutlined />
+          </Button>
+
+          <Button
+            type="text"
+            class="header-icon-btn"
+            :title="isFullscreen ? t('layout.fullscreenExit') : t('layout.fullscreen')"
+            :aria-label="isFullscreen ? t('layout.fullscreenExit') : t('layout.fullscreen')"
+            @click="toggleFullscreen"
+          >
+            <FullscreenExitOutlined v-if="isFullscreen" />
+            <FullscreenOutlined v-else />
+          </Button>
+
           <AccountSetSwitcher />
           <NoticeBell />
           <AppConfigControls />
+
           <Dropdown
             :menu="{ items: userMenuItems }"
             :trigger="['click']"
@@ -89,10 +208,13 @@ function handleUserMenuClick({ key }: { key: string }) {
           </Dropdown>
         </div>
       </LayoutHeader>
+
       <LayoutContent class="main-content">
-        <RouterView />
+        <RouterView v-if="routerAlive" />
       </LayoutContent>
     </Layout>
+
+    <MenuSearchDialog v-model:open="searchOpen" />
   </Layout>
 </template>
 
@@ -110,6 +232,9 @@ function handleUserMenuClick({ key }: { key: string }) {
   overflow: hidden;
   background: #ffffff;
   color: #1f2937;
+  transition: all 0.2s ease;
+  box-shadow: 2px 0 8px 0 rgb(29 35 41 / 5%);
+  z-index: 10;
 }
 
 .brand {
@@ -117,11 +242,41 @@ function handleUserMenuClick({ key }: { key: string }) {
   height: 56px;
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid #e5e7eb;
+  overflow: hidden;
+  transition: padding 0.2s ease;
+
+  &.is-collapsed {
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--app-color-primary, #409eff), #2563eb);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 18px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgb(37 99 235 / 25%);
+}
+
+.brand-title {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  border-bottom: 1px solid #e5e7eb;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .main-aside__menu {
@@ -143,20 +298,64 @@ function handleUserMenuClick({ key }: { key: string }) {
   align-items: center;
   justify-content: space-between;
   height: 56px;
+  padding: 0 16px;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
+  z-index: 9;
 }
 
-.header-title {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.header-divider {
+  width: 1px;
+  height: 16px;
+  background-color: #e5e7eb;
+  margin: 0 4px;
+}
+
+.header-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: #4b5563;
+  border-radius: 6px;
   font-size: 16px;
-  font-weight: 600;
-  color: #111827;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: var(--app-color-primary, #409eff);
+    background-color: #f3f4f6;
+  }
+
+  &.is-spinning {
+    :deep(span) {
+      animation: spin 0.6s linear infinite;
+    }
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .user-avatar-trigger {

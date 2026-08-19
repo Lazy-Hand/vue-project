@@ -8,6 +8,14 @@ import MenuIcon from '@/components/MenuIcon/index.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { PermissionTreeNode } from '@/types/permission'
 
+interface Props {
+  collapsed?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  collapsed: false,
+})
+
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
@@ -34,7 +42,13 @@ function handleMenuClick(info: { key: string | number }): void {
 </script>
 
 <template>
-  <Menu :selected-keys="[activeMenu]" mode="inline" class="aside-menu" @click="handleMenuClick">
+  <Menu
+    :selected-keys="[activeMenu]"
+    :inline-collapsed="props.collapsed"
+    mode="inline"
+    class="aside-menu"
+    @click="handleMenuClick"
+  >
     <MenuItem key="/">
       <MenuIcon icon="HomeFilled" />
       <span>{{ t('common.home') }}</span>
@@ -66,8 +80,8 @@ function handleMenuClick(info: { key: string | number }): void {
 
 <style scoped lang="scss">
 .aside-menu {
+  width: 100%;
   border-right: none;
-  width: 220px;
 }
 
 .aside-menu :deep(.ant-menu-item:hover),

@@ -109,13 +109,13 @@ ProTable 默认撑满页面可用高度（页面外壳需设置为 `height: 100%
 
 工具栏左侧是 `toolbar-actions` 插槽（新增、删除等业务操作），右侧为工具按钮：
 
-| 按钮 | 说明 |
-| --- | --- |
-| 刷新 | 使用当前查询参数重新请求；加载期间按钮自身显示加载态 |
-| 密度 | 切换表格行高：默认 / 中等 / 紧凑，实时生效，初始为紧凑（`small`） |
-| 全屏 | 将整个 ProTable（含搜索区与表格）切换为全屏，再次点击或按 `Esc` 退出 |
-| 列设置 | 显隐与排序列，见「列设置」，受 `showColumnSetting` 控制 |
-| 设置 | 切换斑马纹、边框、表头背景等显示选项 |
+| 按钮   | 说明                                                                 |
+| ------ | -------------------------------------------------------------------- |
+| 刷新   | 使用当前查询参数重新请求；加载期间按钮自身显示加载态                 |
+| 密度   | 切换表格行高：默认 / 中等 / 紧凑，实时生效，初始为紧凑（`small`）    |
+| 全屏   | 将整个 ProTable（含搜索区与表格）切换为全屏，再次点击或按 `Esc` 退出 |
+| 列设置 | 显隐与排序列，见「列设置」，受 `showColumnSetting` 控制              |
+| 设置   | 切换斑马纹、边框、表头背景等显示选项                                 |
 
 每个工具按钮都有独立的显示开关，默认全部开启：`showRefresh`、`showDensity`、`showFullscreen`、`showSettings`、`showColumnSetting`。当工具栏上没有 `toolbar-actions` 且所有工具按钮都被关闭时，工具栏整行不渲染。
 
@@ -171,8 +171,8 @@ rows
 | `clientFilter`            | `(items, params) => items`                      | -                | 对本次响应做客户端过滤                           |
 | `border`                  | `boolean`                                       | `false`          | 是否显示纵向边框                                 |
 | `stripe`                  | `boolean`                                       | `false`          | 是否显示斑马纹                                   |
-| `height`                  | `string \| number`                              | -                | 表格固定高度；传入后覆盖默认的铺满自适应     |
-| `maxHeight`               | `string \| number`                              | -                | 表格最大高度；传入后覆盖默认的铺满自适应     |
+| `height`                  | `string \| number`                              | -                | 表格固定高度；传入后覆盖默认的铺满自适应         |
+| `maxHeight`               | `string \| number`                              | -                | 表格最大高度；传入后覆盖默认的铺满自适应         |
 | `showHeader`              | `boolean`                                       | `true`           | 是否显示表头                                     |
 | `highlightCurrentRow`     | `boolean`                                       | `false`          | 是否高亮当前行                                   |
 | `currentRowKey`           | `string \| number`                              | -                | 当前行的 key                                     |
@@ -389,16 +389,16 @@ const userActions = computed<ProTableAction<UserRow>[]>(() => [
 
 ## Slots
 
-| 插槽              | 参数                                                                       | 说明                   |
-| ----------------- | -------------------------------------------------------------------------- | ---------------------- |
-| `toolbar-actions` | -                                                                          | 表格工具栏左侧业务操作按钮   |
-| `search-actions`  | `search`、`reset`、`loading`、`collapsible`、`collapsed`、`toggleCollapse` | 替换默认查询/重置按钮  |
-| `search-{name}`   | `field`、`modelValue`、`setValue`、`search`                                | 自定义查询控件         |
-| `column-{name}`   | `row`、`index`、`column`                                                   | 自定义单元格           |
-| `header-{name}`   | `column`、`index`、`config`                                                | 自定义表头             |
-| `empty`           | -                                                                          | 自定义空状态           |
-| `request-error`   | `error`、`retry`                                                           | 替换默认请求失败提示   |
-| `append`          | -                                                                          | 追加到表格最后一行之后 |
+| 插槽              | 参数                                                                       | 说明                       |
+| ----------------- | -------------------------------------------------------------------------- | -------------------------- |
+| `toolbar-actions` | -                                                                          | 表格工具栏左侧业务操作按钮 |
+| `search-actions`  | `search`、`reset`、`loading`、`collapsible`、`collapsed`、`toggleCollapse` | 替换默认查询/重置按钮      |
+| `search-{name}`   | `field`、`modelValue`、`setValue`、`search`                                | 自定义查询控件             |
+| `column-{name}`   | `row`、`index`、`column`                                                   | 自定义单元格               |
+| `header-{name}`   | `column`、`index`、`config`                                                | 自定义表头                 |
+| `empty`           | -                                                                          | 自定义空状态               |
+| `request-error`   | `error`、`retry`                                                           | 替换默认请求失败提示       |
+| `append`          | -                                                                          | 追加到表格最后一行之后     |
 
 ## Events
 

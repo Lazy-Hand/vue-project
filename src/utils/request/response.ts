@@ -79,7 +79,8 @@ export async function unwrapResponse<T>(response: Response | ApiResponse<T>): Pr
   }
 
   const code = typeof body.code === 'number' ? body.code : undefined
-  const message = typeof body.message === 'string' ? body.message : translate('request.requestFailed')
+  const message =
+    typeof body.message === 'string' ? body.message : translate('request.requestFailed')
 
   if (isHttpError || code !== 0) {
     throw new ApiRequestError(message, { status, code, errors: body.errors })
