@@ -43,3 +43,18 @@ export interface PublishedNotice extends Notice {
 export interface NoticeCountResult {
   count: number
 }
+
+/** 公告 SSE 事件负载：后端 `event: notice` 下发的统一 JSON，按 `type` 判别。 */
+export type NoticeSseMessage =
+  | { type: 'connected' }
+  | { type: 'heartbeat' }
+  | {
+      type: 'notice:published'
+      id: string
+      title: string
+      publishedAt: string | null
+    }
+  /** 单条公告已读：id 为该公告，unreadCount 为我方最新未读数 */
+  | { type: 'notice:read'; id: string; unreadCount: number }
+  /** 全部公告已读：unreadCount 为我方最新未读数 */
+  | { type: 'notice:read-all'; unreadCount: number }

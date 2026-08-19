@@ -10,6 +10,7 @@ import {
   markAllNoticesRead,
   markNoticeRead,
 } from '@/api/notice'
+import { useNoticeSse } from '@/composables/useNoticeSse'
 import type { PublishedNotice } from '@/types/notice'
 import { ApiRequestError } from '@/utils/request'
 
@@ -97,6 +98,31 @@ async function handleMarkAllRead(): Promise<void> {
     message.error(errorMessage(error))
   }
 }
+
+useNoticeSse({
+  onPublished: () => {
+    void refreshUnreadCount()
+    if (panelOpen.value) {
+      void loadNotices()
+    }
+  },
+  onRead: ({ id, unreadCount: count }) => {
+    unreadCount.value = count
+    const item = notices.value.find((notice) => notice.id === id)
+    if (item) {
+      item.read = true
+    }
+    if (detailNotice.value?.id === id) {
+      detailNotice.value.read = true
+    }
+  },
+  onReadAll: ({ unreadCount: count }) => {
+    unreadCount.value = count
+    notices.value.forEach((notice) => {
+      notice.read = true
+    })
+  },
+})
 
 onMounted(refreshUnreadCount)
 </script>
