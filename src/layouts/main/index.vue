@@ -58,7 +58,7 @@ function handleUserMenuClick({ key }: { key: string }) {
 
 <template>
   <Layout class="main-layout">
-    <LayoutSider :width="220" class="main-aside">
+    <LayoutSider :width="220" theme="light" class="main-aside">
       <div class="brand">{{ t('common.appName') }}</div>
       <div class="main-aside__menu">
         <LayoutMenu />
@@ -108,8 +108,8 @@ function handleUserMenuClick({ key }: { key: string }) {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: #0f172a;
-  color: #fff;
+  background: #ffffff;
+  color: #1f2937;
 }
 
 .brand {
@@ -121,7 +121,7 @@ function handleUserMenuClick({ key }: { key: string }) {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .main-aside__menu {

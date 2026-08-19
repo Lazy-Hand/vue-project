@@ -34,13 +34,7 @@ function handleMenuClick(info: { key: string | number }): void {
 </script>
 
 <template>
-  <Menu
-    :selected-keys="[activeMenu]"
-    mode="inline"
-    theme="dark"
-    class="aside-menu"
-    @click="handleMenuClick"
-  >
+  <Menu :selected-keys="[activeMenu]" mode="inline" class="aside-menu" @click="handleMenuClick">
     <MenuItem key="/">
       <MenuIcon icon="HomeFilled" />
       <span>{{ t('common.home') }}</span>
@@ -78,7 +72,7 @@ function handleMenuClick(info: { key: string | number }): void {
 
 .aside-menu :deep(.ant-menu-item:hover),
 .aside-menu :deep(.ant-menu-submenu-title:hover) {
-  background-color: rgb(255 255 255 / 0.08) !important;
+  background-color: #f3f4f6 !important;
 }
 
 .aside-menu :deep(.ant-menu-item-selected) {
