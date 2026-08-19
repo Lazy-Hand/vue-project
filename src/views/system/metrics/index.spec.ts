@@ -68,7 +68,7 @@ describe('MetricsPage (index.vue)', () => {
   it('skips loading metrics when user has no query permission', async () => {
     useAuthStore(pinia).setAccess([], [])
 
-    const wrapper = mount(MetricsPage, { global: { plugins: [i18n] } })
+    mount(MetricsPage, { global: { plugins: [i18n] } })
     await flushPromises()
 
     expect(fetchMetricsText).not.toHaveBeenCalled()

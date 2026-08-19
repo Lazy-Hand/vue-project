@@ -30,7 +30,7 @@ export const mockEnabled =
   import.meta.env.VITE_ENABLE_MOCK !== 'false'
 
 export const requestAdapter = mockEnabled
-  ? createAlovaMockAdapter([], {
+  ? createAlovaMockAdapter([authMock], {
       httpAdapter: fetchAdapter,
       delay: 300,
       matchMode: 'methodurl',

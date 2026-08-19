@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import {
-  Alert,
   Button,
   Card,
   Col,
@@ -348,14 +347,18 @@ onBeforeUnmount(() => {
                 <span class="tp-stat-label text-rose-500">
                   <ExclamationCircleFilled /> {{ t('dashboard.todayFailedOperationCount') }}
                 </span>
-                <span class="tp-stat-num text-rose-500">{{ overview?.todayFailedOperationCount ?? 0 }}</span>
+                <span class="tp-stat-num text-rose-500">{{
+                  overview?.todayFailedOperationCount ?? 0
+                }}</span>
               </div>
             </div>
 
             <div class="throughput-progress-wrap">
               <div class="tp-bar-legend">
                 <span>{{ t('dashboard.successRate') }} (SLA)</span>
-                <strong class="text-emerald-600">{{ successRate === '-' ? '-' : `${successRate}%` }}</strong>
+                <strong class="text-emerald-600">{{
+                  successRate === '-' ? '-' : `${successRate}%`
+                }}</strong>
               </div>
               <Progress
                 :percent="numericSuccessRate"
@@ -383,11 +386,10 @@ onBeforeUnmount(() => {
               <ExclamationCircleFilled class="alert-icon text-rose-500" />
               <div class="alert-content">
                 <div class="alert-title text-rose-700">
-                  {{ t('dashboard.todayFailedOperationCount') }}: {{ overview?.todayFailedOperationCount }}
+                  {{ t('dashboard.todayFailedOperationCount') }}:
+                  {{ overview?.todayFailedOperationCount }}
                 </div>
-                <p class="alert-desc text-rose-600">
-                  建议进入审计日志查看具体异常堆栈与操作记录
-                </p>
+                <p class="alert-desc text-rose-600">建议进入审计日志查看具体异常堆栈与操作记录</p>
               </div>
             </div>
             <div v-else class="alert-box-healthy">
@@ -591,8 +593,15 @@ onBeforeUnmount(() => {
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
 }
 
 .kpi-grid {

@@ -4,10 +4,8 @@ import { useI18n } from 'vue-i18n'
 import {
   Button,
   Card,
-  Col,
   Input,
   Progress,
-  Row,
   Segmented,
   Statistic,
   Tag,
@@ -16,7 +14,6 @@ import {
 } from 'antdv-next'
 import {
   ApiOutlined,
-  CheckCircleFilled,
   ClockCircleOutlined,
   CopyOutlined,
   DashboardOutlined,
@@ -67,9 +64,7 @@ const rawInspectorOpen = ref<boolean>(false)
 
 const samples = computed<PromSample[]>(() => parsePrometheus(rawText.value))
 
-const startedAtTimestamp = computed(() =>
-  findSample(samples.value, 'process_start_time_seconds'),
-)
+const startedAtTimestamp = computed(() => findSample(samples.value, 'process_start_time_seconds'))
 
 const startedAtFormatted = computed(() => {
   if (!startedAtTimestamp.value) return '-'
@@ -104,12 +99,8 @@ const externalMemoryBytes = computed(() =>
 )
 const externalMemory = computed(() => formatBytes(externalMemoryBytes.value))
 
-const heapUsedBytes = computed(() =>
-  findSample(samples.value, 'nodejs_heap_size_used_bytes'),
-)
-const heapTotalBytes = computed(() =>
-  findSample(samples.value, 'nodejs_heap_size_total_bytes'),
-)
+const heapUsedBytes = computed(() => findSample(samples.value, 'nodejs_heap_size_used_bytes'))
+const heapTotalBytes = computed(() => findSample(samples.value, 'nodejs_heap_size_total_bytes'))
 
 const heapUsagePercent = computed(() =>
   getHeapUsagePercentage(heapUsedBytes.value, heapTotalBytes.value),
@@ -129,20 +120,12 @@ const eventLoopLag = computed(() => {
   return `${(eventLoopLagSeconds.value * 1000).toFixed(1)}ms`
 })
 
-const eventLoopHealthState = computed(() =>
-  getEventLoopStatus(eventLoopLagSeconds.value),
-)
+const eventLoopHealthState = computed(() => getEventLoopStatus(eventLoopLagSeconds.value))
 
-const activeHandles = computed(() =>
-  sumSamples(samples.value, 'nodejs_active_handles'),
-)
-const activeRequests = computed(() =>
-  sumSamples(samples.value, 'nodejs_active_requests'),
-)
+const activeHandles = computed(() => sumSamples(samples.value, 'nodejs_active_handles'))
+const activeRequests = computed(() => sumSamples(samples.value, 'nodejs_active_requests'))
 
-const allHttpRows = computed<HttpRequestStat[]>(() =>
-  httpRequestStats(samples.value),
-)
+const allHttpRows = computed<HttpRequestStat[]>(() => httpRequestStats(samples.value))
 
 const totalHttpTrafficCount = computed(() =>
   allHttpRows.value.reduce((acc, cur) => acc + cur.count, 0),
@@ -152,9 +135,7 @@ const filteredHttpRows = computed<HttpRequestStat[]>(() => {
   if (selectedMethodFilter.value === 'ALL') {
     return allHttpRows.value
   }
-  return allHttpRows.value.filter(
-    (row) => row.method.toUpperCase() === selectedMethodFilter.value,
-  )
+  return allHttpRows.value.filter((row) => row.method.toUpperCase() === selectedMethodFilter.value)
 })
 
 const httpColumns = computed<ProTableColumn<HttpRequestStat>[]>(() => [
@@ -335,11 +316,7 @@ onBeforeUnmount(() => {
             <DashboardOutlined />
           </div>
           <div class="vital-body">
-            <Statistic
-              :title="t('metrics.heapMemory')"
-              :value="heapMemory"
-              class="vital-stat"
-            />
+            <Statistic :title="t('metrics.heapMemory')" :value="heapMemory" class="vital-stat" />
             <div class="vital-progress-box">
               <div class="vital-progress-labels">
                 <span class="vital-sub-text">{{ t('metrics.heapUsageRate') }}</span>
@@ -367,11 +344,7 @@ onBeforeUnmount(() => {
             <ThunderboltOutlined />
           </div>
           <div class="vital-body">
-            <Statistic
-              :title="t('metrics.cpuTime')"
-              :value="cpuTime"
-              class="vital-stat"
-            />
+            <Statistic :title="t('metrics.cpuTime')" :value="cpuTime" class="vital-stat" />
             <div class="vital-bottom-info">
               <span class="vital-sub-text">{{ t('metrics.cpuSeconds') }}</span>
               <Tag color="orange" class="vital-tag">V8 Engine</Tag>
@@ -455,9 +428,7 @@ onBeforeUnmount(() => {
 
           <!-- HTTP Method 快速筛选 -->
           <div class="traffic-filters">
-            <span class="filter-label">
-              <FilterOutlined /> {{ t('metrics.filterMethod') }}:
-            </span>
+            <span class="filter-label"> <FilterOutlined /> {{ t('metrics.filterMethod') }}: </span>
             <Segmented
               v-model:value="selectedMethodFilter"
               :options="[
@@ -483,26 +454,24 @@ onBeforeUnmount(() => {
         :pagination="{ pageSize: 10 }"
       >
         <!-- 自定义 Method 渲染 -->
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.prop === 'method'">
-            <Tag :color="getMethodTagColor(record.method)" class="font-mono font-bold">
-              {{ record.method }}
-            </Tag>
-          </template>
+        <template #column-method="{ row }">
+          <Tag :color="getMethodTagColor(row.method)" class="font-mono font-bold">
+            {{ row.method }}
+          </Tag>
+        </template>
 
-          <template v-else-if="column.prop === 'route'">
-            <span class="font-mono text-slate-700">{{ record.route }}</span>
-          </template>
+        <template #column-route="{ row }">
+          <span class="font-mono text-slate-700">{{ row.route }}</span>
+        </template>
 
-          <template v-else-if="column.prop === 'statusCode'">
-            <Tag :color="getStatusCodeTagColor(record.statusCode)" class="font-mono">
-              {{ record.statusCode }}
-            </Tag>
-          </template>
+        <template #column-statusCode="{ row }">
+          <Tag :color="getStatusCodeTagColor(row.statusCode)" class="font-mono">
+            {{ row.statusCode }}
+          </Tag>
+        </template>
 
-          <template v-else-if="column.prop === 'count'">
-            <span class="font-semibold text-slate-900">{{ record.count }}</span>
-          </template>
+        <template #column-count="{ row }">
+          <span class="font-semibold text-slate-900">{{ row.count }}</span>
         </template>
       </ProTable>
     </Card>
@@ -533,11 +502,7 @@ onBeforeUnmount(() => {
             {{ t('metrics.copyRaw') }}
           </Button>
 
-          <Button
-            size="small"
-            class="raw-btn"
-            @click="rawInspectorOpen = !rawInspectorOpen"
-          >
+          <Button size="small" class="raw-btn" @click="rawInspectorOpen = !rawInspectorOpen">
             {{ rawInspectorOpen ? t('proTable.collapse') : t('proTable.expand') }}
           </Button>
         </div>
@@ -665,8 +630,15 @@ onBeforeUnmount(() => {
 }
 
 @keyframes live-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
 }
 
 .status-divider {
