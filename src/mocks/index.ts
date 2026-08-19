@@ -1,5 +1,6 @@
 import { createAlovaMockAdapter } from '@alova/mock'
 import adapterFetch from 'alova/fetch'
+import authMock from './auth'
 
 /**
  * alova 的 fetch 适配器只要未显式设置 Content-Type 就会补上 application/json，
@@ -29,7 +30,7 @@ export const mockEnabled =
   import.meta.env.VITE_ENABLE_MOCK !== 'false'
 
 export const requestAdapter = mockEnabled
-  ? createAlovaMockAdapter([], {
+  ? createAlovaMockAdapter([authMock], {
       httpAdapter: fetchAdapter,
       delay: 300,
       matchMode: 'methodurl',
