@@ -32,7 +32,7 @@ interface LaunchpadApp {
   desc: string
   path: string
   icon: string
-  gradient: string
+  gradientClass: string
 }
 
 const { t } = useI18n()
@@ -54,7 +54,7 @@ const avatarSrc = computed(() =>
 
 const currentAccountSetName = computed(() => {
   const currentId = authStore.currentAccountSetId
-  const match = authStore.accountSets.find((a) => a.id === currentId)
+  const match = (authStore.accountSets || []).find((a) => a.id === currentId)
   return match?.name || t('home.accountSet')
 })
 
@@ -81,7 +81,7 @@ const launchpadApps: LaunchpadApp[] = [
     desc: '系统账号与部门/岗位归属分配',
     path: '/system/user',
     icon: 'UserOutlined',
-    gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+    gradientClass: 'from-blue-500 to-blue-700',
   },
   {
     key: 'role',
@@ -89,7 +89,7 @@ const launchpadApps: LaunchpadApp[] = [
     desc: '角色标识与功能/数据权限策略',
     path: '/system/role',
     icon: 'SafetyOutlined',
-    gradient: 'linear-gradient(135deg, #10b981, #047857)',
+    gradientClass: 'from-emerald-500 to-emerald-700',
   },
   {
     key: 'dept',
@@ -97,7 +97,7 @@ const launchpadApps: LaunchpadApp[] = [
     desc: '公司多级组织架构树与负责人',
     path: '/system/dept',
     icon: 'ApartmentOutlined',
-    gradient: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+    gradientClass: 'from-purple-500 to-purple-700',
   },
   {
     key: 'permission',
@@ -105,7 +105,7 @@ const launchpadApps: LaunchpadApp[] = [
     desc: '动态路由、菜单树与按钮鉴权',
     path: '/system/permission',
     icon: 'SettingOutlined',
-    gradient: 'linear-gradient(135deg, #ec4899, #be185d)',
+    gradientClass: 'from-pink-500 to-pink-700',
   },
   {
     key: 'post',
@@ -113,7 +113,7 @@ const launchpadApps: LaunchpadApp[] = [
     desc: '企业职位体系与岗位人员配置',
     path: '/system/post',
     icon: 'TeamOutlined',
-    gradient: 'linear-gradient(135deg, #f59e0b, #b45309)',
+    gradientClass: 'from-amber-500 to-amber-700',
   },
   {
     key: 'file',
@@ -121,7 +121,7 @@ const launchpadApps: LaunchpadApp[] = [
     desc: '系统公共资源与媒体存储管理',
     path: '/system/file',
     icon: 'FolderOutlined',
-    gradient: 'linear-gradient(135deg, #06b6d4, #0e7490)',
+    gradientClass: 'from-cyan-500 to-cyan-700',
   },
   {
     key: 'log',
@@ -129,7 +129,7 @@ const launchpadApps: LaunchpadApp[] = [
     desc: '用户操作行为追踪与安全分析',
     path: '/system/log',
     icon: 'AuditOutlined',
-    gradient: 'linear-gradient(135deg, #64748b, #334155)',
+    gradientClass: 'from-slate-500 to-slate-700',
   },
   {
     key: 'notice',
@@ -137,7 +137,7 @@ const launchpadApps: LaunchpadApp[] = [
     desc: '平台通知发布与受众推送管理',
     path: '/system/notice',
     icon: 'NotificationOutlined',
-    gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)',
+    gradientClass: 'from-rose-500 to-rose-700',
   },
 ]
 
@@ -250,7 +250,7 @@ onMounted(() => {
           class="launchpad-card"
           @click="navigateTo(app.path)"
         >
-          <div class="launchpad-icon-wrap" :style="{ background: app.gradient }">
+          <div class="launchpad-icon-wrap bg-gradient-to-br" :class="app.gradientClass">
             <MenuIcon :icon="app.icon" class="launchpad-icon" />
           </div>
 

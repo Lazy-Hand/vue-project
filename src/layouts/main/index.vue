@@ -241,7 +241,7 @@ onBeforeUnmount(() => {
         <RouterView v-if="routerAlive" v-slot="{ Component, route: currentRoute }">
           <Transition name="fade-slide" mode="out-in">
             <KeepAlive :include="tabsStore.cachedViews">
-              <component :is="Component" :key="currentRoute.fullPath" />
+              <component :is="Component" v-if="Component" :key="currentRoute.fullPath" />
             </KeepAlive>
           </Transition>
         </RouterView>

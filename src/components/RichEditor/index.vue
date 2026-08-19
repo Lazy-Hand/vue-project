@@ -74,16 +74,6 @@ const linkUrl = ref('')
 const imageModalVisible = ref(false)
 const imageUrl = ref('')
 
-const minHeightStyle = computed(() => {
-  if (typeof props.minHeight === 'number') return `${props.minHeight}px`
-  return props.minHeight
-})
-
-const maxHeightStyle = computed(() => {
-  if (typeof props.maxHeight === 'number') return `${props.maxHeight}px`
-  return props.maxHeight
-})
-
 const editor = useEditor({
   content: props.modelValue,
   editable: !props.disabled,
@@ -580,10 +570,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 编辑器内容渲染区 -->
-    <div
-      class="editor-content-scroll"
-      :style="{ minHeight: minHeightStyle, maxHeight: maxHeightStyle }"
-    >
+    <div class="editor-content-scroll">
       <EditorContent :editor="editor" class="editor-content-container" />
     </div>
 

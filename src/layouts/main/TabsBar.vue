@@ -97,11 +97,13 @@ function handleTabMenuClick(key: string, targetTab: TabItem) {
   }
 }
 
-function getTabContextMenuItems(tab: TabItem): MenuProps['items'] {
-  const index = tabsStore.tabs.findIndex((t) => t.key === tab.key)
+function getTabContextMenuItems(tab?: TabItem | null): MenuProps['items'] {
+  if (!tab || !tab.key) return []
+  const list = tabsStore.tabs || []
+  const index = list.findIndex((t) => t?.key === tab.key)
   const isFirst = index === 0
-  const isLast = index === tabsStore.tabs.length - 1
-  const hasMultiple = tabsStore.tabs.length > 1
+  const isLast = index >= 0 && index === list.length - 1
+  const hasMultiple = list.length > 1
 
   return [
     {
@@ -155,17 +157,19 @@ function getTabContextMenuItems(tab: TabItem): MenuProps['items'] {
 }
 
 const moreActionsMenu = computed<MenuProps['items']>(() => {
+  const list = tabsStore.tabs || []
   const activeKey = tabsStore.activeTabKey
-  const activeTab = tabsStore.tabs.find((t) => t.key === activeKey) ?? tabsStore.tabs[0]
+  const activeTab = list.find((t) => t?.key === activeKey) ?? list[0]
   if (!activeTab) return []
   return getTabContextMenuItems(activeTab)
 })
 
-function getTabLabel(tab: TabItem): string {
+function getTabLabel(tab?: TabItem | null): string {
+  if (!tab) return ''
   if (tab.path === '/') {
     return t('common.home')
   }
-  return tab.title
+  return tab.title || ''
 }
 </script>
 

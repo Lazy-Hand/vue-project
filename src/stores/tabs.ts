@@ -24,10 +24,14 @@ export const useTabsStore = defineStore(
     const isContentMaximized = ref<boolean>(false)
 
     function ensureHomeTab(): void {
-      if (!tabs.value.some((t) => t.path === '/')) {
+      if (!Array.isArray(tabs.value)) {
+        tabs.value = [{ ...DEFAULT_HOME_TAB }]
+      } else if (!tabs.value.some((t) => t && t.path === '/')) {
         tabs.value.unshift({ ...DEFAULT_HOME_TAB })
       }
     }
+
+    ensureHomeTab()
 
     function addTab(route: RouteLocationNormalized): void {
       const path = route.path
@@ -180,6 +184,14 @@ export const useTabsStore = defineStore(
   {
     persist: {
       pick: ['tabs'],
+      afterHydrate: (ctx) => {
+        const store = ctx.store as unknown as { tabs: TabItem[] }
+        if (!store.tabs || !Array.isArray(store.tabs) || store.tabs.length === 0) {
+          store.tabs = [{ ...DEFAULT_HOME_TAB }]
+        } else if (!store.tabs.some((t) => t && t.path === '/')) {
+          store.tabs.unshift({ ...DEFAULT_HOME_TAB })
+        }
+      },
     },
   },
 )
