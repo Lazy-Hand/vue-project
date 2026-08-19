@@ -329,7 +329,7 @@ async function handleDelete(row: Notice): Promise<void> {
           {{ formatDateTime(detailNotice.publishedAt, locale) }}
         </DescriptionsItem>
         <DescriptionsItem :label="t('notice.content')">
-          <pre class="notice-page__content">{{ detailNotice.content }}</pre>
+          <div class="notice-page__content" v-html="detailNotice.content" />
         </DescriptionsItem>
       </Descriptions>
     </Modal>
@@ -349,12 +349,10 @@ async function handleDelete(row: Notice): Promise<void> {
   margin: 0;
   max-height: 360px;
   overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
   font-size: 13px;
   line-height: 1.6;
   background: #fafafa;
   border-radius: 6px;
-  padding: 8px 12px;
+  padding: 12px 16px;
 }
 </style>

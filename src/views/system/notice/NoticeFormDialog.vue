@@ -1,17 +1,9 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  Button,
-  Form,
-  FormItem,
-  Input,
-  Modal,
-  TextArea,
-  type FormInstance,
-  type Rule,
-} from 'antdv-next'
+import { Button, Form, FormItem, Input, Modal, type FormInstance, type Rule } from 'antdv-next'
 
+import RichEditor from '@/components/RichEditor/index.vue'
 import type { Notice, NoticePayload, UpdateNoticePayload } from '@/types/notice'
 
 interface Props {
@@ -59,24 +51,24 @@ const rules = computed<Partial<Record<keyof FormModel, Rule[]>>>(() => ({
           throw new Error(t('notice.titleRequired'))
         }
         if (titleValue.length > 255) {
-          throw new Error(t('notice.titleLength'))
+          throw new Error(t('notice.titleMaxLength'))
         }
       },
-      trigger: 'blur',
+      trigger: 'change',
     },
   ],
   content: [
     {
       validator: async (_rule, value) => {
-        const content = (typeof value === 'string' ? value : '').trim()
-        if (!content) {
+        const contentValue = (typeof value === 'string' ? value : '').trim()
+        if (!contentValue) {
           throw new Error(t('notice.contentRequired'))
         }
-        if (content.length > 100000) {
-          throw new Error(t('notice.contentLength'))
+        if (contentValue.length > 100000) {
+          throw new Error(t('notice.contentMaxLength'))
         }
       },
-      trigger: 'blur',
+      trigger: 'change',
     },
   ],
 }))
@@ -84,24 +76,35 @@ const rules = computed<Partial<Record<keyof FormModel, Rule[]>>>(() => ({
 function resetForm(): void {
   form.title = ''
   form.content = ''
+  formRef.value?.resetFields()
 }
 
-function fillFromEditing(notice: Notice): void {
-  form.title = notice.title
-  form.content = notice.content
+function syncFromEditing(notice?: Notice | null): void {
+  if (notice) {
+    form.title = notice.title
+    form.content = notice.content
+  } else {
+    resetForm()
+  }
 }
 
 watch(
-  () => [props.modelValue, props.mode, props.editing] as const,
-  ([open]) => {
-    if (!open) return
-    if (props.mode === 'edit' && props.editing) {
-      fillFromEditing(props.editing)
+  () => props.editing,
+  (notice) => {
+    syncFromEditing(notice)
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.modelValue,
+  (opened) => {
+    if (opened) {
+      syncFromEditing(props.editing)
     } else {
       resetForm()
     }
   },
-  { immediate: true },
 )
 
 function buildPayload(): NoticePayload | UpdateNoticePayload {
@@ -139,7 +142,7 @@ defineExpose({
   <Modal
     v-model:open="visible"
     :title="title"
-    width="640px"
+    width="780px"
     destroy-on-hidden
     :get-container="false"
     :confirm-loading="submitting"
@@ -148,8 +151,8 @@ defineExpose({
       ref="formRef"
       :model="form"
       :rules="rules"
-      :label-col="{ span: 5 }"
-      :wrapper-col="{ span: 19 }"
+      :label-col="{ span: 4 }"
+      :wrapper-col="{ span: 20 }"
     >
       <FormItem :label="t('notice.title')" name="title">
         <Input
@@ -161,11 +164,10 @@ defineExpose({
       </FormItem>
 
       <FormItem :label="t('notice.content')" name="content">
-        <TextArea
-          v-model:value="form.content"
-          :rows="8"
-          :maxlength="100000"
-          show-count
+        <RichEditor
+          v-model="form.content"
+          :min-height="220"
+          :max-height="450"
           :placeholder="t('notice.contentPlaceholder')"
         />
       </FormItem>
