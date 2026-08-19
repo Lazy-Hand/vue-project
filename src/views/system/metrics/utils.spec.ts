@@ -5,6 +5,10 @@ import {
   formatBytes,
   formatSeconds,
   formatUptime,
+  getEventLoopStatus,
+  getHeapUsagePercentage,
+  getMethodTagColor,
+  getStatusCodeTagColor,
   httpRequestStats,
   parsePrometheus,
   sumSamples,
@@ -99,5 +103,29 @@ describe('metrics page utilities', () => {
 
     expect(formatSeconds(120.5)).toBe('120.50s')
     expect(formatSeconds(undefined)).toBe('-')
+  })
+
+  it('computes heap usage percentage and event loop status', () => {
+    expect(getHeapUsagePercentage(50, 100)).toBe(50)
+    expect(getHeapUsagePercentage(undefined, 100)).toBe(0)
+    expect(getHeapUsagePercentage(50, 0)).toBe(0)
+
+    expect(getEventLoopStatus(0.005)).toBe('healthy')
+    expect(getEventLoopStatus(0.025)).toBe('warning')
+    expect(getEventLoopStatus(0.08)).toBe('critical')
+    expect(getEventLoopStatus(undefined)).toBe('healthy')
+  })
+
+  it('resolves method and status code tag colors', () => {
+    expect(getMethodTagColor('GET')).toBe('blue')
+    expect(getMethodTagColor('POST')).toBe('green')
+    expect(getMethodTagColor('PUT')).toBe('orange')
+    expect(getMethodTagColor('DELETE')).toBe('red')
+    expect(getMethodTagColor('UNKNOWN')).toBe('default')
+
+    expect(getStatusCodeTagColor(200)).toBe('green')
+    expect(getStatusCodeTagColor(304)).toBe('blue')
+    expect(getStatusCodeTagColor(404)).toBe('orange')
+    expect(getStatusCodeTagColor(500)).toBe('red')
   })
 })

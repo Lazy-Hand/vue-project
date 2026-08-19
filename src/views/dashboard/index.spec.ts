@@ -29,9 +29,29 @@ const OVERVIEW: DashboardOverview = {
   periodEnd: '2026-08-18T00:00:00.000Z',
 }
 
+import { createRouter, createMemoryHistory } from 'vue-router'
+
+const router = createRouter({
+  history: createMemoryHistory(),
+  routes: [{ path: '/', component: { template: '<div />' } }],
+})
+
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    })
     i18n.global.locale.value = 'zh-CN'
     useAuthStore(pinia).setAccess([], ['system:dashboard:query'])
   })
@@ -39,7 +59,7 @@ describe('DashboardPage', () => {
   it('renders overview numbers from the API', async () => {
     vi.mocked(fetchDashboardOverview).mockResolvedValue(OVERVIEW)
 
-    const wrapper = mount(DashboardPage, { global: { plugins: [i18n] } })
+    const wrapper = mount(DashboardPage, { global: { plugins: [i18n, router] } })
     await flushPromises()
 
     expect(fetchDashboardOverview).toHaveBeenCalledTimes(1)
@@ -56,7 +76,7 @@ describe('DashboardPage', () => {
   it('computes the success rate as a percentage', async () => {
     vi.mocked(fetchDashboardOverview).mockResolvedValue(OVERVIEW)
 
-    const wrapper = mount(DashboardPage, { global: { plugins: [i18n] } })
+    const wrapper = mount(DashboardPage, { global: { plugins: [i18n, router] } })
     await flushPromises()
 
     // (100 - 4) / 100 = 96.0%
@@ -70,7 +90,7 @@ describe('DashboardPage', () => {
       todayFailedOperationCount: 0,
     })
 
-    const wrapper = mount(DashboardPage, { global: { plugins: [i18n] } })
+    const wrapper = mount(DashboardPage, { global: { plugins: [i18n, router] } })
     await flushPromises()
 
     const rateCard = wrapper.findAll('.ant-card').find((card) => card.text().includes('成功率'))
@@ -81,7 +101,7 @@ describe('DashboardPage', () => {
   it('skips the request without the dashboard query permission', async () => {
     useAuthStore(pinia).setAccess([], [])
 
-    const wrapper = mount(DashboardPage, { global: { plugins: [i18n] } })
+    const wrapper = mount(DashboardPage, { global: { plugins: [i18n, router] } })
     await flushPromises()
 
     expect(fetchDashboardOverview).not.toHaveBeenCalled()

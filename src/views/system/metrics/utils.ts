@@ -146,3 +146,50 @@ export function httpRequestStats(samples: PromSample[]): HttpRequestStat[] {
 
   return [...stats.values()].sort((a, b) => b.count - a.count)
 }
+
+/** Compute heap usage percentage (0-100). */
+export function getHeapUsagePercentage(
+  used: number | undefined,
+  total: number | undefined,
+): number {
+  if (!used || !total || total <= 0) return 0
+  return Math.min(100, Math.max(0, Math.round((used / total) * 100)))
+}
+
+/** Determine Event Loop health state based on p50 latency in seconds. */
+export function getEventLoopStatus(
+  lagSeconds: number | undefined,
+): 'healthy' | 'warning' | 'critical' {
+  if (lagSeconds === undefined) return 'healthy'
+  const ms = lagSeconds * 1000
+  if (ms < 10) return 'healthy'
+  if (ms <= 50) return 'warning'
+  return 'critical'
+}
+
+/** Get badge/tag color for HTTP Method. */
+export function getMethodTagColor(method: string): string {
+  switch (method.toUpperCase()) {
+    case 'GET':
+      return 'blue'
+    case 'POST':
+      return 'green'
+    case 'PUT':
+    case 'PATCH':
+      return 'orange'
+    case 'DELETE':
+      return 'red'
+    default:
+      return 'default'
+  }
+}
+
+/** Get badge/tag color for HTTP Status Code. */
+export function getStatusCodeTagColor(code: string | number): string {
+  const num = Number(code)
+  if (num >= 200 && num < 300) return 'green'
+  if (num >= 300 && num < 400) return 'blue'
+  if (num >= 400 && num < 500) return 'orange'
+  if (num >= 500) return 'red'
+  return 'default'
+}
