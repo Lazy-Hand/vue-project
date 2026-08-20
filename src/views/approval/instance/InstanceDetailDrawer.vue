@@ -25,6 +25,8 @@ import {
 import { commentApprovalInstance, fetchApprovalInstanceDetail } from '@/api/approval'
 import type { ApprovalInstanceDetail, ApprovalTask } from '@/types/approval'
 import { ApiRequestError } from '@/utils/request'
+import BusinessDetailPlaceholder from '../components/BusinessDetailPlaceholder.vue'
+import InboundOrderDetailReadonly from '../components/InboundOrderDetailReadonly.vue'
 
 const props = defineProps<{ open: boolean; instanceId: string | null }>()
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
@@ -201,9 +203,22 @@ watch(
         </DescriptionsItem>
       </Descriptions>
 
-      <!-- 动态表单提交内容 -->
+      <!-- 单据/表单：入库单走只读单据示例，其余有业务指针的走占位，无则展示表单填报 -->
+      <InboundOrderDetailReadonly
+        v-if="detail.instance.businessType === 'INBOUND_ORDER' && detail.instance.businessId"
+        :business-id="detail.instance.businessId"
+        :form-data="(detail.instance.formData as Record<string, unknown> | null) ?? null"
+        class="mb-5"
+      />
+      <BusinessDetailPlaceholder
+        v-else-if="detail.instance.businessType && detail.instance.businessId"
+        :business-type="detail.instance.businessType"
+        :business-id="detail.instance.businessId"
+        :form-data="(detail.instance.formData as Record<string, unknown> | null) ?? null"
+        class="mb-5"
+      />
       <div
-        v-if="detail.instance.formData && typeof detail.instance.formData === 'object'"
+        v-else-if="detail.instance.formData && typeof detail.instance.formData === 'object'"
         class="mb-5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl"
       >
         <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-2.5">
