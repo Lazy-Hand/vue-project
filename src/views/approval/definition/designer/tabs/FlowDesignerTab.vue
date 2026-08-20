@@ -802,7 +802,19 @@ watch(
         </FormItem>
 
         <FormItem
-          v-if="['USER', 'ROLE', 'DEPT'].includes(currentNode.assigneeType)"
+          v-if="currentNode.assigneeType === 'DEPT_LEADER'"
+          :label="t('approval.definition.assigneeValue')"
+          required
+        >
+          <Input
+            :value="currentNode.assigneeValue || ''"
+            :placeholder="'请输入部门 ID（部门主管必填）'"
+            @update:value="(val) => updateCurrentNode({ assigneeValue: String(val) })"
+          />
+        </FormItem>
+
+        <FormItem
+          v-else-if="['USER', 'ROLE', 'DEPT'].includes(currentNode.assigneeType)"
           :label="t('approval.definition.assigneeValue')"
         >
           <Input
@@ -811,6 +823,17 @@ watch(
             @update:value="(val) => updateCurrentNode({ assigneeValue: String(val) })"
           />
         </FormItem>
+
+        <div
+          v-else-if="['INITIATOR_LEADER', 'SELF'].includes(currentNode.assigneeType)"
+          class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+        >
+          {{
+            currentNode.assigneeType === 'INITIATOR_LEADER'
+              ? '直属上级将自动解析为发起人上级部门的主管（无需填写）'
+              : '本人节点将自动指向发起人自己（无需填写）'
+          }}
+        </div>
 
         <div v-if="currentNode.type !== 'CC'" class="pt-3 border-t border-slate-100 space-y-3">
           <div class="flex items-center justify-between">
