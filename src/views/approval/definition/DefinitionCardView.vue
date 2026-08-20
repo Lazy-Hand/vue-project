@@ -139,9 +139,10 @@ function getCategoryColor(category?: string | null): string {
           <!-- 卡片顶部 -->
           <div class="flex items-start justify-between gap-2 mb-3 min-w-0">
             <div class="flex items-center gap-2.5 min-w-0 flex-1">
-              <!-- 图标 -->
+              <!-- 图标：按流程定义主题色着色 -->
               <div
-                class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-base shrink-0 shadow-2xs bg-blue-600"
+                class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-base shrink-0 shadow-2xs"
+                :style="{ backgroundColor: item.color || '#1677ff' }"
               >
                 <component :is="getIconComponent(item.icon)" />
               </div>
@@ -182,9 +183,16 @@ function getCategoryColor(category?: string | null): string {
             </div>
           </div>
 
-          <!-- 分类与指标标签 -->
+          <!-- 分类与指标标签：分类跟随流程定义主题色 -->
           <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
-            <Tag :color="getCategoryColor(item.category)" class="text-xs">
+            <Tag
+              class="text-xs border"
+              :style="{
+                color: item.color || '#1677ff',
+                borderColor: item.color || '#1677ff',
+                background: '#fff',
+              }"
+            >
               {{ item.category || t('approval.definition.categoryDefault') }}
             </Tag>
             <Tag color="default" class="text-xs">

@@ -16,16 +16,37 @@ import {
   message,
 } from 'antdv-next'
 import {
+  ApartmentOutlined,
   AppstoreOutlined,
+  AuditOutlined,
+  BankOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  CoffeeOutlined,
   CopyOutlined,
   DeleteOutlined,
+  DollarCircleOutlined,
   EditOutlined,
+  FileProtectOutlined,
+  FileTextOutlined,
+  FormOutlined,
   NodeIndexOutlined,
   PlusOutlined,
+  ProjectOutlined,
+  ReconciliationOutlined,
   ReloadOutlined,
+  SafetyCertificateOutlined,
   SearchOutlined,
+  SendOutlined,
+  SettingOutlined,
+  SolutionOutlined,
   TableOutlined,
+  TeamOutlined,
+  ToolOutlined,
+  TrophyOutlined,
   UnorderedListOutlined,
+  UserOutlined,
+  WalletOutlined,
 } from '@antdv-next/icons'
 
 import {
@@ -58,6 +79,36 @@ import { mapDefinitionQuery } from './utils'
 
 const { t, locale } = useI18n()
 const { hasPermission } = usePermission()
+
+const iconMap: Record<string, unknown> = {
+  UserOutlined,
+  DollarCircleOutlined,
+  WalletOutlined,
+  SafetyCertificateOutlined,
+  TeamOutlined,
+  ApartmentOutlined,
+  FileTextOutlined,
+  FormOutlined,
+  SolutionOutlined,
+  ProjectOutlined,
+  ToolOutlined,
+  BankOutlined,
+  CalendarOutlined,
+  AuditOutlined,
+  CoffeeOutlined,
+  ClockCircleOutlined,
+  TrophyOutlined,
+  SendOutlined,
+  ReconciliationOutlined,
+  FileProtectOutlined,
+  SettingOutlined,
+  AppstoreOutlined,
+}
+
+function getIconComponent(iconName?: string | null): unknown {
+  if (!iconName) return FileTextOutlined
+  return iconMap[iconName] ?? FileTextOutlined
+}
 
 const canQuery = computed(() => hasPermission('system:approval:definition:query'))
 const canCreate = computed(() => hasPermission('system:approval:definition:create'))
@@ -191,8 +242,9 @@ const columns = computed<ProTableColumn<ApprovalDefinition>[]>(() => [
   {
     prop: 'category',
     label: t('approval.definition.category'),
-    width: 120,
-    formatter: (row) => row.category ?? '-',
+    width: 130,
+    type: 'slot',
+    slot: 'category',
   },
   { prop: 'version', label: t('approval.definition.version'), width: 80 },
   {
@@ -501,6 +553,20 @@ onMounted(() => {
           :immediate="canQuery"
           :show-request-error="false"
         >
+          <template #column-category="{ row }">
+            <div class="flex items-center gap-2">
+              <div
+                class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shadow-2xs shrink-0"
+                :style="{ backgroundColor: row.color || '#1677ff' }"
+              >
+                <component :is="getIconComponent(row.icon)" />
+              </div>
+              <span class="text-sm font-medium text-slate-700">
+                {{ row.category || t('approval.definition.categoryDefault') }}
+              </span>
+            </div>
+          </template>
+
           <template #column-enabled="{ row }">
             <Switch
               size="small"

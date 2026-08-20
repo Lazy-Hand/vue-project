@@ -315,7 +315,8 @@ function handleFormSuccess(): void {
       <template #column-name="{ row }">
         <div class="flex items-center gap-2.5">
           <div
-            class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shadow-2xs shrink-0 bg-blue-600"
+            class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shadow-2xs shrink-0"
+            :style="{ backgroundColor: row.color || '#1677ff' }"
           >
             <component :is="getIconComponent(row.icon)" />
           </div>
