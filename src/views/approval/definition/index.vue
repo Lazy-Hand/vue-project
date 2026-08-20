@@ -421,37 +421,49 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- 分类 Tab 栏 -->
-      <div class="flex items-center justify-between border-t border-slate-100 pt-3">
-        <Tabs
-          :active-key="activeCategory"
-          class="definition-category-tabs"
-          :items="categoryTabItems"
-          @change="(key) => handleCategoryChange(String(key))"
-        />
+      <!-- 分类 Tab 栏 + 卡片视图查询（仅 card 展示，table 走 ProTable 自带表单） -->
+      <template v-if="viewMode === 'card'">
+        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+          <Tabs
+            :active-key="activeCategory"
+            class="definition-category-tabs"
+            :items="categoryTabItems"
+            @change="(key) => handleCategoryChange(String(key))"
+          />
 
-        <div class="flex items-center gap-2">
-          <Input
-            v-model:value="searchKeyword"
-            size="small"
-            :placeholder="t('approval.definition.keywordPlaceholder')"
-            class="w-56"
-            allow-clear
-            @press-enter="handleSearch"
-          >
-            <template #prefix>
-              <SearchOutlined class="text-slate-400" />
-            </template>
-          </Input>
+          <div class="flex items-center gap-2">
+            <Input
+              v-model:value="searchKeyword"
+              size="small"
+              :placeholder="t('approval.definition.keywordPlaceholder')"
+              class="w-56"
+              allow-clear
+              @press-enter="handleSearch"
+            >
+              <template #prefix>
+                <SearchOutlined class="text-slate-400" />
+              </template>
+            </Input>
 
-          <Button size="small" type="primary" @click="handleSearch">
-            {{ t('common.search') }}
-          </Button>
-          <Button size="small" @click="handleReset">
-            {{ t('common.reset') }}
-          </Button>
+            <Button size="small" type="primary" @click="handleSearch">
+              {{ t('common.search') }}
+            </Button>
+            <Button size="small" @click="handleReset">
+              {{ t('common.reset') }}
+            </Button>
+          </div>
         </div>
-      </div>
+      </template>
+      <template v-else>
+        <div class="border-t border-slate-100 pt-3">
+          <Tabs
+            :active-key="activeCategory"
+            class="definition-category-tabs"
+            :items="categoryTabItems"
+            @change="(key) => handleCategoryChange(String(key))"
+          />
+        </div>
+      </template>
     </div>
 
     <!-- 主展示区 -->

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Badge, Button, Empty, Modal, Popover, Spin, message } from 'antdv-next'
+import { useRouter } from 'vue-router'
+import { Badge, Button, Empty, Modal, Popover, Spin, Tabs, Tag, message } from 'antdv-next'
 import { BellOutlined } from '@antdv-next/icons'
 
+import { fetchTodoList } from '@/api/approval'
 import {
   fetchPublishedNotices,
   fetchUnreadNoticeCount,
@@ -14,14 +16,20 @@ import { useNoticeSse } from '@/composables/useNoticeSse'
 import type { PublishedNotice } from '@/types/notice'
 import { ApiRequestError } from '@/utils/request'
 
+const router = useRouter()
 const { locale, t } = useI18n()
 
+const activeTab = ref<'notice' | 'todo'>('notice')
 const panelOpen = ref(false)
 const loading = ref(false)
 const notices = ref<PublishedNotice[]>([])
 const unreadCount = ref(0)
 const detailVisible = ref(false)
 const detailNotice = ref<PublishedNotice | null>(null)
+
+const todoLoading = ref(false)
+const todoItems = ref<{ id: string; title: string; status: string; createdAt: string }[]>([])
+const todoTotal = ref(0)
 
 const hasUnread = computed(() => notices.value.some((item) => !item.read))
 
@@ -67,9 +75,43 @@ async function loadNotices(): Promise<void> {
   }
 }
 
+async function loadTodo(): Promise<void> {
+  todoLoading.value = true
+  try {
+    const result = await fetchTodoList({ page: 1, pageSize: 8 })
+    todoItems.value = (result.items ?? []).map((item) => ({
+      id: item.id,
+      title: item.title,
+      status: item.status,
+      createdAt: item.createdAt,
+    }))
+    todoTotal.value = result.total
+  } catch (error) {
+    message.error(errorMessage(error))
+  } finally {
+    todoLoading.value = false
+  }
+}
+
 async function handleOpenChange(open: boolean): Promise<void> {
   if (!open) return
-  await Promise.all([refreshUnreadCount(), loadNotices()])
+  await Promise.all([refreshUnreadCount(), loadNotices(), loadTodo()])
+}
+
+function handleTodoClick(id: string): void {
+  panelOpen.value = false
+  void router.push('/approval/todo')
+  void id
+}
+
+function handleViewAllTodo(): void {
+  panelOpen.value = false
+  void router.push('/approval/todo')
+}
+
+function handleViewAllNotices(): void {
+  panelOpen.value = false
+  void router.push('/system/notice')
 }
 
 async function handleItemClick(item: PublishedNotice): Promise<void> {
@@ -122,6 +164,12 @@ useNoticeSse({
       notice.read = true
     })
   },
+  onApprovalTodo: () => {
+    void loadTodo()
+  },
+  onApprovalTodoRefresh: () => {
+    void loadTodo()
+  },
 })
 
 onMounted(refreshUnreadCount)
@@ -144,39 +192,91 @@ onMounted(refreshUnreadCount)
 
       <template #content>
         <div class="notice-bell__panel">
-          <div class="notice-bell__header">
-            <span class="notice-bell__title">{{ t('notice.notifications') }}</span>
-            <Button
-              v-if="hasUnread"
-              type="link"
-              size="small"
-              class="notice-bell__mark-all"
-              @click="handleMarkAllRead"
-            >
-              {{ t('notice.markAllRead') }}
-            </Button>
-          </div>
+          <Tabs
+            v-model:active-key="activeTab"
+            size="small"
+            class="notice-bell__tabs"
+            :items="[
+              { key: 'notice', tab: t('notice.notifications') },
+              { key: 'todo', tab: `${t('approval.instance.todoTitle')} (${todoTotal})` },
+            ]"
+          />
 
-          <Spin :spinning="loading">
-            <div v-if="notices.length" class="notice-bell__list">
-              <div
-                v-for="item in notices"
-                :key="item.id"
-                class="notice-bell__item"
-                :class="{ 'notice-bell__item--unread': !item.read }"
-                @click="handleItemClick(item)"
+          <template v-if="activeTab === 'notice'">
+            <div class="notice-bell__header">
+              <span class="notice-bell__title">{{ t('notice.notifications') }}</span>
+              <Button
+                v-if="hasUnread"
+                type="link"
+                size="small"
+                class="notice-bell__mark-all"
+                @click="handleMarkAllRead"
               >
-                <span v-if="!item.read" class="notice-bell__dot" />
-                <div class="notice-bell__item-body">
-                  <div class="notice-bell__item-title">{{ item.title }}</div>
-                  <div class="notice-bell__item-time">{{ formatDateTime(item.publishedAt) }}</div>
+                {{ t('notice.markAllRead') }}
+              </Button>
+            </div>
+
+            <Spin :spinning="loading">
+              <div v-if="notices.length" class="notice-bell__list">
+                <div
+                  v-for="item in notices"
+                  :key="item.id"
+                  class="notice-bell__item"
+                  :class="{ 'notice-bell__item--unread': !item.read }"
+                  @click="handleItemClick(item)"
+                >
+                  <span v-if="!item.read" class="notice-bell__dot" />
+                  <div class="notice-bell__item-body">
+                    <div class="notice-bell__item-title">{{ item.title }}</div>
+                    <div class="notice-bell__item-time">{{ formatDateTime(item.publishedAt) }}</div>
+                  </div>
                 </div>
               </div>
+              <div v-else-if="!loading" class="notice-bell__empty">
+                <Empty :description="t('notice.empty')" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
+              </div>
+            </Spin>
+
+            <div class="notice-bell__footer">
+              <Button type="link" size="small" @click="handleViewAllNotices">{{
+                t('home.viewAllNotices')
+              }}</Button>
             </div>
-            <div v-else-if="!loading" class="notice-bell__empty">
-              <Empty :description="t('notice.empty')" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
+          </template>
+
+          <template v-else>
+            <Spin :spinning="todoLoading">
+              <div v-if="todoItems.length" class="notice-bell__list">
+                <div
+                  v-for="item in todoItems"
+                  :key="item.id"
+                  class="notice-bell__item"
+                  @click="handleTodoClick(item.id)"
+                >
+                  <div class="notice-bell__item-body">
+                    <div class="notice-bell__item-title">{{ item.title }}</div>
+                    <div class="notice-bell__item-time flex items-center gap-1.5">
+                      <Tag color="processing" class="m-0 text-xs leading-none">{{
+                        item.status
+                      }}</Tag>
+                      <span>{{ formatDateTime(item.createdAt) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else-if="!todoLoading" class="notice-bell__empty">
+                <Empty
+                  :description="t('approval.instance.noTasks')"
+                  :image="Empty.PRESENTED_IMAGE_SIMPLE"
+                />
+              </div>
+            </Spin>
+            <div class="notice-bell__footer">
+              <Button type="link" size="small" @click="handleViewAllTodo"
+                >{{ t('approval.instance.todoTitle') }} →</Button
+              >
             </div>
-          </Spin>
+          </template>
         </div>
       </template>
     </Popover>
@@ -213,7 +313,21 @@ onMounted(refreshUnreadCount)
 }
 
 .notice-bell__panel {
-  width: 320px;
+  width: 340px;
+}
+
+.notice-bell__tabs {
+  :deep(.ant-tabs-nav) {
+    margin: 0 0 8px 0;
+  }
+}
+
+.notice-bell__footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 8px;
 }
 
 .notice-bell__header {

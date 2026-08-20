@@ -72,3 +72,5 @@ export type NoticeSseMessage =
   | { type: 'notice:read'; id: string; unreadCount: number }
   /** 全部公告已读：unreadCount 为我方最新未读数 */
   | { type: 'notice:read-all'; unreadCount: number }
+  | { type: 'approval:todo'; instanceId: string; title: string; definitionId: string }
+  | { type: 'approval:todo-refresh'; instanceId: string }

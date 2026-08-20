@@ -29,7 +29,9 @@ import {
   UserOutlined,
 } from '@antdv-next/icons'
 
+import { fetchTodoList } from '@/api/approval'
 import { fetchDashboardOverview } from '@/api/dashboard'
+import { useNoticeSse } from '@/composables/useNoticeSse'
 import { usePermission } from '@/composables/usePermission'
 import type { DashboardOverview } from '@/types/dashboard'
 import { ApiRequestError } from '@/utils/request'
@@ -45,6 +47,8 @@ const loading = ref(false)
 const lastUpdatedTime = ref<string>('')
 const autoRefreshInterval = ref<number>(0) // 0 = off, 30 = 30s, 60 = 60s
 let timer: ReturnType<typeof setInterval> | null = null
+
+const todoCount = ref(0)
 
 const successRate = computed<string>(() => {
   const total = overview.value?.todayOperationCount ?? 0
@@ -96,7 +100,12 @@ async function loadOverview(): Promise<void> {
   if (!canQuery.value) return
   loading.value = true
   try {
-    overview.value = await fetchDashboardOverview()
+    const [ov, todo] = await Promise.all([
+      fetchDashboardOverview(),
+      fetchTodoList({ page: 1, pageSize: 1 }).catch(() => ({ total: 0, items: [] as never[] })),
+    ])
+    overview.value = ov
+    todoCount.value = (todo as { total: number }).total ?? 0
     const now = new Date()
     lastUpdatedTime.value = now.toTimeString().split(' ')[0] ?? ''
   } catch (error) {
@@ -123,6 +132,20 @@ function handleAutoRefreshChange(val: string | number): void {
 function navigateTo(path: string): void {
   void router.push(path)
 }
+
+async function refreshTodoCount(): Promise<void> {
+  try {
+    const res = await fetchTodoList({ page: 1, pageSize: 1 })
+    todoCount.value = res.total
+  } catch {
+    // 忽略
+  }
+}
+
+useNoticeSse({
+  onApprovalTodo: () => void refreshTodoCount(),
+  onApprovalTodoRefresh: () => void refreshTodoCount(),
+})
 
 onMounted(() => {
   void loadOverview()
@@ -279,7 +302,28 @@ onBeforeUnmount(() => {
         </div>
       </Card>
 
-      <!-- 4. SLA 成功率与吞吐 -->
+      <!-- 4. 待办审批 -->
+      <Card variant="borderless" class="kpi-card hover-lift" @click="navigateTo('/approval/todo')">
+        <div class="kpi-card-inner">
+          <div class="kpi-icon-box bg-gradient-to-br from-orange-500 to-red-600">
+            <AuditOutlined />
+          </div>
+          <div class="kpi-body">
+            <Statistic
+              :title="t('approval.instance.todoTitle')"
+              :value="todoCount"
+              class="kpi-stat"
+            />
+            <div class="kpi-meta-row">
+              <span class="kpi-sub-label">{{ t('approval.instance.todoTitle') }}</span>
+              <Tag v-if="todoCount > 0" color="orange" class="kpi-tag">{{ todoCount }} 待处理</Tag>
+              <Tag v-else color="green" class="kpi-tag">无待办</Tag>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <!-- 5. SLA 成功率与吞吐 -->
       <Card variant="borderless" class="kpi-card hover-lift">
         <div class="kpi-card-inner">
           <div class="kpi-icon-box bg-gradient-to-br from-purple-500 to-pink-600">
@@ -452,6 +496,19 @@ onBeforeUnmount(() => {
             <div class="res-info">
               <div class="res-name">{{ t('dashboard.deptManage') }}</div>
               <div class="res-desc">{{ t('dashboard.deptManageDesc') }}</div>
+            </div>
+            <ArrowRightOutlined class="res-arrow" />
+          </div>
+        </Col>
+
+        <Col :xs="24" :sm="12" :lg="6">
+          <div class="resource-card hover-lift" @click="navigateTo('/approval/todo')">
+            <div class="res-icon bg-orange-50 text-orange-600">
+              <AuditOutlined />
+            </div>
+            <div class="res-info">
+              <div class="res-name">{{ t('approval.instance.todoTitle') }}</div>
+              <div class="res-desc">{{ t('approval.title') }}</div>
             </div>
             <ArrowRightOutlined class="res-arrow" />
           </div>

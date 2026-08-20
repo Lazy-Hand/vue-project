@@ -13,6 +13,12 @@ export interface NoticeSseHandlers {
   onRead?: (message: Extract<NoticeSseMessage, { type: 'notice:read' }>) => void
   /** 我方全部公告已读（跨标签页/设备同步） */
   onReadAll?: (message: Extract<NoticeSseMessage, { type: 'notice:read-all' }>) => void
+  /** 新待办（定向推送给候选人） */
+  onApprovalTodo?: (message: Extract<NoticeSseMessage, { type: 'approval:todo' }>) => void
+  /** 待办刷新（处理后同步待办/已办） */
+  onApprovalTodoRefresh?: (
+    message: Extract<NoticeSseMessage, { type: 'approval:todo-refresh' }>,
+  ) => void
 }
 
 const RECONNECT_BASE_DELAY_MS = 1_000
@@ -32,6 +38,14 @@ function isNoticeSseMessage(value: unknown): value is NoticeSseMessage {
       return typeof record.id === 'string' && typeof record.unreadCount === 'number'
     case 'notice:read-all':
       return typeof record.unreadCount === 'number'
+    case 'approval:todo':
+      return (
+        typeof record.instanceId === 'string' &&
+        typeof record.title === 'string' &&
+        typeof record.definitionId === 'string'
+      )
+    case 'approval:todo-refresh':
+      return typeof record.instanceId === 'string'
     default:
       return false
   }
@@ -73,6 +87,12 @@ export function useNoticeSse(handlers: NoticeSseHandlers = {}): void {
         break
       case 'notice:read-all':
         handlers.onReadAll?.(payload)
+        break
+      case 'approval:todo':
+        handlers.onApprovalTodo?.(payload)
+        break
+      case 'approval:todo-refresh':
+        handlers.onApprovalTodoRefresh?.(payload)
         break
       default:
         // connected / heartbeat 仅用于握手与保活

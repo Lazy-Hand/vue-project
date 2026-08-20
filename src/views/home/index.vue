@@ -18,11 +18,14 @@ import {
   UserOutlined,
 } from '@antdv-next/icons'
 
+import { fetchTodoList } from '@/api/approval'
 import { fetchDashboardOverview } from '@/api/dashboard'
+import { useNoticeSse } from '@/composables/useNoticeSse'
 import { buildFileUrl } from '@/api/file'
 import { fetchPublishedNotices } from '@/api/notice'
 import MenuIcon from '@/components/MenuIcon/index.vue'
 import { useAuthStore } from '@/stores/auth'
+import type { ApprovalInstance } from '@/types/approval'
 import type { DashboardOverview } from '@/types/dashboard'
 import type { PublishedNotice } from '@/types/notice'
 
@@ -43,6 +46,8 @@ const overview = ref<DashboardOverview | null>(null)
 const notices = ref<PublishedNotice[]>([])
 const loading = ref(false)
 const noticesLoading = ref(false)
+const todos = ref<ApprovalInstance[]>([])
+const todosLoading = ref(false)
 
 const displayName = computed(
   () => authStore.user?.nickname || authStore.user?.username || t('common.user'),
@@ -164,6 +169,18 @@ async function loadNotices() {
   }
 }
 
+async function loadTodos() {
+  todosLoading.value = true
+  try {
+    const res = await fetchTodoList({ page: 1, pageSize: 5 })
+    todos.value = res.items || []
+  } catch {
+    todos.value = []
+  } finally {
+    todosLoading.value = false
+  }
+}
+
 function navigateTo(path: string) {
   void router.push(path)
 }
@@ -175,9 +192,15 @@ function formatDate(iso: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
+useNoticeSse({
+  onApprovalTodo: () => void loadTodos(),
+  onApprovalTodoRefresh: () => void loadTodos(),
+})
+
 onMounted(() => {
   void loadData()
   void loadNotices()
+  void loadTodos()
 })
 </script>
 
@@ -378,10 +401,50 @@ onMounted(() => {
               <span>{{ t('home.viewLogs') }}</span>
             </Button>
 
+            <Button class="quick-action-btn" @click="navigateTo('/approval/todo')">
+              <AuditOutlined class="quick-btn-icon text-orange-500" />
+              <span>{{ t('approval.instance.todoTitle') }}</span>
+            </Button>
+
             <Button class="quick-action-btn" @click="navigateTo('/system/config')">
               <SettingOutlined class="quick-btn-icon text-indigo-500" />
               <span>系统参数配置</span>
             </Button>
+          </div>
+        </Card>
+
+        <!-- 待办审批 -->
+        <Card variant="borderless" class="workbench-card">
+          <template #title>
+            <div class="card-title-box">
+              <AuditOutlined class="card-title-icon text-orange-500" />
+              <span>{{ t('approval.instance.todoTitle') }}</span>
+            </div>
+          </template>
+          <template #extra>
+            <Button type="link" size="small" @click="navigateTo('/approval/todo')">
+              {{ t('common.refresh') }}
+            </Button>
+          </template>
+
+          <div v-if="todosLoading" class="p-2">
+            <Skeleton active :paragraph="{ rows: 3 }" />
+          </div>
+          <div v-else-if="todos.length > 0" class="notices-list">
+            <div
+              v-for="item in todos"
+              :key="item.id"
+              class="notice-list-item"
+              @click="navigateTo('/approval/todo')"
+            >
+              <div class="notice-item-main">
+                <span class="notice-item-title">{{ item.title }}</span>
+                <span class="notice-item-date">{{ formatDate(item.createdAt) }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-notice-box">
+            <span class="text-gray-400 text-sm">{{ t('approval.instance.noTasks') }}</span>
           </div>
         </Card>
       </Col>
