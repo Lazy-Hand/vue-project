@@ -32,3 +32,33 @@ export interface OperationLogQuery {
 export interface CleanOperationLogResult {
   count: number
 }
+
+export type LoginType = 'PASSWORD' | 'REFRESH' | 'REGISTER'
+
+export interface LoginLog {
+  id: string
+  userId: string | null
+  username: string
+  loginType: LoginType
+  success: boolean
+  failReason: string | null
+  ip: string | null
+  userAgent: string | null
+  createdAt: string
+}
+
+export interface LoginLogQuery {
+  page?: number
+  pageSize?: number
+  username?: string
+  loginType?: LoginType
+  success?: boolean
+  ip?: string
+  startTime?: string
+  endTime?: string
+  userId?: string
+}
+
+export interface CleanLoginLogResult {
+  count: number
+}

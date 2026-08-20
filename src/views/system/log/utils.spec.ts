@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ProTableRequestParams } from '@/types/pro-table'
-import { formatDuration, mapDateRange, mapLogQuery, methodColor, statusColor } from './utils'
+import {
+  formatDuration,
+  loginTypeColor,
+  mapDateRange,
+  mapLogQuery,
+  mapLoginLogQuery,
+  methodColor,
+  statusColor,
+} from './utils'
 
 describe('log page utilities', () => {
   it('maps search values to the paginated log query', () => {
@@ -72,5 +80,36 @@ describe('log page utilities', () => {
     expect(statusColor(404)).toBe('orange')
     expect(statusColor(500)).toBe('red')
     expect(statusColor(null)).toBe('default')
+  })
+
+  it('maps login types to Tag colors', () => {
+    expect(loginTypeColor('PASSWORD')).toBe('blue')
+    expect(loginTypeColor('REFRESH')).toBe('cyan')
+    expect(loginTypeColor('REGISTER')).toBe('purple')
+    expect(loginTypeColor('UNKNOWN')).toBe('default')
+    expect(loginTypeColor(null)).toBe('default')
+  })
+
+  it('maps search values to the login log query', () => {
+    const params: ProTableRequestParams = {
+      page: 1,
+      pageSize: 20,
+      username: '  test_user  ',
+      loginType: 'PASSWORD',
+      success: true,
+      ip: ' 127.0.0.1 ',
+      dateRange: ['2026-08-01T00:00:00.000Z', '2026-08-31T00:00:00.000Z'],
+    }
+
+    expect(mapLoginLogQuery(params)).toEqual({
+      page: 1,
+      pageSize: 20,
+      username: 'test_user',
+      loginType: 'PASSWORD',
+      success: true,
+      ip: '127.0.0.1',
+      startTime: '2026-08-01T00:00:00.000Z',
+      endTime: '2026-08-31T00:00:00.000Z',
+    })
   })
 })

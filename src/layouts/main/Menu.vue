@@ -50,14 +50,18 @@ function handleMenuClick(info: { key: string | number }): void {
     @click="handleMenuClick"
   >
     <MenuItem key="/">
-      <MenuIcon icon="HomeFilled" />
+      <template #icon>
+        <MenuIcon icon="HomeFilled" />
+      </template>
       <span>{{ t('common.home') }}</span>
     </MenuItem>
 
     <template v-for="node in menus" :key="node.id">
       <SubMenu v-if="node.type === 'DIRECTORY' && node.children.length" :key="node.code">
-        <template #title>
+        <template #icon>
           <MenuIcon :icon="node.icon" />
+        </template>
+        <template #title>
           <span>{{ node.name }}</span>
         </template>
         <MenuItem
@@ -65,13 +69,17 @@ function handleMenuClick(info: { key: string | number }): void {
           :key="child.path || child.code"
           :disabled="!child.path"
         >
-          <MenuIcon :icon="child.icon" />
+          <template #icon>
+            <MenuIcon :icon="child.icon" />
+          </template>
           <span>{{ child.name }}</span>
         </MenuItem>
       </SubMenu>
 
       <MenuItem v-else-if="node.type === 'MENU' && node.path" :key="node.path">
-        <MenuIcon :icon="node.icon" />
+        <template #icon>
+          <MenuIcon :icon="node.icon" />
+        </template>
         <span>{{ node.name }}</span>
       </MenuItem>
     </template>

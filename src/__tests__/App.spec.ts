@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { ConfigProvider } from 'antdv-next'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -13,15 +13,19 @@ describe('App', () => {
     i18n.global.locale.value = 'zh-CN'
   })
 
-  it('renders the current route with Antdv locale and theme from app config', () => {
+  it('renders the current route with Antdv locale and theme from app config', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
     useAppConfigStore().setLocale('en-US')
 
     const wrapper = mount(App, {
       global: {
-        plugins: [i18n],
+        plugins: [pinia, i18n],
         stubs: ['RouterView'],
       },
     })
+
+    await flushPromises()
 
     expect(wrapper.find('router-view-stub').exists()).toBe(true)
     expect(wrapper.findComponent(ConfigProvider).props('locale')).toMatchObject({ locale: 'en' })

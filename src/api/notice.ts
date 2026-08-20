@@ -76,3 +76,8 @@ export function markNoticeRead(id: string): Promise<void> {
 export function markAllNoticesRead(): Promise<NoticeCountResult> {
   return request.Post<NoticeCountResult>('/notice/read-all', undefined, { cacheFor: 0 })
 }
+
+/** 批量标记指定公告为已读（幂等） */
+export function markNoticesReadBatch(ids: string[]): Promise<NoticeCountResult> {
+  return request.Post<NoticeCountResult>('/notice/read-batch', { ids }, { cacheFor: 0 })
+}

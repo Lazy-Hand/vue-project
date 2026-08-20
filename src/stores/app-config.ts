@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
+import { refreshLocalizedMenus } from '@/api/auth'
 import { setI18nLocale } from '@/i18n'
 import { APP_LOCALES, DEFAULT_PRIMARY_COLOR, type AppLocale } from '@/types/app-config'
 import { applyDocumentLocale, applyPrimaryColor } from '@/utils/theme'
@@ -19,11 +20,9 @@ export const useAppConfigStore = defineStore(
       applyDocumentLocale(next)
       setI18nLocale(next)
 
-      void import('@/api/auth').then(({ refreshLocalizedMenus }) =>
-        refreshLocalizedMenus().catch(() => {
-          // Locale UI already switched; menu names stay until next bootstrap.
-        }),
-      )
+      void refreshLocalizedMenus().catch(() => {
+        // Locale UI already switched; menu names stay until next bootstrap.
+      })
     }
 
     function setPrimaryColor(color: string): void {

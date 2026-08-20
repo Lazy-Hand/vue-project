@@ -63,13 +63,7 @@ async function handleSubmit() {
       <h1 class="login-title">{{ t('login.title') }}</h1>
       <p class="login-subtitle">{{ t('login.subtitle') }}</p>
 
-      <Form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        layout="vertical"
-        @finish="handleSubmit"
-      >
+      <Form ref="formRef" :model="form" :rules="rules" layout="vertical" @finish="handleSubmit">
         <FormItem name="username">
           <Input
             v-model:value="form.username"

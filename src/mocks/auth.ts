@@ -116,6 +116,46 @@ function createMenus(locale?: string): PermissionTreeNode[] {
         },
       ],
     },
+    {
+      id: '20',
+      type: 'DIRECTORY',
+      code: 'scheduler',
+      name: localizeName({ 'zh-CN': '任务调度', 'en-US': 'Scheduler' }, locale),
+      parentId: null,
+      path: '/scheduler',
+      component: null,
+      icon: 'Timer',
+      sort: 2,
+      enabled: true,
+      children: [
+        {
+          id: '21',
+          type: 'MENU',
+          code: 'system:scheduler:task',
+          name: localizeName({ 'zh-CN': '定时任务', 'en-US': 'Scheduled Tasks' }, locale),
+          parentId: '20',
+          path: '/scheduler/task',
+          component: 'scheduler/task/index',
+          icon: 'Schedule',
+          sort: 1,
+          enabled: true,
+          children: [],
+        },
+        {
+          id: '22',
+          type: 'MENU',
+          code: 'system:scheduler:log',
+          name: localizeName({ 'zh-CN': '执行日志', 'en-US': 'Execution Logs' }, locale),
+          parentId: '20',
+          path: '/scheduler/log',
+          component: 'scheduler/log/index',
+          icon: 'Document',
+          sort: 2,
+          enabled: true,
+          children: [],
+        },
+      ],
+    },
   ]
 }
 
@@ -127,6 +167,14 @@ const MOCK_PERMISSIONS = [
   'system:user:delete',
   'system:role:query',
   'system:permission:query',
+  'system:scheduler:task:query',
+  'system:scheduler:task:create',
+  'system:scheduler:task:update',
+  'system:scheduler:task:delete',
+  'system:scheduler:task:status',
+  'system:scheduler:task:run',
+  'system:scheduler:log:query',
+  'system:scheduler:log:delete',
 ]
 
 function success<T>(data: T): ApiResponse<T> {

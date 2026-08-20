@@ -15,17 +15,20 @@ import {
 import {
   ApiOutlined,
   ClockCircleOutlined,
+  CloudServerOutlined,
   CopyOutlined,
   DashboardOutlined,
+  DatabaseOutlined,
   FilterOutlined,
   ReloadOutlined,
   SearchOutlined,
   ThunderboltOutlined,
 } from '@antdv-next/icons'
 
-import { fetchMetricsText } from '@/api/metrics'
+import { fetchDetailedHealthStatus, fetchMetricsText } from '@/api/metrics'
 import ProTable from '@/components/ProTable/index.vue'
 import { usePermission } from '@/composables/usePermission'
+import type { DetailedHealthStatus } from '@/types/health'
 import type { ProTableColumn, ProTableRequestParams } from '@/types/pro-table'
 import { ApiRequestError } from '@/utils/request'
 import {
@@ -50,6 +53,7 @@ const { hasPermission } = usePermission()
 const canQuery = computed(() => hasPermission('system:metrics:query'))
 
 const rawText = ref('')
+const detailedHealth = ref<DetailedHealthStatus | null>(null)
 const loading = ref(false)
 const lastUpdatedTime = ref<string>('')
 const autoRefreshInterval = ref<number>(0)
@@ -192,11 +196,23 @@ async function loadMetrics(): Promise<void> {
   if (!canQuery.value) return
   loading.value = true
   try {
-    rawText.value = await fetchMetricsText()
+    const [metricsResult, healthResult] = await Promise.allSettled([
+      fetchMetricsText(),
+      fetchDetailedHealthStatus(),
+    ])
+
+    if (metricsResult.status === 'fulfilled') {
+      rawText.value = metricsResult.value
+    } else {
+      message.error(errorMessage(metricsResult.reason))
+    }
+
+    if (healthResult.status === 'fulfilled') {
+      detailedHealth.value = healthResult.value
+    }
+
     const now = new Date()
     lastUpdatedTime.value = now.toTimeString().split(' ')[0] ?? ''
-  } catch (error) {
-    message.error(errorMessage(error))
   } finally {
     loading.value = false
   }
@@ -408,6 +424,100 @@ onBeforeUnmount(() => {
                 <strong class="text-purple-600">{{ activeRequests ?? '-' }}</strong>
               </span>
               <Tag color="purple" class="vital-tag">Async I/O</Tag>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <!-- 5. PostgreSQL 数据库 -->
+      <Card variant="borderless" class="vital-card hover-lift">
+        <div class="vital-card-inner">
+          <div class="vital-icon-box bg-gradient-to-br from-cyan-500 to-blue-600">
+            <DatabaseOutlined />
+          </div>
+          <div class="vital-body">
+            <Statistic
+              :title="t('metrics.databaseTitle')"
+              :value="detailedHealth?.database ? `${detailedHealth.database.latencyMs}ms` : '-'"
+              class="vital-stat"
+            />
+            <div class="vital-bottom-info">
+              <span class="vital-sub-text">
+                {{ t('metrics.databaseLatency') }}
+              </span>
+              <Tag
+                :color="
+                  detailedHealth?.database?.status === 'up'
+                    ? 'green'
+                    : detailedHealth
+                      ? 'red'
+                      : 'default'
+                "
+                class="vital-tag"
+              >
+                {{
+                  detailedHealth?.database?.status === 'up'
+                    ? t('metrics.statusUp')
+                    : detailedHealth
+                      ? t('metrics.statusDown')
+                      : '-'
+                }}
+              </Tag>
+            </div>
+            <div v-if="detailedHealth?.database?.version" class="vital-bottom-tags">
+              <span class="vital-mini-stat" :title="detailedHealth.database.version">
+                {{ detailedHealth.database.version }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <!-- 6. Redis 缓存服务 -->
+      <Card variant="borderless" class="vital-card hover-lift">
+        <div class="vital-card-inner">
+          <div class="vital-icon-box bg-gradient-to-br from-rose-500 to-red-600">
+            <CloudServerOutlined />
+          </div>
+          <div class="vital-body">
+            <Statistic
+              :title="t('metrics.redisTitle')"
+              :value="detailedHealth?.redis ? `${detailedHealth.redis.latencyMs}ms` : '-'"
+              class="vital-stat"
+            />
+            <div class="vital-bottom-info">
+              <span class="vital-sub-text">
+                {{ t('metrics.redisLatency') }}
+              </span>
+              <Tag
+                :color="
+                  detailedHealth?.redis?.status === 'up'
+                    ? 'green'
+                    : detailedHealth
+                      ? 'red'
+                      : 'default'
+                "
+                class="vital-tag"
+              >
+                {{
+                  detailedHealth?.redis?.status === 'up'
+                    ? t('metrics.statusUp')
+                    : detailedHealth
+                      ? t('metrics.statusDown')
+                      : '-'
+                }}
+              </Tag>
+            </div>
+            <div v-if="detailedHealth?.redis" class="vital-bottom-tags">
+              <span v-if="detailedHealth.redis.usedMemoryHuman" class="vital-mini-stat">
+                {{ t('metrics.redisMemory') }}: {{ detailedHealth.redis.usedMemoryHuman }}
+              </span>
+              <span
+                v-if="detailedHealth.redis.connectedClients !== undefined"
+                class="vital-mini-stat"
+              >
+                {{ t('metrics.redisClients') }}: {{ detailedHealth.redis.connectedClients }}
+              </span>
             </div>
           </div>
         </div>

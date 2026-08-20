@@ -102,3 +102,47 @@ export function statusColor(status: number | null | undefined): string {
   if (status >= 500) return 'red'
   return 'default'
 }
+
+/** Semantic Tag color for a login type. */
+export function loginTypeColor(type: string | null | undefined): string {
+  switch (String(type).toUpperCase()) {
+    case 'PASSWORD':
+      return 'blue'
+    case 'REFRESH':
+      return 'cyan'
+    case 'REGISTER':
+      return 'purple'
+    default:
+      return 'default'
+  }
+}
+
+/** Translate ProTable's search state into the server-side login log query contract. */
+export function mapLoginLogQuery(
+  params: ProTableRequestParams,
+): import('@/types/log').LoginLogQuery {
+  const query: import('@/types/log').LoginLogQuery = {
+    page: params.page,
+    pageSize: params.pageSize,
+  }
+
+  const username = trimmedString(params.username)
+  if (username) query.username = username
+
+  if (params.loginType && typeof params.loginType === 'string') {
+    query.loginType = params.loginType as import('@/types/log').LoginType
+  }
+
+  if (typeof params.success === 'boolean') query.success = params.success
+
+  const ip = trimmedString(params.ip)
+  if (ip) query.ip = ip
+
+  const dateRange = mapDateRange(params.dateRange)
+  if (dateRange) {
+    query.startTime = dateRange[0]
+    query.endTime = dateRange[1]
+  }
+
+  return query
+}
