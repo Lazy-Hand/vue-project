@@ -158,6 +158,7 @@ export function fetchApprovalInstances(
   appendQueryParam(params, 'keyword', query.keyword)
   appendQueryParam(params, 'applicantId', query.applicantId)
   appendQueryParam(params, 'businessType', query.businessType)
+  appendQueryParam(params, 'businessId', query.businessId)
 
   return request.Get<PaginatedResult<ApprovalInstance>>('/approval/instances', {
     params,

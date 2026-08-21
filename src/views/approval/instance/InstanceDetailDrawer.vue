@@ -12,21 +12,13 @@ import {
   TimelineItem,
   message,
 } from 'antdv-next'
-import {
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  CloseCircleOutlined,
-  CommentOutlined,
-  FileTextOutlined,
-  NodeIndexOutlined,
-  UserOutlined,
-} from '@antdv-next/icons'
+import { ClockCircleOutlined, CommentOutlined, NodeIndexOutlined } from '@antdv-next/icons'
 
 import { commentApprovalInstance, fetchApprovalInstanceDetail } from '@/api/approval'
-import type { ApprovalInstanceDetail, ApprovalTask } from '@/types/approval'
+import type { ApprovalInstanceDetail } from '@/types/approval'
 import { ApiRequestError } from '@/utils/request'
-import BusinessDetailPlaceholder from '../components/BusinessDetailPlaceholder.vue'
-import InboundOrderDetailReadonly from '../components/InboundOrderDetailReadonly.vue'
+import ApprovalFlowProgress from '../components/ApprovalFlowProgress.vue'
+import BusinessDetailHost from '../components/BusinessDetailHost.vue'
 
 const props = defineProps<{ open: boolean; instanceId: string | null }>()
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
@@ -40,6 +32,14 @@ const commenting = ref(false)
 const visible = computed({
   get: () => props.open,
   set: (v: boolean) => emit('update:open', v),
+})
+
+/** 从 flowSnapshot 快照中取流程节点（含发起/抄送/条件/审批各类型）。 */
+const flowSnapshotNodes = computed(() => {
+  const snapshot = detail.value?.instance.flowSnapshot
+  if (!snapshot || typeof snapshot !== 'object') return []
+  const nodes = (snapshot as Record<string, unknown>)['nodes']
+  return Array.isArray(nodes) ? nodes : []
 })
 
 function formatDateTime(value?: string | null): string {
@@ -203,39 +203,20 @@ watch(
         </DescriptionsItem>
       </Descriptions>
 
-      <!-- 单据/表单：入库单走只读单据示例，其余有业务指针的走占位，无则展示表单填报 -->
-      <InboundOrderDetailReadonly
-        v-if="detail.instance.businessType === 'INBOUND_ORDER' && detail.instance.businessId"
-        :business-id="detail.instance.businessId"
-        :form-data="(detail.instance.formData as Record<string, unknown> | null) ?? null"
-        class="mb-5"
+      <!-- 流程实例进度图：按 flowSnapshot 节点结构渲染，当前节点绿色高亮、已通过置灰 -->
+      <ApprovalFlowProgress
+        :nodes="flowSnapshotNodes"
+        :tasks="detail.tasks"
+        :current-node-key="detail.instance.currentNodeKey ?? null"
+        :status="detail.instance.status"
       />
-      <BusinessDetailPlaceholder
-        v-else-if="detail.instance.businessType && detail.instance.businessId"
+
+      <!-- 单据/表单：按 businessType 走注册表，未注册类型由占位组件兜底 -->
+      <BusinessDetailHost
         :business-type="detail.instance.businessType"
         :business-id="detail.instance.businessId"
         :form-data="(detail.instance.formData as Record<string, unknown> | null) ?? null"
-        class="mb-5"
       />
-      <div
-        v-else-if="detail.instance.formData && typeof detail.instance.formData === 'object'"
-        class="mb-5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl"
-      >
-        <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-2.5">
-          <FileTextOutlined class="text-blue-600" />
-          <span>表单填报数据</span>
-        </div>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <div
-            v-for="(val, key) in detail.instance.formData as Record<string, unknown>"
-            :key="key"
-            class="flex flex-col bg-white p-2 rounded-lg border border-slate-100"
-          >
-            <span class="text-slate-400 font-mono text-2xs">{{ key }}</span>
-            <span class="font-medium text-slate-700 mt-0.5 truncate">{{ String(val) }}</span>
-          </div>
-        </div>
-      </div>
 
       <!-- 审批流转节点进度 -->
       <h4 class="mb-3 mt-4 text-sm font-bold text-slate-800 flex items-center gap-1.5">

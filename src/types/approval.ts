@@ -294,6 +294,7 @@ export interface ApprovalInstanceQuery extends PaginationQuery {
   keyword?: string
   applicantId?: string
   businessType?: string
+  businessId?: string
 }
 
 export interface ApprovalTaskQuery extends PaginationQuery {
