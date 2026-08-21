@@ -81,16 +81,16 @@ const iconList = [
 ]
 
 const colorList = [
-  { value: '#1677ff', bgClass: 'bg-blue-600' },
-  { value: '#52c41a', bgClass: 'bg-emerald-600' },
-  { value: '#faad14', bgClass: 'bg-amber-500' },
-  { value: '#722ed1', bgClass: 'bg-purple-600' },
-  { value: '#eb2f96', bgClass: 'bg-pink-600' },
-  { value: '#13c2c2', bgClass: 'bg-teal-600' },
-  { value: '#fa541c', bgClass: 'bg-orange-600' },
-  { value: '#2f54eb', bgClass: 'bg-indigo-600' },
-  { value: '#fa8c16', bgClass: 'bg-amber-600' },
-  { value: '#64748b', bgClass: 'bg-slate-600' },
+  '#1677ff',
+  '#52c41a',
+  '#faad14',
+  '#722ed1',
+  '#eb2f96',
+  '#13c2c2',
+  '#fa541c',
+  '#2f54eb',
+  '#fa8c16',
+  '#64748b',
 ]
 
 const loadedCategories = ref<string[]>([])
@@ -209,7 +209,8 @@ function selectColor(color: string): void {
           >
             <span class="text-xs text-slate-400">实时预览:</span>
             <div
-              class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm bg-blue-600 shadow-2xs"
+              class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shadow-2xs"
+              :style="{ backgroundColor: modelValue.color || '#1677ff' }"
             >
               <component :is="currentIconComp" />
             </div>
@@ -247,17 +248,18 @@ function selectColor(color: string): void {
             <div class="text-xs text-slate-500 mb-2">{{ t('approval.definition.color') }}</div>
             <div class="grid grid-cols-5 gap-2.5 items-center">
               <button
-                v-for="c in colorList"
-                :key="c.value"
+                v-for="color in colorList"
+                :key="color"
                 type="button"
                 :class="[
                   'w-8 h-8 rounded-full border-2 transition-transform cursor-pointer',
-                  c.bgClass,
-                  modelValue.color === c.value
+                  modelValue.color === color
                     ? 'border-white scale-110 shadow-sm ring-2 ring-blue-500'
                     : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100',
                 ]"
-                @click="selectColor(c.value)"
+                :style="{ backgroundColor: color }"
+                :title="color"
+                @click="selectColor(color)"
               />
             </div>
           </div>

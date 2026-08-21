@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, markRaw, ref, shallowRef, watch } from 'vue'
+import { computed, h, markRaw, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Button,
@@ -9,16 +9,12 @@ import {
   Input,
   Select,
   Switch,
-  Tag,
-  TextArea,
+  TreeSelect,
   message,
 } from 'antdv-next'
 import {
-  ApartmentOutlined,
   BranchesOutlined,
   DeleteOutlined,
-  ForkOutlined,
-  NodeIndexOutlined,
   PlusOutlined,
   ReloadOutlined,
   SendOutlined,
@@ -43,6 +39,11 @@ import '@vue-flow/core/dist/style.css'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
 
+import { fetchDeptTree } from '@/api/dept'
+import { fetchPosts } from '@/api/post'
+import { fetchRoles } from '@/api/role'
+import { fetchUserList } from '@/api/user'
+import type { DeptTreeNode } from '@/types/dept'
 import type {
   ApprovalAssigneeType,
   ApprovalNodeInput,
@@ -66,6 +67,86 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const selectedNodeIndex = ref<number | null>(0)
 const drawerVisible = ref(false)
+
+const userOptions = ref<{ label: string; value: string }[]>([])
+const roleOptions = ref<{ label: string; value: string }[]>([])
+const deptTreeData = ref<DeptTreeNode[]>([])
+const postOptions = ref<{ label: string; value: string }[]>([])
+const deptLoading = ref(false)
+
+const userSearchKeyword = ref('')
+const roleSearchKeyword = ref('')
+
+async function loadUserOptions(keyword?: string): Promise<void> {
+  try {
+    const res = await fetchUserList({ page: 1, pageSize: 100, ...(keyword ? { keyword } : {}) })
+    userOptions.value = (res.items ?? []).map((u) => ({
+      label: `${u.nickname || u.username} (${u.username})`,
+      value: String(u.id),
+    }))
+  } catch {
+    // ignore
+  }
+}
+
+async function loadRoleOptions(): Promise<void> {
+  try {
+    const roles = await fetchRoles()
+    roleOptions.value = (roles ?? []).map((r) => ({
+      label: `${r.name} (${r.code})`,
+      value: String(r.id),
+    }))
+  } catch {
+    // ignore
+  }
+}
+
+async function loadDeptTree(): Promise<void> {
+  deptLoading.value = true
+  try {
+    deptTreeData.value = await fetchDeptTree()
+  } catch {
+    deptTreeData.value = []
+  } finally {
+    deptLoading.value = false
+  }
+}
+
+async function loadPostOptions(): Promise<void> {
+  try {
+    const posts = await fetchPosts()
+    postOptions.value = (posts ?? []).map((p) => ({
+      label: `${p.name} (${p.code})`,
+      value: String(p.id),
+    }))
+  } catch {
+    // ignore
+  }
+}
+
+function handleUserSearch(val: string): void {
+  userSearchKeyword.value = val
+  void loadUserOptions(val.trim() || undefined)
+}
+
+const filteredUserOptions = computed(() => {
+  const kw = userSearchKeyword.value.trim().toLowerCase()
+  if (!kw) return userOptions.value
+  return userOptions.value.filter((o) => o.label.toLowerCase().includes(kw))
+})
+
+const filteredRoleOptions = computed(() => {
+  const kw = roleSearchKeyword.value.trim().toLowerCase()
+  if (!kw) return roleOptions.value
+  return roleOptions.value.filter((o) => o.label.toLowerCase().includes(kw))
+})
+
+onMounted(() => {
+  void loadUserOptions()
+  void loadRoleOptions()
+  void loadDeptTree()
+  void loadPostOptions()
+})
 
 const nodeTypeOptions = computed(() => [
   { label: t('approval.definition.nodeTypeSeq'), value: 'SEQ' },
@@ -802,13 +883,126 @@ watch(
         </FormItem>
 
         <FormItem
-          v-if="['USER', 'ROLE', 'DEPT'].includes(currentNode.assigneeType)"
+          v-if="currentNode.assigneeType === 'USER'"
           :label="t('approval.definition.assigneeValue')"
+          required
         >
-          <Input
-            :value="currentNode.assigneeValue || ''"
+          <Select
+            :value="
+              currentNode.assigneeValue
+                ? currentNode.assigneeValue
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : []
+            "
+            :options="filteredUserOptions"
+            mode="multiple"
+            allow-clear
+            show-search
+            :filter-option="false"
             :placeholder="t('approval.definition.assigneeValuePlaceholder')"
-            @update:value="(val) => updateCurrentNode({ assigneeValue: String(val) })"
+            @update:value="
+              (val) => updateCurrentNode({ assigneeValue: (val as string[]).join(',') })
+            "
+            @search="handleUserSearch"
+          />
+        </FormItem>
+
+        <FormItem
+          v-else-if="currentNode.assigneeType === 'ROLE'"
+          :label="t('approval.definition.assigneeValue')"
+          required
+        >
+          <Select
+            :value="
+              currentNode.assigneeValue
+                ? currentNode.assigneeValue
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : []
+            "
+            :options="filteredRoleOptions"
+            mode="multiple"
+            allow-clear
+            show-search
+            :filter-option="false"
+            :placeholder="t('approval.definition.assigneeValuePlaceholder')"
+            @update:value="
+              (val) => updateCurrentNode({ assigneeValue: (val as string[]).join(',') })
+            "
+            @search="(val: string) => (roleSearchKeyword = val)"
+          />
+        </FormItem>
+
+        <FormItem
+          v-else-if="currentNode.assigneeType === 'DEPT'"
+          :label="t('approval.definition.assigneeValue')"
+          required
+        >
+          <TreeSelect
+            :value="
+              currentNode.assigneeValue
+                ? currentNode.assigneeValue
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : []
+            "
+            :tree-data="deptTreeData"
+            :field-names="{ label: 'name', value: 'id', children: 'children' }"
+            multiple
+            allow-clear
+            tree-checkable
+            tree-check-strictly
+            tree-default-expand-all
+            :placeholder="t('approval.definition.assigneeValuePlaceholder')"
+            :loading="deptLoading"
+            @update:value="
+              (val) => {
+                const ids: string[] = Array.isArray(val)
+                  ? val.map((item) =>
+                      typeof item === 'object' && item !== null && 'value' in item
+                        ? String((item as { value: string }).value)
+                        : String(item),
+                    )
+                  : val
+                    ? [String(val)]
+                    : []
+                const unique = [...new Set(ids.map((s) => s.trim()).filter(Boolean))]
+                updateCurrentNode({ assigneeValue: unique.join(',') })
+              }
+            "
+          />
+        </FormItem>
+
+        <FormItem
+          v-else-if="currentNode.assigneeType === 'POST'"
+          :label="t('approval.definition.assigneeValue')"
+          required
+        >
+          <Select
+            :value="
+              currentNode.assigneeValue
+                ? currentNode.assigneeValue
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : []
+            "
+            :options="postOptions"
+            mode="multiple"
+            allow-clear
+            show-search
+            :filter-option="
+              (input: string, option: { label: string }) =>
+                option.label.toLowerCase().includes(input.toLowerCase())
+            "
+            :placeholder="t('approval.definition.assigneeValuePlaceholder')"
+            @update:value="
+              (val) => updateCurrentNode({ assigneeValue: (val as string[]).join(',') })
+            "
           />
         </FormItem>
 

@@ -172,7 +172,9 @@ useNoticeSse({
   },
 })
 
-onMounted(refreshUnreadCount)
+onMounted(async () => {
+  await Promise.all([refreshUnreadCount(), loadTodo()])
+})
 </script>
 
 <template>
@@ -184,7 +186,13 @@ onMounted(refreshUnreadCount)
       destroy-on-hidden
       @open-change="handleOpenChange"
     >
-      <Badge :count="unreadCount" :max="99" size="small" :offset="[2, 2]">
+      <Badge
+        :count="unreadCount + todoTotal"
+        :max="99"
+        size="small"
+        :offset="[2, 2]"
+        :title="t('notice.notifications')"
+      >
         <Button type="text" class="notice-bell__trigger" :aria-label="t('notice.notifications')">
           <BellOutlined class="notice-bell__icon" />
         </Button>
@@ -197,8 +205,8 @@ onMounted(refreshUnreadCount)
             size="small"
             class="notice-bell__tabs"
             :items="[
-              { key: 'notice', tab: t('notice.notifications') },
-              { key: 'todo', tab: `${t('approval.instance.todoTitle')} (${todoTotal})` },
+              { key: 'notice', label: t('notice.notifications') },
+              { key: 'todo', label: `${t('approval.instance.todoTitle')} (${todoTotal})` },
             ]"
           />
 

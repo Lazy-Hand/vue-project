@@ -1,20 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  Badge,
-  Button,
-  Input,
-  Modal,
-  Pagination,
-  Radio,
-  RadioGroup,
-  Select,
-  Switch,
-  Tabs,
-  Tag,
-  message,
-} from 'antdv-next'
+import { Button, Input, Modal, Pagination, Switch, Tabs, message } from 'antdv-next'
 import {
   ApartmentOutlined,
   AppstoreOutlined,
@@ -34,7 +21,6 @@ import {
   PlusOutlined,
   ProjectOutlined,
   ReconciliationOutlined,
-  ReloadOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
   SendOutlined,
@@ -44,7 +30,6 @@ import {
   TeamOutlined,
   ToolOutlined,
   TrophyOutlined,
-  UnorderedListOutlined,
   UserOutlined,
   WalletOutlined,
 } from '@antdv-next/icons'
@@ -141,13 +126,13 @@ const categoryTabItems = computed(() => {
   const tabs = [
     {
       key: 'all',
-      tab: `${t('approval.definition.categoryAll')} (${totalCount})`,
+      label: `${t('approval.definition.categoryAll')} (${totalCount})`,
     },
   ]
   for (const c of categories.value) {
     tabs.push({
       key: c.category,
-      tab: `${c.category} (${c.count})`,
+      label: `${c.category} (${c.count})`,
     })
   }
   return tabs

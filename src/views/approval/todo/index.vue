@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Input, Modal, Tag, message } from 'antdv-next'
+import { Input, Modal, Tag, message } from 'antdv-next'
 
 import {
   addSignTask,
@@ -31,6 +31,11 @@ const detailOpen = ref(false)
 const detailId = ref<string | null>(null)
 const actionComment = ref('')
 const actionTargetUserId = ref('')
+
+const rejectVisible = ref(false)
+const rejectTaskId = ref<string | null>(null)
+const rejectComment = ref('')
+const rejecting = ref(false)
 
 const searchFields = computed<ProTableSearchField[]>(() => [
   {
@@ -151,24 +156,29 @@ async function handleReject(row: ApprovalInstance): Promise<void> {
   const taskId = await resolveMyPendingTaskId(row.id)
   if (!taskId) return
 
-  const confirmed = await new Promise<boolean>((resolve) => {
-    Modal.confirm({
-      title: t('common.tip'),
-      content: t('approval.instance.rejectConfirm'),
-      okText: t('common.confirm'),
-      cancelText: t('common.cancel'),
-      onOk: () => resolve(true),
-      onCancel: () => resolve(false),
-    })
-  })
-  if (!confirmed) return
+  rejectTaskId.value = taskId
+  rejectComment.value = ''
+  rejectVisible.value = true
+}
 
+async function submitReject(): Promise<void> {
+  const comment = rejectComment.value.trim()
+  if (!comment) {
+    message.warning(t('approval.instance.rejectCommentRequired'))
+    return
+  }
+  if (!rejectTaskId.value) return
+
+  rejecting.value = true
   try {
-    await rejectTask(taskId, { comment: actionComment.value.trim() || undefined })
+    await rejectTask(rejectTaskId.value, { comment })
     message.success(t('approval.instance.rejectSuccess'))
+    rejectVisible.value = false
     await tableRef.value?.reload()
   } catch (error) {
     message.error(errorMessage(error))
+  } finally {
+    rejecting.value = false
   }
 }
 
@@ -284,6 +294,24 @@ const actions = computed((): ProTableAction<ApprovalInstance>[] => [
     </ProTable>
 
     <InstanceDetailDrawer v-model:open="detailOpen" :instance-id="detailId" />
+
+    <Modal
+      v-model:open="rejectVisible"
+      :title="t('approval.instance.actionReject')"
+      :confirm-loading="rejecting"
+      :ok-text="t('common.confirm')"
+      :cancel-text="t('common.cancel')"
+      @ok="submitReject"
+    >
+      <p class="mb-2 text-sm text-slate-500">{{ t('approval.instance.rejectCommentTip') }}</p>
+      <Input.TextArea
+        v-model:value="rejectComment"
+        :rows="3"
+        :maxlength="500"
+        show-count
+        :placeholder="t('approval.instance.rejectCommentPlaceholder')"
+      />
+    </Modal>
   </div>
 </template>
 
