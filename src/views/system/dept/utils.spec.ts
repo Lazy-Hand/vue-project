@@ -17,6 +17,7 @@ function node(
     sort: 0,
     enabled: true,
     leader: null,
+    leaderId: null,
     phone: null,
     description: null,
     createdAt: '',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Button,
@@ -8,6 +8,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Select,
   Switch,
   TextArea,
   TreeSelect,
@@ -15,6 +16,7 @@ import {
   type Rule,
 } from 'antdv-next'
 
+import { fetchUserList } from '@/api/user'
 import type { DeptPayload, DeptTreeNode } from '@/types/dept'
 import { collectDescendantIds } from './utils'
 
@@ -42,6 +44,7 @@ interface FormModel {
   name: string
   code: string
   leader: string
+  leaderId: string | undefined
   phone: string
   description: string
   sort: number
@@ -53,10 +56,35 @@ const form = reactive<FormModel>({
   name: '',
   code: '',
   leader: '',
+  leaderId: undefined,
   phone: '',
   description: '',
   sort: 0,
   enabled: true,
+})
+
+const leaderUserOptions = ref<{ label: string; value: string }[]>([])
+const leaderUserKeyword = ref('')
+
+async function loadLeaderUsers(keyword?: string): Promise<void> {
+  try {
+    const res = await fetchUserList({ page: 1, pageSize: 100, ...(keyword ? { keyword } : {}) })
+    leaderUserOptions.value = (res.items ?? []).map((u) => ({
+      label: `${u.nickname || u.username} (${u.username})`,
+      value: String(u.id),
+    }))
+  } catch {
+    // ignore
+  }
+}
+
+function handleLeaderSearch(val: string): void {
+  leaderUserKeyword.value = val
+  void loadLeaderUsers(val.trim() || undefined)
+}
+
+onMounted(async () => {
+  void loadLeaderUsers()
 })
 
 const visible = computed({
@@ -109,6 +137,7 @@ function resetForm(): void {
   form.name = ''
   form.code = ''
   form.leader = ''
+  form.leaderId = undefined
   form.phone = ''
   form.description = ''
   form.sort = 0
@@ -120,6 +149,7 @@ function fillFromEditing(node: DeptTreeNode): void {
   form.name = node.name
   form.code = node.code ?? ''
   form.leader = node.leader ?? ''
+  form.leaderId = node.leaderId ?? undefined
   form.phone = node.phone ?? ''
   form.description = node.description ?? ''
   form.sort = node.sort
@@ -147,10 +177,12 @@ function buildPayload(): DeptPayload {
 
   const code = clean(form.code)
   const leader = clean(form.leader)
+  const leaderId = form.leaderId?.trim() || undefined
   const phone = clean(form.phone)
   const description = clean(form.description)
   if (code) payload.code = code
   if (leader) payload.leader = leader
+  if (leaderId) payload.leaderId = leaderId
   if (phone) payload.phone = phone
   if (description) payload.description = description
   return payload
@@ -215,12 +247,15 @@ defineExpose({
         />
       </FormItem>
 
-      <FormItem :label="t('dept.leader')" name="leader">
-        <Input
-          v-model:value="form.leader"
-          :maxlength="64"
-          show-count
+      <FormItem :label="t('dept.leader')" name="leaderId">
+        <Select
+          v-model:value="form.leaderId"
+          :options="leaderUserOptions"
+          allow-clear
+          show-search
+          :filter-option="false"
           :placeholder="t('dept.leaderPlaceholder')"
+          @search="handleLeaderSearch"
         />
       </FormItem>
 

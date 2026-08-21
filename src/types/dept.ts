@@ -6,6 +6,7 @@ export interface Dept {
   sort: number
   enabled: boolean
   leader: string | null
+  leaderId: string | null
   phone: string | null
   description: string | null
   createdAt: string
@@ -23,6 +24,7 @@ export interface DeptPayload {
   sort?: number
   enabled?: boolean
   leader?: string
+  leaderId?: string | null
   phone?: string
   description?: string
 }

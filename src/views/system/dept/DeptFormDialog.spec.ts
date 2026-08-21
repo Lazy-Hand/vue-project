@@ -8,6 +8,7 @@ vi.mock('antdv-next', async () => {
     { default: Input, TextArea },
     { default: InputNumber },
     { default: Modal },
+    { default: Select },
     { default: Switch },
     { default: TreeSelect },
   ] = await Promise.all([
@@ -16,10 +17,11 @@ vi.mock('antdv-next', async () => {
     import('antdv-next/dist/input/index'),
     import('antdv-next/dist/input-number/index'),
     import('antdv-next/dist/modal/index'),
+    import('antdv-next/dist/select/index'),
     import('antdv-next/dist/switch/index'),
     import('antdv-next/dist/tree-select/index'),
   ])
-  return { Button, Form, FormItem, Input, InputNumber, Modal, Switch, TextArea, TreeSelect }
+  return { Button, Form, FormItem, Input, InputNumber, Modal, Select, Switch, TextArea, TreeSelect }
 })
 
 import { i18n } from '@/i18n'
