@@ -10,9 +10,7 @@ import {
   CalendarOutlined,
   ClockCircleOutlined,
   CoffeeOutlined,
-  DeleteOutlined,
   DollarCircleOutlined,
-  EditOutlined,
   FileProtectOutlined,
   FileTextOutlined,
   FormOutlined,
@@ -230,7 +228,7 @@ function handleDesignFlowFromDrawer(def: ApprovalDefinition): void {
   designerOpen.value = true
 }
 
-function handleCreateFlowForCategory(categoryName: string): void {
+function handleCreateFlowForCategory(): void {
   designerEditing.value = null
   designerOpen.value = true
 }

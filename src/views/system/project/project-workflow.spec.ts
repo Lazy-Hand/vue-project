@@ -52,15 +52,14 @@ describe('project workflow contract', () => {
     expect(getProjectApprovalType(project.status)).toBe('CLOSURE')
   })
 
-  it('submits the explicit approval type and optional title', async () => {
+  it('submits the approval type without definition selection (B2-03)', async () => {
     requestMethods.post.mockResolvedValue({ approvalInstanceId: 'approval-1' })
-    const payload = buildProjectApprovalPayload('INITIATION', 'definition-1', '  Project  ')
+    const payload = buildProjectApprovalPayload('INITIATION', '  Project  ')
 
     await createProjectApproval('project-1', payload)
 
     expect(payload).toEqual({
       approvalType: 'INITIATION',
-      definitionId: 'definition-1',
       title: 'Project',
     })
     expect(requestMethods.post).toHaveBeenCalledWith('/project/project-1/approval', payload, {

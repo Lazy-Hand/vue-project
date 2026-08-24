@@ -1,6 +1,14 @@
 import type { PaginationQuery } from './common'
 
-export type ApprovalNodeType = 'SEQ' | 'AND_SIGN' | 'OR_SIGN' | 'CC' | 'START' | 'CONDITION'
+export type ApprovalNodeType =
+  | 'SEQ'
+  | 'AND_SIGN'
+  | 'OR_SIGN'
+  | 'CC'
+  | 'START'
+  | 'CONDITION'
+  | 'FORK'
+  | 'JOIN'
 export type ApprovalAssigneeType =
   | 'USER'
   | 'ROLE'
@@ -11,7 +19,13 @@ export type ApprovalAssigneeType =
   | 'SELF'
 
 export type ApprovalInstanceStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
-export type ApprovalTaskStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'TRANSFERRED' | 'CANCELLED'
+export type ApprovalTaskStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'TRANSFERRED'
+  | 'CANCELLED'
+  | 'SUSPENDED'
 export type ApprovalAction =
   | 'SUBMIT'
   | 'APPROVE'
@@ -21,6 +35,13 @@ export type ApprovalAction =
   | 'CANCEL'
   | 'COMMENT'
   | 'CC'
+  | 'RESUBMIT'
+  | 'ROUTE'
+  | 'URGE'
+  | 'TIMEOUT_NOTIFY'
+  | 'TIMEOUT_TRANSFER'
+  | 'TIMEOUT_ESCALATE'
+  | 'ADMIN_INTERVENE'
 
 export type FormFieldType =
   | 'text'
@@ -96,10 +117,13 @@ export interface FlowConfig {
 }
 
 export interface AdvancedConfig {
-  titleRule?: string
-  autoDeduplication?: boolean
-  allowRevoke?: boolean
-  notifyTypes?: string[]
+  titleTemplate?: string
+  dedup?: 'NONE' | 'NODE' | 'FLOW'
+  emptyAssigneePolicy?: 'FAIL' | 'SKIP' | 'TO_ADMIN' | 'BACKUP'
+  backupAssigneeValue?: string
+  allowCancel?: boolean
+  allowComment?: boolean
+  requireCommentOnReject?: boolean
 }
 
 export interface ApprovalNode {
@@ -122,11 +146,50 @@ export interface ApprovalNode {
   updatedAt: string
 }
 
+export type ApprovalVersionStatus = 'DRAFT' | 'PUBLISHED' | 'RETIRED'
+
+export interface ApprovalDefinitionVersionSummary {
+  id: string
+  version: number
+  status: ApprovalVersionStatus
+  publishedAt: string | null
+}
+
+export interface ApprovalSceneBinding {
+  id: string
+  sceneCode: string
+  businessType: string
+  versionId: string
+  definitionId: string
+  definitionName: string
+  version: number
+  versionStatus: ApprovalVersionStatus
+  enabled: boolean
+  remark: string | null
+  updatedAt: string
+}
+
+export type ApprovalOutboxStatus = 'PENDING' | 'PROCESSING' | 'PUBLISHED' | 'FAILED'
+
+export interface ApprovalOutboxEvent {
+  id: string
+  eventId: string
+  aggregateId: string
+  eventType: string
+  status: ApprovalOutboxStatus
+  retryCount: number
+  nextRetryAt: string | null
+  lastError: string | null
+  processedAt: string | null
+  createdAt: string
+}
+
 export interface ApprovalDefinition {
   id: string
   code: string
   name: string
   category: string | null
+  categoryId?: string | null
   icon: string | null
   color: string | null
   version: number
@@ -138,6 +201,10 @@ export interface ApprovalDefinition {
   createdAt: string
   updatedAt: string
   nodes?: ApprovalNode[]
+  edges?: ApprovalEdgeInput[]
+  draftVersion?: number | null
+  publishedVersion?: number | null
+  versions?: ApprovalDefinitionVersionSummary[]
 }
 
 export interface ApprovalCategory {
@@ -192,6 +259,8 @@ export interface ApprovalInstance {
   flowSnapshot?: Record<string, unknown> | null
   businessType: string | null
   businessId: string | null
+  sceneCode?: string | null
+  businessRevision?: string | null
   title: string
   formData: Record<string, unknown> | null
   status: ApprovalInstanceStatus
@@ -206,7 +275,7 @@ export interface ApprovalInstance {
 export interface ApprovalTask {
   id: string
   instanceId: string
-  nodeId: string
+  nodeId: string | null
   nodeKey?: string | null
   nodeName?: string | null
   taskType?: string | null
@@ -216,6 +285,9 @@ export interface ApprovalTask {
   arrivedAt: string
   handledAt: string | null
   durationMs: number | null
+  version?: number
+  sourceTaskId?: string | null
+  signType?: 'PRE' | 'PARALLEL' | 'POST' | null
 }
 
 export interface ApprovalLog {
@@ -229,10 +301,29 @@ export interface ApprovalLog {
   createdAt: string
 }
 
+export interface ApprovalCapabilities {
+  canApprove: boolean
+  canReject: boolean
+  canTransfer: boolean
+  canAddSign: boolean
+  canCancel: boolean
+  canComment: boolean
+}
+
 export interface ApprovalInstanceDetail {
   instance: ApprovalInstance
   tasks: ApprovalTask[]
   logs: ApprovalLog[]
+  /** 当前用户在实例上的待办任务；无则返回 null */
+  myPendingTask: ApprovalTask | null
+  capabilities: ApprovalCapabilities
+}
+
+/** 我的待办列表项：直接携带本人待办任务 ID 与可操作能力 */
+export interface ApprovalTodoItem {
+  instance: ApprovalInstance
+  myPendingTaskId: string | null
+  capabilities: ApprovalCapabilities
 }
 
 export interface ApprovalDefinitionQuery extends PaginationQuery {
@@ -261,6 +352,26 @@ export interface ApprovalNodeInput {
   y?: number
 }
 
+/** 流程边条件：B3-01 字段比较，仅支持白名单运算符 */
+export interface ApprovalEdgeCondition {
+  conditions: {
+    field: string
+    operator: 'EQ' | 'NEQ' | 'GT' | 'GTE' | 'LT' | 'LTE' | 'CONTAINS' | 'IN' | 'EMPTY'
+    value?: string | number | boolean
+  }[]
+  logic?: 'AND' | 'OR'
+  priority?: number
+  /** 默认分支：所有条件分支都不命中时兜底 */
+  isDefault?: boolean
+}
+
+/** 流程边：真实节点+边模型；toNodeKey 为空表示指向流程结束 */
+export interface ApprovalEdgeInput {
+  fromNodeKey: string
+  toNodeKey?: string | null
+  conditionConfig?: ApprovalEdgeCondition
+}
+
 export interface CreateApprovalDefinitionPayload {
   code: string
   name: string
@@ -273,6 +384,7 @@ export interface CreateApprovalDefinitionPayload {
   remark?: string
   enabled?: boolean
   nodes: ApprovalNodeInput[]
+  edges?: ApprovalEdgeInput[]
 }
 
 export interface UpdateApprovalDefinitionPayload {
@@ -286,6 +398,7 @@ export interface UpdateApprovalDefinitionPayload {
   remark?: string
   enabled?: boolean
   nodes?: ApprovalNodeInput[]
+  edges?: ApprovalEdgeInput[]
 }
 
 export interface ApprovalInstanceQuery extends PaginationQuery {
@@ -321,5 +434,7 @@ export interface TransferTaskPayload {
 
 export interface AddSignTaskPayload {
   targetUserId: string
+  /** 加签类型：PRE=前加签（原审批人挂起等待）；POST=后加签（原审批人先处理）；PARALLEL=并加签 */
+  signType?: 'PRE' | 'POST' | 'PARALLEL'
   comment?: string
 }

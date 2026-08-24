@@ -14,6 +14,17 @@ export function fetchUserList(query: PaginationQuery = {}): Promise<PaginatedRes
   })
 }
 
+/** 用户选择器选项（启用用户，昵称优先展示） */
+export async function fetchUserOptions(): Promise<{ label: string; value: string }[]> {
+  const res = await fetchUserList({ page: 1, pageSize: 200 })
+  return res.items
+    .filter((user) => user.enabled)
+    .map((user) => ({
+      label: user.nickname ? `${user.nickname} (${user.username})` : user.username,
+      value: user.id,
+    }))
+}
+
 export function createUser(payload: CreateUserPayload): Promise<ManagedUser> {
   return request.Post<ManagedUser>('/user', payload, { cacheFor: 0 })
 }

@@ -2,6 +2,9 @@ import type { PaginatedResult } from '@/types/common'
 import type {
   AddSignTaskPayload,
   ApprovalCategory,
+  ApprovalDefinitionVersionSummary,
+  ApprovalOutboxEvent,
+  ApprovalSceneBinding,
   ApprovalCategoryQuery,
   ApprovalDefinition,
   ApprovalDefinitionQuery,
@@ -9,6 +12,7 @@ import type {
   ApprovalInstanceDetail,
   ApprovalInstanceQuery,
   ApprovalTaskQuery,
+  ApprovalTodoItem,
   CreateApprovalCategoryPayload,
   CreateApprovalDefinitionPayload,
   CreateApprovalInstancePayload,
@@ -205,7 +209,7 @@ export function commentApprovalInstance(
 
 export function fetchTodoList(
   query: ApprovalTaskQuery = {},
-): Promise<PaginatedResult<ApprovalInstance>> {
+): Promise<PaginatedResult<ApprovalTodoItem>> {
   const params: Record<string, string | number | boolean> = {
     page: query.page ?? 1,
     pageSize: query.pageSize ?? 10,
@@ -213,7 +217,7 @@ export function fetchTodoList(
   appendQueryParam(params, 'keyword', query.keyword)
   appendQueryParam(params, 'instanceId', query.instanceId)
 
-  return request.Get<PaginatedResult<ApprovalInstance>>('/approval/tasks/todo', {
+  return request.Get<PaginatedResult<ApprovalTodoItem>>('/approval/tasks/todo', {
     params,
     cacheFor: 0,
   })
@@ -271,4 +275,82 @@ export function addSignTask(
   return request.Post<{ success: boolean }>(`/approval/tasks/${id}/add-sign`, payload, {
     cacheFor: 0,
   })
+}
+
+// ================= 版本管理（B2-01） =================
+
+export function publishApprovalDefinition(id: string): Promise<{ success: boolean }> {
+  return request.Post<{ success: boolean }>(
+    `/approval/definitions/${id}/publish`,
+    {},
+    {
+      cacheFor: 0,
+    },
+  )
+}
+
+export function fetchApprovalDefinitionVersions(
+  id: string,
+): Promise<ApprovalDefinitionVersionSummary[]> {
+  return request.Get<ApprovalDefinitionVersionSummary[]>(`/approval/definitions/${id}/versions`, {
+    cacheFor: 0,
+  })
+}
+
+export function createDraftFromPublished(id: string): Promise<{ draftVersion: number }> {
+  return request.Post<{ draftVersion: number }>(
+    `/approval/definitions/${id}/draft`,
+    {},
+    { cacheFor: 0 },
+  )
+}
+
+// ================= 场景绑定（B2-03） =================
+
+export function fetchSceneBindings(): Promise<ApprovalSceneBinding[]> {
+  return request.Get<ApprovalSceneBinding[]>('/approval/scene-bindings', { cacheFor: 0 })
+}
+
+export function upsertSceneBinding(
+  sceneCode: string,
+  payload: { versionId: string; enabled?: boolean; remark?: string },
+): Promise<{ success: boolean }> {
+  return request.Put<{ success: boolean }>(`/approval/scene-bindings/${sceneCode}`, payload, {
+    cacheFor: 0,
+  })
+}
+
+export function setSceneBindingEnabled(
+  sceneCode: string,
+  enabled: boolean,
+): Promise<{ success: boolean }> {
+  return request.Patch<{ success: boolean }>(
+    `/approval/scene-bindings/${sceneCode}/status`,
+    { enabled },
+    { cacheFor: 0 },
+  )
+}
+
+// ================= Outbox 运维（B2-04） =================
+
+export function fetchOutboxEvents(
+  query: { page?: number; pageSize?: number; status?: string } = {},
+): Promise<PaginatedResult<ApprovalOutboxEvent>> {
+  const params: Record<string, string | number | boolean> = {
+    page: query.page ?? 1,
+    pageSize: query.pageSize ?? 10,
+  }
+  appendQueryParam(params, 'status', query.status)
+  return request.Get<PaginatedResult<ApprovalOutboxEvent>>('/approval/outbox', {
+    params,
+    cacheFor: 0,
+  })
+}
+
+export function retryOutboxEvent(eventId: string): Promise<{ success: boolean }> {
+  return request.Post<{ success: boolean }>(
+    `/approval/outbox/${eventId}/retry`,
+    {},
+    { cacheFor: 0 },
+  )
 }

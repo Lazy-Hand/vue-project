@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Card, Popconfirm, Switch, Tag } from 'antdv-next'
+import { Button, Popconfirm, Switch, Tag } from 'antdv-next'
 import {
   ApartmentOutlined,
   AppstoreOutlined,
@@ -17,7 +16,6 @@ import {
   FileProtectOutlined,
   FileTextOutlined,
   FormOutlined,
-  PlusOutlined,
   ProjectOutlined,
   ReconciliationOutlined,
   SafetyCertificateOutlined,
@@ -38,7 +36,7 @@ interface Props {
   loading?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   loading: false,
 })
 
@@ -99,18 +97,6 @@ function getFieldCount(row: ApprovalDefinition): number {
     return row.formSchema.fields.length
   }
   return 0
-}
-
-function getCategoryColor(category?: string | null): string {
-  if (!category) return 'blue'
-  const map: Record<string, string> = {
-    人事管理: 'cyan',
-    财务报销: 'gold',
-    行政审批: 'purple',
-    业务协同: 'blue',
-    IT信息: 'geekblue',
-  }
-  return map[category] ?? 'blue'
 }
 </script>
 

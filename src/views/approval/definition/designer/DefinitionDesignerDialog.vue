@@ -1,24 +1,20 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, Modal, Steps, message } from 'antdv-next'
-import {
-  AppstoreOutlined,
-  CheckCircleOutlined,
-  ControlOutlined,
-  FormOutlined,
-  NodeIndexOutlined,
-  SaveOutlined,
-} from '@antdv-next/icons'
+import { CheckCircleOutlined, NodeIndexOutlined, SaveOutlined } from '@antdv-next/icons'
 
-import { createApprovalDefinition, updateApprovalDefinition } from '@/api/approval'
+import {
+  createApprovalDefinition,
+  publishApprovalDefinition,
+  updateApprovalDefinition,
+} from '@/api/approval'
 import type {
   AdvancedConfig,
   ApprovalDefinition,
+  ApprovalEdgeInput,
   ApprovalNodeInput,
-  ApprovalNodeType,
   CreateApprovalDefinitionPayload,
-  FormFieldSchema,
   FormSchemaConfig,
   UpdateApprovalDefinitionPayload,
 } from '@/types/approval'
@@ -66,15 +62,12 @@ const formSchemaState = ref<FormSchemaConfig>({
   fields: [],
 })
 
-// 步骤 3：流程节点设计
+// 步骤 3：流程节点设计（真实节点 + 边模型）
 const flowNodes = ref<ApprovalNodeInput[]>([])
+const flowEdges = ref<ApprovalEdgeInput[]>([])
 
 // 步骤 4：高级设置
-const advancedState = ref<AdvancedConfig>({
-  titleRule: '{{initiator}} 发起的 {{name}} - {{date}}',
-  autoDeduplication: true,
-  allowRevoke: true,
-})
+const advancedState = ref<AdvancedConfig>({})
 
 function createDefaultNode(): ApprovalNodeInput {
   return {
@@ -127,6 +120,9 @@ function initData(): void {
           type: n.type,
           assigneeType: n.assigneeType,
           assigneeValue: n.assigneeValue ?? '',
+          assigneeConfig: n.assigneeConfig ?? undefined,
+          conditionConfig: n.conditionConfig ?? undefined,
+          formPermissions: n.formPermissions ?? undefined,
           parallelGroup: cfg.parallelGroup,
           branchIndex: cfg.branchIndex,
           allowTransfer: n.allowTransfer,
@@ -139,20 +135,107 @@ function initData(): void {
       flowNodes.value = [createDefaultNode()]
     }
 
-    // Advanced Config
-    if (d.advancedConfig) {
-      const adv = d.advancedConfig as AdvancedConfig
-      advancedState.value = {
-        titleRule: adv.titleRule ?? '{{initiator}} 发起的 {{name}} - {{date}}',
-        autoDeduplication: adv.autoDeduplication ?? true,
-        allowRevoke: adv.allowRevoke ?? true,
-      }
+    // Edges：优先回填已保存的边（d.edges 或 d.flowConfig.edges）；旧数据无边时优先按 parallelGroup 还原并行拓扑，否则推导线性链
+    const keys = flowNodes.value.map((n, idx) => n.nodeKey ?? `node_${idx + 1}`)
+    const keySet = new Set(keys)
+    const rawEdges =
+      (Array.isArray(d.edges) && d.edges.length > 0
+        ? d.edges
+        : Array.isArray((d.flowConfig as { edges?: ApprovalEdgeInput[] } | null)?.edges)
+          ? (d.flowConfig as { edges?: ApprovalEdgeInput[] }).edges
+          : []) || []
+
+    if (Array.isArray(rawEdges) && rawEdges.length > 0) {
+      flowEdges.value = (rawEdges as ApprovalEdgeInput[])
+        .filter(
+          (e) =>
+            !!e.fromNodeKey &&
+            keySet.has(e.fromNodeKey) &&
+            (!e.toNodeKey || keySet.has(e.toNodeKey)),
+        )
+        .map((e) => ({
+          fromNodeKey: e.fromNodeKey,
+          toNodeKey: e.toNodeKey || null,
+          conditionConfig: e.conditionConfig,
+        }))
     } else {
-      advancedState.value = {
-        titleRule: '{{initiator}} 发起的 {{name}} - {{date}}',
-        autoDeduplication: true,
-        allowRevoke: true,
+      // 智能分层还原拓扑（优先显式 parallelGroup，其次聚合相邻连续的 AND_SIGN/OR_SIGN 节点）
+      const layers: string[][] = []
+      let currentLayer: { type: string; group?: string; keys: string[] } | null = null
+
+      for (let i = 0; i < flowNodes.value.length; i++) {
+        const node = flowNodes.value[i]!
+        const nodeKey = node.nodeKey ?? `node_${i + 1}`
+        const group = node.parallelGroup
+        const type = node.type ?? 'SEQ'
+
+        if (group) {
+          if (currentLayer && currentLayer.group === group) {
+            currentLayer.keys.push(nodeKey)
+          } else {
+            if (currentLayer) layers.push(currentLayer.keys)
+            currentLayer = { type, group, keys: [nodeKey] }
+          }
+        } else if (type === 'AND_SIGN' || type === 'OR_SIGN') {
+          // 相邻同类型会签或或签节点自动聚合为同一并行层
+          if (currentLayer && !currentLayer.group && currentLayer.type === type) {
+            currentLayer.keys.push(nodeKey)
+          } else {
+            if (currentLayer) layers.push(currentLayer.keys)
+            currentLayer = { type, keys: [nodeKey] }
+          }
+        } else {
+          if (currentLayer) layers.push(currentLayer.keys)
+          currentLayer = { type, keys: [nodeKey] }
+        }
       }
+      if (currentLayer) layers.push(currentLayer.keys)
+
+      const derivedEdges: ApprovalEdgeInput[] = []
+      for (let l = 0; l < layers.length - 1; l++) {
+        const currentLayerKeys = layers[l]!
+        const nextLayerKeys = layers[l + 1]!
+        for (const fromKey of currentLayerKeys) {
+          for (const toKey of nextLayerKeys) {
+            derivedEdges.push({ fromNodeKey: fromKey, toNodeKey: toKey })
+          }
+        }
+      }
+      flowEdges.value = derivedEdges
+    }
+
+    // 高级配置目前只展示规划提示，但回填时只保留后端运行时支持的字段。
+    const rawAdvanced =
+      d.advancedConfig && typeof d.advancedConfig === 'object' && !Array.isArray(d.advancedConfig)
+        ? (d.advancedConfig as Record<string, unknown>)
+        : {}
+    advancedState.value = {
+      ...(typeof rawAdvanced.titleTemplate === 'string'
+        ? { titleTemplate: rawAdvanced.titleTemplate }
+        : {}),
+      ...(rawAdvanced.dedup === 'NONE' ||
+      rawAdvanced.dedup === 'NODE' ||
+      rawAdvanced.dedup === 'FLOW'
+        ? { dedup: rawAdvanced.dedup }
+        : {}),
+      ...(rawAdvanced.emptyAssigneePolicy === 'FAIL' ||
+      rawAdvanced.emptyAssigneePolicy === 'SKIP' ||
+      rawAdvanced.emptyAssigneePolicy === 'TO_ADMIN' ||
+      rawAdvanced.emptyAssigneePolicy === 'BACKUP'
+        ? { emptyAssigneePolicy: rawAdvanced.emptyAssigneePolicy }
+        : {}),
+      ...(typeof rawAdvanced.backupAssigneeValue === 'string'
+        ? { backupAssigneeValue: rawAdvanced.backupAssigneeValue }
+        : {}),
+      ...(typeof rawAdvanced.allowCancel === 'boolean'
+        ? { allowCancel: rawAdvanced.allowCancel }
+        : {}),
+      ...(typeof rawAdvanced.allowComment === 'boolean'
+        ? { allowComment: rawAdvanced.allowComment }
+        : {}),
+      ...(typeof rawAdvanced.requireCommentOnReject === 'boolean'
+        ? { requireCommentOnReject: rawAdvanced.requireCommentOnReject }
+        : {}),
     }
   } else {
     basicState.value = {
@@ -176,11 +259,8 @@ function initData(): void {
       ],
     }
     flowNodes.value = [createDefaultNode()]
-    advancedState.value = {
-      titleRule: '{{initiator}} 发起的 {{name}} - {{date}}',
-      autoDeduplication: true,
-      allowRevoke: true,
-    }
+    flowEdges.value = []
+    advancedState.value = {}
   }
 }
 
@@ -197,6 +277,58 @@ const stepItems = computed(() => [
   { title: t('approval.definition.stepFlow') },
   { title: t('approval.definition.stepAdvanced') },
 ])
+
+/** 保存前轻量图校验：唯一入口 + 全部节点可达（完整编译由后端发布时执行） */
+function validateFlowGraph(): boolean {
+  const keys = flowNodes.value.map((n, idx) => n.nodeKey?.trim() || `node_${idx + 1}`)
+  const keySet = new Set(keys)
+  const edges = flowEdges.value.filter(
+    (e) =>
+      !!e.fromNodeKey && keySet.has(e.fromNodeKey) && (!e.toNodeKey || keySet.has(e.toNodeKey)),
+  )
+  if (edges.length === 0) {
+    if (keys.length === 1) return true
+    void message.warning(t('approval.definition.unreachableNodes'))
+    return false
+  }
+
+  const incoming = new Map<string, number>(keys.map((k) => [k, 0]))
+  const adjacency = new Map<string, string[]>(keys.map((k) => [k, []]))
+  const seen = new Set<string>()
+  for (const e of edges) {
+    const dedupe = `${e.fromNodeKey}->${e.toNodeKey ?? ''}`
+    if (seen.has(dedupe)) continue
+    seen.add(dedupe)
+    if (e.toNodeKey) {
+      incoming.set(e.toNodeKey, (incoming.get(e.toNodeKey) ?? 0) + 1)
+      adjacency.get(e.fromNodeKey)!.push(e.toNodeKey)
+    }
+  }
+
+  const entries = keys.filter((k) => (incoming.get(k) ?? 0) === 0)
+  if (entries.length !== 1) {
+    void message.warning(t('approval.definition.entryRequired'))
+    return false
+  }
+
+  const entry = entries[0]!
+  const visited = new Set([entry])
+  const queue = [entry]
+  while (queue.length > 0) {
+    const cur = queue.shift()!
+    for (const next of adjacency.get(cur)!) {
+      if (!visited.has(next)) {
+        visited.add(next)
+        queue.push(next)
+      }
+    }
+  }
+  if (keys.some((k) => !visited.has(k))) {
+    void message.warning(t('approval.definition.unreachableNodes'))
+    return false
+  }
+  return true
+}
 
 function validateBeforeNext(): boolean {
   if (currentStep.value === 0) {
@@ -219,6 +351,7 @@ function validateBeforeNext(): boolean {
         return false
       }
     }
+    if (!validateFlowGraph()) return false
   }
   return true
 }
@@ -252,9 +385,18 @@ async function handleSave(publish = true): Promise<void> {
     void message.warning(t('approval.definition.nodesRequired'))
     return
   }
+  if (!validateFlowGraph()) {
+    currentStep.value = 2
+    return
+  }
 
   submitting.value = true
   try {
+    const edges: ApprovalEdgeInput[] = flowEdges.value.map((e) => ({
+      fromNodeKey: e.fromNodeKey,
+      toNodeKey: e.toNodeKey || undefined,
+      conditionConfig: e.conditionConfig,
+    }))
     const payload: CreateApprovalDefinitionPayload = {
       code: basicState.value.code.trim(),
       name: basicState.value.name.trim(),
@@ -262,7 +404,7 @@ async function handleSave(publish = true): Promise<void> {
       icon: basicState.value.icon || 'FileTextOutlined',
       color: basicState.value.color || '#1677ff',
       remark: basicState.value.remark.trim() || undefined,
-      enabled: publish ? basicState.value.enabled : false,
+      enabled: publish ? basicState.value.enabled : (props.definition?.enabled ?? false),
       formSchema: {
         fields: formSchemaState.value.fields,
       },
@@ -273,17 +415,17 @@ async function handleSave(publish = true): Promise<void> {
           type: n.type ?? 'SEQ',
           assigneeType: n.assigneeType,
           assigneeValue: n.assigneeValue,
+          assigneeConfig: n.assigneeConfig,
+          conditionConfig: n.conditionConfig,
+          formPermissions: n.formPermissions,
           allowTransfer: n.allowTransfer,
           allowAddSign: n.allowAddSign,
           allowReject: n.allowReject,
           rejectTarget: n.rejectTarget,
         })),
+        edges,
       },
-      advancedConfig: {
-        titleRule: advancedState.value.titleRule,
-        autoDeduplication: advancedState.value.autoDeduplication,
-        allowRevoke: advancedState.value.allowRevoke,
-      },
+      advancedConfig: advancedState.value,
       nodes: flowNodes.value.map((n, idx) => ({
         nodeKey: n.nodeKey ?? `node_${idx + 1}`,
         name: n.name.trim(),
@@ -292,14 +434,18 @@ async function handleSave(publish = true): Promise<void> {
         assigneeValue: n.assigneeValue?.trim() || undefined,
         assigneeConfig: n.parallelGroup
           ? { parallelGroup: n.parallelGroup, branchIndex: n.branchIndex }
-          : undefined,
+          : n.assigneeConfig,
+        conditionConfig: n.conditionConfig,
+        formPermissions: n.formPermissions,
         allowTransfer: n.allowTransfer,
         allowAddSign: n.allowAddSign,
         allowReject: n.allowReject,
         rejectTarget: n.rejectTarget,
       })),
+      edges,
     }
 
+    let definitionId: string
     if (isEdit.value && props.definition) {
       const updatePayload: UpdateApprovalDefinitionPayload = {
         name: payload.name,
@@ -312,12 +458,20 @@ async function handleSave(publish = true): Promise<void> {
         flowConfig: payload.flowConfig,
         advancedConfig: payload.advancedConfig,
         nodes: payload.nodes,
+        edges: payload.edges,
       }
-      await updateApprovalDefinition(props.definition.id, updatePayload)
+      const updated = await updateApprovalDefinition(props.definition.id, updatePayload)
+      definitionId = updated.id
       void message.success(t('approval.definition.updateSuccess'))
     } else {
-      await createApprovalDefinition(payload)
+      const created = await createApprovalDefinition(payload)
+      definitionId = created.id
       void message.success(t('approval.definition.createSuccess'))
+    }
+
+    if (publish) {
+      await publishApprovalDefinition(definitionId)
+      void message.success(t('approval.definition.publishSuccess'))
     }
 
     emit('update:open', false)
@@ -395,8 +549,10 @@ function handleClose(): void {
       <div v-show="currentStep === 2">
         <FlowDesignerTab
           :nodes="flowNodes"
+          :edges="flowEdges"
           :form-fields="formSchemaState.fields"
           @update:nodes="(val) => (flowNodes = val)"
+          @update:edges="(val) => (flowEdges = val)"
         />
       </div>
 

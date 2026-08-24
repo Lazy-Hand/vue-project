@@ -1,17 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  Button,
-  Form,
-  FormItem,
-  Input,
-  InputNumber,
-  Modal,
-  Switch,
-  TextArea,
-  message,
-} from 'antdv-next'
+import { Form, FormItem, Input, InputNumber, Modal, Switch, TextArea, message } from 'antdv-next'
 import {
   ApartmentOutlined,
   AppstoreOutlined,

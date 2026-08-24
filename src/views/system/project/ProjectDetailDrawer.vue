@@ -26,7 +26,6 @@ import {
   updateProjectStage,
 } from '@/api/project'
 import FileUpload from '@/components/FileUpload/index.vue'
-import type { ApprovalDefinition } from '@/types/approval'
 import type { Client } from '@/types/client'
 import type { ManagedUser } from '@/types/user'
 import type {
@@ -56,7 +55,6 @@ interface Props {
   project: Project | null
   clients: Client[]
   users: ManagedUser[]
-  definitions: ApprovalDefinition[]
 }
 
 const props = defineProps<Props>()
@@ -116,6 +114,19 @@ const approvalType = computed<ApprovalType | null>(() =>
 )
 
 const canStartApproval = computed(() => approvalType.value !== null)
+
+/** 审批进行中：项目数据锁定，所有写入口禁用并给出原因 */
+const approvalLocked = computed(
+  () =>
+    detail.value?.status === 'PENDING_INITIATION_APPROVAL' ||
+    detail.value?.status === 'PENDING_CLOSURE_APPROVAL',
+)
+
+function guardLockedAction(): boolean {
+  if (!approvalLocked.value) return false
+  message.warning(t('project.approvalLockedTip'))
+  return true
+}
 
 const approvalTypeLabel = computed(() =>
   approvalType.value ? t(`project.approvalType${approvalType.value}` as never) : '',
@@ -258,12 +269,14 @@ watch(
 )
 
 function openCreateStage(): void {
+  if (guardLockedAction()) return
   stageMode.value = 'create'
   editingStage.value = null
   stageDialogVisible.value = true
 }
 
 function openEditStage(row: ProjectStage): void {
+  if (guardLockedAction()) return
   stageMode.value = 'edit'
   editingStage.value = row
   stageDialogVisible.value = true
@@ -297,6 +310,7 @@ async function handleStageSubmit(
 
 async function handleDeleteStage(row: ProjectStage): Promise<void> {
   if (!props.project) return
+  if (guardLockedAction()) return
   const confirmed = await new Promise<boolean>((resolve) => {
     Modal.confirm({
       title: t('common.tip'),
@@ -319,12 +333,14 @@ async function handleDeleteStage(row: ProjectStage): Promise<void> {
 }
 
 function openCreateDeliverable(): void {
+  if (guardLockedAction()) return
   deliverableMode.value = 'create'
   editingDeliverable.value = null
   deliverableDialogVisible.value = true
 }
 
 function openEditDeliverable(row: ProjectDeliverable): void {
+  if (guardLockedAction()) return
   deliverableMode.value = 'edit'
   editingDeliverable.value = row
   deliverableDialogVisible.value = true
@@ -358,6 +374,7 @@ async function handleDeliverableSubmit(
 
 async function handleDeleteDeliverable(row: ProjectDeliverable): Promise<void> {
   if (!props.project) return
+  if (guardLockedAction()) return
   const confirmed = await new Promise<boolean>((resolve) => {
     Modal.confirm({
       title: t('common.tip'),
@@ -415,6 +432,12 @@ async function handleAttachmentUpload(): Promise<void> {
   >
     <div v-if="loading" class="py-10 text-center text-slate-500">{{ t('common.loading') }}</div>
     <template v-else-if="detail">
+      <div
+        v-if="approvalLocked"
+        class="mb-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+      >
+        {{ t('project.approvalLockedTip') }}
+      </div>
       <div class="mb-4 flex justify-end">
         <Button v-if="canStartApproval" type="primary" size="small" @click="openApproval">
           {{ t('project.approvalCreate', { type: approvalTypeLabel }) }}
@@ -497,7 +520,7 @@ async function handleAttachmentUpload(): Promise<void> {
 
         <TabPane key="stages" :tab="t('project.tabStages')">
           <div class="mb-2 flex justify-end">
-            <Button type="primary" size="small" @click="openCreateStage">
+            <Button type="primary" size="small" :disabled="approvalLocked" @click="openCreateStage">
               {{ t('project.stageCreate') }}
             </Button>
           </div>
@@ -528,13 +551,19 @@ async function handleAttachmentUpload(): Promise<void> {
                 {{ formatDateTime((record as ProjectStage).actualEndAt) }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <Button type="link" size="small" @click="openEditStage(record as ProjectStage)">
+                <Button
+                  type="link"
+                  size="small"
+                  :disabled="approvalLocked"
+                  @click="openEditStage(record as ProjectStage)"
+                >
                   {{ t('common.edit') }}
                 </Button>
                 <Button
                   type="link"
                   size="small"
                   danger
+                  :disabled="approvalLocked"
                   @click="handleDeleteStage(record as ProjectStage)"
                 >
                   {{ t('common.delete') }}
@@ -546,7 +575,12 @@ async function handleAttachmentUpload(): Promise<void> {
 
         <TabPane key="deliverables" :tab="t('project.tabDeliverables')">
           <div class="mb-2 flex justify-end">
-            <Button type="primary" size="small" @click="openCreateDeliverable">
+            <Button
+              type="primary"
+              size="small"
+              :disabled="approvalLocked"
+              @click="openCreateDeliverable"
+            >
               {{ t('project.deliverableCreate') }}
             </Button>
           </div>
@@ -593,6 +627,7 @@ async function handleAttachmentUpload(): Promise<void> {
                 <Button
                   type="link"
                   size="small"
+                  :disabled="approvalLocked"
                   @click="openEditDeliverable(record as ProjectDeliverable)"
                 >
                   {{ t('common.edit') }}
@@ -601,6 +636,7 @@ async function handleAttachmentUpload(): Promise<void> {
                   type="link"
                   size="small"
                   danger
+                  :disabled="approvalLocked"
                   @click="handleDeleteDeliverable(record as ProjectDeliverable)"
                 >
                   {{ t('common.delete') }}
@@ -612,6 +648,7 @@ async function handleAttachmentUpload(): Promise<void> {
 
         <TabPane key="attachments" :tab="t('project.tabAttachments')">
           <FileUpload
+            v-if="!approvalLocked"
             category="FILE"
             multiple
             :max-count="20"
@@ -619,6 +656,7 @@ async function handleAttachmentUpload(): Promise<void> {
             :business-id="detail.id"
             @success="handleAttachmentUpload"
           />
+          <div v-else class="mb-2 text-sm text-slate-400">{{ t('project.approvalLockedTip') }}</div>
           <div v-if="attachments.length" class="mt-4 flex flex-col gap-2">
             <a
               v-for="attachment in attachments"
@@ -655,7 +693,6 @@ async function handleAttachmentUpload(): Promise<void> {
         ref="approvalDialogRef"
         v-model="approvalDialogVisible"
         :approval-type="approvalType ?? 'INITIATION'"
-        :definitions="definitions"
         :default-title="detail.name"
         @submit="handleApprovalSubmit"
       />

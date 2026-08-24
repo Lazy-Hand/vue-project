@@ -1,12 +1,34 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Form, FormItem, Input, Modal, Select, TextArea, message } from 'antdv-next'
+import {
+  CheckboxGroup,
+  Form,
+  FormItem,
+  Input,
+  Modal,
+  Select,
+  Switch,
+  TextArea,
+  message,
+} from 'antdv-next'
 import type { FormInstance } from 'antdv-next'
 
-import { createApprovalInstance, fetchApprovalDefinitions } from '@/api/approval'
+import {
+  createApprovalInstance,
+  fetchApprovalDefinition,
+  fetchApprovalDefinitions,
+} from '@/api/approval'
 import type { ApprovalDefinition } from '@/types/approval'
 import { ApiRequestError } from '@/utils/request'
+
+interface RenderField {
+  id: string
+  type: string
+  label: string
+  required: boolean
+  options?: { label: string; value: string | number }[]
+}
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ 'update:open': [value: boolean]; success: [] }>()
@@ -22,18 +44,20 @@ const formState = reactive<{
   title: string
   businessType: string
   businessId: string
-  formDataJson: string
 }>({
   definitionId: '',
   title: '',
   businessType: '',
   businessId: '',
-  formDataJson: '',
 })
+
+// B2-03/F2-03：按所选定义的表单 Schema 渲染控件，取代原始 JSON 输入
+const renderFields = ref<RenderField[]>([])
+const fieldValues = reactive<Record<string, unknown>>({})
 
 const definitionOptions = computed(() =>
   definitions.value
-    .filter((d) => d.enabled)
+    .filter((d) => d.enabled && d.publishedVersion !== null && d.publishedVersion !== undefined)
     .map((d) => ({ label: `${d.name} (${d.code})`, value: d.id })),
 )
 
@@ -49,6 +73,44 @@ async function loadDefinitions(): Promise<void> {
   }
 }
 
+function parseFields(definition: ApprovalDefinition): RenderField[] {
+  const schema = definition.formSchema
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return []
+  const rawFields = (schema as Record<string, unknown>)['fields']
+  if (!Array.isArray(rawFields)) return []
+  const fields: RenderField[] = []
+  for (const raw of rawFields) {
+    if (!raw || typeof raw !== 'object') continue
+    const item = raw as Record<string, unknown>
+    if (typeof item.id !== 'string' || typeof item.type !== 'string') continue
+    fields.push({
+      id: item.id,
+      type: item.type,
+      label: typeof item.label === 'string' ? item.label : item.id,
+      required: item.required === true,
+      options: Array.isArray(item.options)
+        ? (item.options as { label: string; value: string | number }[])
+        : undefined,
+    })
+  }
+  return fields
+}
+
+watch(
+  () => formState.definitionId,
+  async (definitionId) => {
+    renderFields.value = []
+    Object.keys(fieldValues).forEach((key) => delete fieldValues[key])
+    if (!definitionId) return
+    try {
+      const detail = await fetchApprovalDefinition(definitionId)
+      renderFields.value = parseFields(detail)
+    } catch {
+      // ignore：保留无动态字段的表单
+    }
+  },
+)
+
 watch(
   () => props.open,
   (val) => {
@@ -57,11 +119,33 @@ watch(
       formState.title = ''
       formState.businessType = ''
       formState.businessId = ''
-      formState.formDataJson = ''
+      renderFields.value = []
+      Object.keys(fieldValues).forEach((key) => delete fieldValues[key])
       void loadDefinitions()
     }
   },
 )
+
+function isEmptyValue(value: unknown): boolean {
+  return (
+    value === null ||
+    value === undefined ||
+    (typeof value === 'string' && value.trim() === '') ||
+    (Array.isArray(value) && value.length === 0)
+  )
+}
+
+function buildFormData(): Record<string, unknown> | undefined {
+  const data: Record<string, unknown> = {}
+  let hasValue = false
+  for (const field of renderFields.value) {
+    const value = fieldValues[field.id]
+    if (isEmptyValue(value)) continue
+    data[field.id] = value
+    hasValue = true
+  }
+  return hasValue ? data : undefined
+}
 
 async function handleSubmit(): Promise<void> {
   if (!formState.definitionId) {
@@ -73,12 +157,10 @@ async function handleSubmit(): Promise<void> {
     return
   }
 
-  let formData: Record<string, unknown> | undefined
-  if (formState.formDataJson.trim()) {
-    try {
-      formData = JSON.parse(formState.formDataJson) as Record<string, unknown>
-    } catch {
-      message.error(t('approval.instance.formDataInvalid'))
+  // 客户端必填校验；最终以后端 Schema 校验为准（B2-05）
+  for (const field of renderFields.value) {
+    if (field.required && isEmptyValue(fieldValues[field.id])) {
+      message.warning(`${field.label}: ${t('approval.instance.fieldRequired')}`)
       return
     }
   }
@@ -90,7 +172,7 @@ async function handleSubmit(): Promise<void> {
       title: formState.title.trim(),
       businessType: formState.businessType.trim() || undefined,
       businessId: formState.businessId.trim() || undefined,
-      formData,
+      formData: buildFormData(),
     })
     message.success(t('approval.instance.createSuccess'))
     emit('update:open', false)
@@ -153,6 +235,45 @@ function getPopupContainer(triggerNode?: HTMLElement): HTMLElement {
         />
       </FormItem>
 
+      <!-- 动态表单字段：按发布版本的表单 Schema 渲染 -->
+      <template v-for="field in renderFields" :key="field.id">
+        <FormItem :label="field.label" :required="field.required">
+          <Select
+            v-if="field.type === 'select'"
+            v-model:value="(fieldValues as Record<string, unknown>)[field.id]"
+            :options="field.options"
+            :placeholder="t('approval.instance.fieldPlaceholder')"
+            :get-popup-container="getPopupContainer"
+          />
+          <CheckboxGroup
+            v-else-if="field.type === 'checkbox'"
+            v-model:value="(fieldValues as Record<string, string[]>)[field.id]"
+            :options="field.options"
+          />
+          <Switch
+            v-else-if="field.type === 'switch'"
+            :checked="Boolean((fieldValues as Record<string, unknown>)[field.id])"
+            @change="(val) => ((fieldValues as Record<string, unknown>)[field.id] = Boolean(val))"
+          />
+          <TextArea
+            v-else-if="field.type === 'textarea'"
+            v-model:value="(fieldValues as Record<string, string>)[field.id]"
+            :rows="3"
+            :maxlength="500"
+          />
+          <Input
+            v-else
+            v-model:value="(fieldValues as Record<string, string>)[field.id]"
+            :type="field.type === 'number' || field.type === 'money' ? 'number' : 'text'"
+            :placeholder="
+              field.type === 'date' || field.type === 'daterange'
+                ? t('approval.instance.dateIsoPlaceholder')
+                : t('approval.instance.fieldPlaceholder')
+            "
+          />
+        </FormItem>
+      </template>
+
       <div class="grid grid-cols-2 gap-3">
         <FormItem :label="t('approval.instance.businessType')">
           <Input
@@ -169,15 +290,6 @@ function getPopupContainer(triggerNode?: HTMLElement): HTMLElement {
           />
         </FormItem>
       </div>
-
-      <FormItem :label="t('approval.instance.formData')">
-        <TextArea
-          v-model:value="formState.formDataJson"
-          :placeholder="t('approval.instance.formDataPlaceholder')"
-          :rows="4"
-          class="font-mono text-xs"
-        />
-      </FormItem>
     </Form>
   </Modal>
 </template>

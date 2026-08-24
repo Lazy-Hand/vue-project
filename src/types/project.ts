@@ -212,18 +212,17 @@ export interface ProjectDeliverablePayload {
 
 export type UpdateProjectDeliverablePayload = Partial<ProjectDeliverablePayload>
 
+// B2-03：流程版本由服务端按场景绑定解析，前端不再传递 definitionId
 export interface ProjectApprovalPayload {
   approvalType: ApprovalType
-  definitionId: string
   title?: string
 }
 
 export function buildProjectApprovalPayload(
   approvalType: ApprovalType,
-  definitionId: string,
   title?: string,
 ): ProjectApprovalPayload {
-  const payload: ProjectApprovalPayload = { approvalType, definitionId }
+  const payload: ProjectApprovalPayload = { approvalType }
   const normalizedTitle = title?.trim()
   if (normalizedTitle) payload.title = normalizedTitle
   return payload

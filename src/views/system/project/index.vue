@@ -242,12 +242,15 @@ const projectActions = computed<ProTableAction<Project>[]>(() => [
     label: t('common.edit'),
     placement: 'inline',
     visible: canUpdate.value,
+    // 审批进行中的项目锁定编辑入口
+    disabled: (row) => isApprovalLocked(row.status),
     onClick: openEdit,
   },
   {
     key: 'members',
     label: t('project.members'),
     visible: canAssignMembers.value,
+    disabled: (row) => isApprovalLocked(row.status),
     onClick: openMembers,
   },
   {
@@ -255,9 +258,14 @@ const projectActions = computed<ProTableAction<Project>[]>(() => [
     label: t('common.delete'),
     danger: true,
     visible: canDelete.value,
+    disabled: (row) => isApprovalLocked(row.status),
     onClick: handleDelete,
   },
 ])
+
+function isApprovalLocked(status: string): boolean {
+  return status === 'PENDING_INITIATION_APPROVAL' || status === 'PENDING_CLOSURE_APPROVAL'
+}
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return error.message
@@ -495,7 +503,6 @@ async function handleDelete(row: Project): Promise<void> {
       :project="detailProject"
       :clients="clients"
       :users="users"
-      :definitions="definitions"
     />
 
     <ApprovalRecordsDrawer

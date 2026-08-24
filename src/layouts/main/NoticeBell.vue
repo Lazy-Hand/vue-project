@@ -80,10 +80,10 @@ async function loadTodo(): Promise<void> {
   try {
     const result = await fetchTodoList({ page: 1, pageSize: 8 })
     todoItems.value = (result.items ?? []).map((item) => ({
-      id: item.id,
-      title: item.title,
-      status: item.status,
-      createdAt: item.createdAt,
+      id: item.instance.id,
+      title: item.instance.title,
+      status: item.instance.status,
+      createdAt: item.instance.createdAt,
     }))
     todoTotal.value = result.total
   } catch (error) {

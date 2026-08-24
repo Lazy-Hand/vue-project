@@ -1,16 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Input, Modal, Tag, message } from 'antdv-next'
+import type { FormInstance } from 'antdv-next'
+import { Form, FormItem, Input, Modal, Select, Tag, message } from 'antdv-next'
 
-import {
-  addSignTask,
-  approveTask,
-  fetchApprovalInstanceDetail,
-  fetchTodoList,
-  rejectTask,
-  transferTask,
-} from '@/api/approval'
+import { addSignTask, approveTask, fetchTodoList, rejectTask, transferTask } from '@/api/approval'
+import { fetchUserOptions } from '@/api/user'
 import ProTable from '@/components/ProTable/index.vue'
 import ProTableActions from '@/components/ProTableActions/index.vue'
 import type {
@@ -20,22 +15,18 @@ import type {
   ProTableRequestParams,
   ProTableSearchField,
 } from '@/types/pro-table'
-import type { ApprovalInstance, ApprovalInstanceDetail } from '@/types/approval'
+import type { ApprovalTodoItem } from '@/types/approval'
 import { ApiRequestError } from '@/utils/request'
 import InstanceDetailDrawer from '../instance/InstanceDetailDrawer.vue'
 
 const { t, locale } = useI18n()
 
-const tableRef = ref<ProTableExpose<ApprovalInstance> | null>(null)
+const tableRef = ref<ProTableExpose<ApprovalTodoItem> | null>(null)
 const detailOpen = ref(false)
 const detailId = ref<string | null>(null)
-const actionComment = ref('')
-const actionTargetUserId = ref('')
 
-const rejectVisible = ref(false)
-const rejectTaskId = ref<string | null>(null)
-const rejectComment = ref('')
-const rejecting = ref(false)
+// 每个操作的独立 loading，防止重复点击：key 为 `${taskId}:${action}`
+const actionLoading = reactive<Record<string, boolean>>({})
 
 const searchFields = computed<ProTableSearchField[]>(() => [
   {
@@ -47,31 +38,32 @@ const searchFields = computed<ProTableSearchField[]>(() => [
   },
 ])
 
-const columns = computed<ProTableColumn<ApprovalInstance>[]>(() => [
+const columns = computed<ProTableColumn<ApprovalTodoItem>[]>(() => [
   {
-    prop: 'title',
+    prop: 'instance.title',
     label: t('approval.instance.titleLabel'),
     minWidth: 180,
     showOverflowTooltip: true,
+    formatter: (row) => row.instance.title,
   },
   {
-    prop: 'businessType',
+    prop: 'instance.businessType',
     label: t('approval.instance.businessType'),
     width: 120,
-    formatter: (row) => row.businessType ?? '-',
+    formatter: (row) => row.instance.businessType ?? '-',
   },
   {
-    prop: 'status',
+    prop: 'instance.status',
     label: t('approval.instance.status'),
     width: 110,
     type: 'slot',
     slot: 'status',
   },
   {
-    prop: 'createdAt',
+    prop: 'instance.createdAt',
     label: t('approval.instance.createdAt'),
     minWidth: 165,
-    formatter: (row) => formatDateTime(row.createdAt, locale.value),
+    formatter: (row) => formatDateTime(row.instance.createdAt, locale.value),
   },
   {
     key: 'actions',
@@ -108,28 +100,26 @@ async function requestTodo(params: ProTableRequestParams) {
   return fetchTodoList(query as { page?: number; pageSize?: number; keyword?: string })
 }
 
-function handleDetail(row: ApprovalInstance): void {
-  detailId.value = row.id
+function handleDetail(row: ApprovalTodoItem): void {
+  detailId.value = row.instance.id
   detailOpen.value = true
 }
 
-async function resolveMyPendingTaskId(instanceId: string): Promise<string | null> {
-  try {
-    const detail: ApprovalInstanceDetail = await fetchApprovalInstanceDetail(instanceId)
-    const pending = detail.tasks.find((task) => task.status === 'PENDING')
-    return pending?.id ?? null
-  } catch (error) {
-    message.error(errorMessage(error))
-    return null
-  }
+function withLoading(key: string, run: () => Promise<unknown>): Promise<void> {
+  if (actionLoading[key]) return Promise.resolve()
+  actionLoading[key] = true
+  return run()
+    .then(() => undefined)
+    .finally(() => {
+      actionLoading[key] = false
+    })
 }
 
-async function handleApprove(row: ApprovalInstance): Promise<void> {
-  const taskId = await resolveMyPendingTaskId(row.id)
-  if (!taskId) {
-    message.error(t('approval.requestFailed'))
-    return
-  }
+// ================= 审批通过 =================
+
+async function handleApprove(row: ApprovalTodoItem): Promise<void> {
+  const taskId = row.myPendingTaskId
+  if (!taskId || !row.capabilities.canApprove) return
 
   const confirmed = await new Promise<boolean>((resolve) => {
     Modal.confirm({
@@ -143,20 +133,27 @@ async function handleApprove(row: ApprovalInstance): Promise<void> {
   })
   if (!confirmed) return
 
-  try {
-    await approveTask(taskId, { comment: actionComment.value.trim() || undefined })
-    message.success(t('approval.instance.approveSuccess'))
-    await tableRef.value?.reload()
-  } catch (error) {
-    message.error(errorMessage(error))
-  }
+  await withLoading(`${taskId}:approve`, async () => {
+    try {
+      await approveTask(taskId)
+      message.success(t('approval.instance.approveSuccess'))
+      await tableRef.value?.reload()
+    } catch (error) {
+      message.error(errorMessage(error))
+    }
+  })
 }
 
-async function handleReject(row: ApprovalInstance): Promise<void> {
-  const taskId = await resolveMyPendingTaskId(row.id)
-  if (!taskId) return
+// ================= 驳回 =================
 
-  rejectTaskId.value = taskId
+const rejectVisible = ref(false)
+const rejectTaskId = ref<string | null>(null)
+const rejectComment = ref('')
+const rejecting = ref(false)
+
+async function handleReject(row: ApprovalTodoItem): Promise<void> {
+  if (!row.myPendingTaskId || !row.capabilities.canReject) return
+  rejectTaskId.value = row.myPendingTaskId
   rejectComment.value = ''
   rejectVisible.value = true
 }
@@ -182,49 +179,77 @@ async function submitReject(): Promise<void> {
   }
 }
 
-async function handleTransfer(row: ApprovalInstance): Promise<void> {
-  const taskId = await resolveMyPendingTaskId(row.id)
-  if (!taskId) return
-  if (!actionTargetUserId.value.trim()) {
-    message.warning(t('approval.instance.targetUserRequired'))
-    return
-  }
+// ================= 转办 / 加签（用户选择器） =================
+
+interface TargetUserForm {
+  targetUserId: string | undefined
+  comment: string
+}
+
+const targetVisible = ref(false)
+const targetMode = ref<'transfer' | 'addSign'>('transfer')
+const targetTaskId = ref<string | null>(null)
+const targetSubmitting = ref(false)
+const targetFormRef = ref<FormInstance>()
+const targetForm = reactive<TargetUserForm>({ targetUserId: undefined, comment: '' })
+
+const userOptions = ref<{ label: string; value: string }[]>([])
+const userLoading = ref(false)
+
+async function loadUserOptions(): Promise<void> {
+  if (userOptions.value.length > 0) return
+  userLoading.value = true
   try {
-    await transferTask(taskId, {
-      targetUserId: actionTargetUserId.value.trim(),
-      comment: actionComment.value.trim() || undefined,
-    })
-    message.success(t('approval.instance.transferSuccess'))
-    actionTargetUserId.value = ''
-    actionComment.value = ''
-    await tableRef.value?.reload()
+    userOptions.value = await fetchUserOptions()
   } catch (error) {
     message.error(errorMessage(error))
+  } finally {
+    userLoading.value = false
   }
 }
 
-async function handleAddSign(row: ApprovalInstance): Promise<void> {
-  const taskId = await resolveMyPendingTaskId(row.id)
-  if (!taskId) return
-  if (!actionTargetUserId.value.trim()) {
-    message.warning(t('approval.instance.targetUserRequired'))
-    return
-  }
+async function handleTargetAction(
+  row: ApprovalTodoItem,
+  mode: 'transfer' | 'addSign',
+): Promise<void> {
+  const allowed = mode === 'transfer' ? row.capabilities.canTransfer : row.capabilities.canAddSign
+  if (!row.myPendingTaskId || !allowed) return
+  targetMode.value = mode
+  targetTaskId.value = row.myPendingTaskId
+  targetForm.targetUserId = undefined
+  targetForm.comment = ''
+  targetVisible.value = true
+  await loadUserOptions()
+}
+
+async function submitTarget(): Promise<void> {
+  if (!targetTaskId.value) return
+  const valid = await targetFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  targetSubmitting.value = true
   try {
-    await addSignTask(taskId, {
-      targetUserId: actionTargetUserId.value.trim(),
-      comment: actionComment.value.trim() || undefined,
-    })
-    message.success(t('approval.instance.addSignSuccess'))
-    actionTargetUserId.value = ''
-    actionComment.value = ''
+    const payload = {
+      targetUserId: String(targetForm.targetUserId),
+      comment: targetForm.comment.trim() || undefined,
+    }
+    if (targetMode.value === 'transfer') {
+      await transferTask(targetTaskId.value, payload)
+      message.success(t('approval.instance.transferSuccess'))
+    } else {
+      await addSignTask(targetTaskId.value, payload)
+      message.success(t('approval.instance.addSignSuccess'))
+    }
+    targetVisible.value = false
     await tableRef.value?.reload()
   } catch (error) {
     message.error(errorMessage(error))
+  } finally {
+    targetSubmitting.value = false
   }
 }
 
-const actions = computed((): ProTableAction<ApprovalInstance>[] => [
+const actions = computed((): ProTableAction<ApprovalTodoItem>[] => [
   {
     key: 'detail',
     label: t('approval.instance.detail'),
@@ -235,6 +260,8 @@ const actions = computed((): ProTableAction<ApprovalInstance>[] => [
     key: 'approve',
     label: t('approval.instance.actionApprove'),
     placement: 'inline',
+    // 能力为 false 的操作不展示
+    visible: (row) => row.capabilities.canApprove,
     onClick: (row) => void handleApprove(row),
   },
   {
@@ -242,19 +269,22 @@ const actions = computed((): ProTableAction<ApprovalInstance>[] => [
     label: t('approval.instance.actionReject'),
     placement: 'inline',
     danger: true,
+    visible: (row) => row.capabilities.canReject,
     onClick: (row) => void handleReject(row),
   },
   {
     key: 'transfer',
     label: t('approval.instance.actionTransfer'),
     placement: 'menu',
-    onClick: (row) => void handleTransfer(row),
+    visible: (row) => row.capabilities.canTransfer,
+    onClick: (row) => void handleTargetAction(row, 'transfer'),
   },
   {
     key: 'addSign',
     label: t('approval.instance.actionAddSign'),
     placement: 'menu',
-    onClick: (row) => void handleAddSign(row),
+    visible: (row) => row.capabilities.canAddSign,
+    onClick: (row) => void handleTargetAction(row, 'addSign'),
   },
 ])
 </script>
@@ -269,23 +299,8 @@ const actions = computed((): ProTableAction<ApprovalInstance>[] => [
       :show-request-error="false"
       @request-error="message.error(errorMessage($event))"
     >
-      <template #toolbar-actions>
-        <div class="flex items-center gap-2">
-          <Input
-            v-model:value="actionTargetUserId"
-            :placeholder="t('approval.instance.targetUserPlaceholder')"
-            class="w-32"
-          />
-          <Input
-            v-model:value="actionComment"
-            :placeholder="t('approval.instance.commentPlaceholder')"
-            class="w-48"
-          />
-        </div>
-      </template>
-
       <template #column-status="{ row }">
-        <Tag color="processing">{{ row.status }}</Tag>
+        <Tag color="processing">{{ row.instance.status }}</Tag>
       </template>
 
       <template #column-actions="{ row }">
@@ -311,6 +326,45 @@ const actions = computed((): ProTableAction<ApprovalInstance>[] => [
         show-count
         :placeholder="t('approval.instance.rejectCommentPlaceholder')"
       />
+    </Modal>
+
+    <Modal
+      v-model:open="targetVisible"
+      :title="
+        targetMode === 'transfer'
+          ? t('approval.instance.actionTransfer')
+          : t('approval.instance.actionAddSign')
+      "
+      :confirm-loading="targetSubmitting"
+      :ok-text="t('common.confirm')"
+      :cancel-text="t('common.cancel')"
+      @ok="submitTarget"
+    >
+      <Form ref="targetFormRef" :model="targetForm" layout="vertical">
+        <FormItem
+          :label="t('approval.instance.targetUser')"
+          name="targetUserId"
+          :rules="[{ required: true, message: t('approval.instance.targetUserRequired') }]"
+        >
+          <Select
+            v-model:value="targetForm.targetUserId"
+            show-search
+            option-filter-prop="label"
+            :options="userOptions"
+            :loading="userLoading"
+            :placeholder="t('approval.instance.targetUserPlaceholder')"
+          />
+        </FormItem>
+        <FormItem :label="t('approval.instance.comment')" name="comment">
+          <Input.TextArea
+            v-model:value="targetForm.comment"
+            :rows="3"
+            :maxlength="500"
+            show-count
+            :placeholder="t('approval.instance.commentPlaceholder')"
+          />
+        </FormItem>
+      </Form>
     </Modal>
   </div>
 </template>

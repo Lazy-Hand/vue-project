@@ -10,10 +10,7 @@ import {
   CalendarOutlined,
   ClockCircleOutlined,
   CoffeeOutlined,
-  CopyOutlined,
-  DeleteOutlined,
   DollarCircleOutlined,
-  EditOutlined,
   FileProtectOutlined,
   FileTextOutlined,
   FormOutlined,
@@ -40,10 +37,12 @@ import {
   fetchApprovalCategories,
   fetchApprovalDefinition,
   fetchApprovalDefinitions,
+  publishApprovalDefinition,
   toggleApprovalDefinitionStatus,
 } from '@/api/approval'
 import ProTable from '@/components/ProTable/index.vue'
 import ProTableActions from '@/components/ProTableActions/index.vue'
+import SceneBindingDrawer from './SceneBindingDrawer.vue'
 import { usePermission } from '@/composables/usePermission'
 import type {
   ProTableAction,
@@ -272,26 +271,39 @@ const actions = computed<ProTableAction<ApprovalDefinition>[]>(() => [
   {
     key: 'edit',
     label: t('approval.definition.designFlow'),
-    icon: EditOutlined,
     placement: 'inline',
-    hidden: !canUpdate.value,
+    visible: canUpdate.value,
     onClick: (row) => handleEdit(row),
+  },
+  {
+    key: 'publish',
+    label: t('approval.definition.publishVersion'),
+    placement: 'menu',
+    visible: canUpdate.value,
+    onClick: (row) => void handlePublish(row),
+  },
+  {
+    key: 'bindings',
+    label: t('approval.definition.sceneBindings'),
+    placement: 'menu',
+    visible: canUpdate.value,
+    onClick: () => {
+      bindingDrawerOpen.value = true
+    },
   },
   {
     key: 'copy',
     label: t('approval.definition.copyFlow'),
-    icon: CopyOutlined,
     placement: 'inline',
-    hidden: !canCreate.value,
+    visible: canCreate.value,
     onClick: (row) => void handleCopy(row),
   },
   {
     key: 'delete',
     label: t('common.delete'),
-    icon: DeleteOutlined,
     placement: 'inline',
     danger: true,
-    hidden: !canDelete.value,
+    visible: canDelete.value,
     onClick: (row) => void handleDelete(row),
   },
 ])
@@ -347,6 +359,30 @@ async function handleCopy(row: ApprovalDefinition): Promise<void> {
     message.error(errorMessage(error))
   }
 }
+
+async function handlePublish(row: ApprovalDefinition): Promise<void> {
+  const confirmed = await new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: t('common.tip'),
+      content: t('approval.definition.publishConfirm'),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
+    })
+  })
+  if (!confirmed) return
+  try {
+    await publishApprovalDefinition(row.id)
+    message.success(t('approval.definition.publishSuccess'))
+    await refreshAll()
+  } catch (error) {
+    message.error(errorMessage(error))
+  }
+}
+
+// 场景绑定抽屉状态
+const bindingDrawerOpen = ref(false)
 
 async function handleToggleStatus(row: ApprovalDefinition, enabled: boolean): Promise<void> {
   try {
@@ -574,6 +610,8 @@ onMounted(() => {
       :categories="categoryList"
       @success="handleDesignerSuccess"
     />
+
+    <SceneBindingDrawer v-model:open="bindingDrawerOpen" />
   </div>
 </template>
 

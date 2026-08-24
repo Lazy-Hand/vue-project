@@ -173,7 +173,7 @@ async function loadTodos() {
   todosLoading.value = true
   try {
     const res = await fetchTodoList({ page: 1, pageSize: 5 })
-    todos.value = res.items || []
+    todos.value = (res.items || []).map((item) => item.instance)
   } catch {
     todos.value = []
   } finally {
