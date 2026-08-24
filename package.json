@@ -45,6 +45,7 @@
     "@vue-flow/minimap": "^1.5.4",
     "alova": "^3.5.3",
     "antdv-next": "^1.4.6",
+    "dayjs": "^1.11.21",
     "echarts": "^6.1.0",
     "pinia": "^4.0.2",
     "tailwindcss": "^4.3.3",

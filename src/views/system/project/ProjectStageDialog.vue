@@ -13,6 +13,7 @@ import {
   Select,
   TextArea,
 } from 'antdv-next'
+import dayjs, { type Dayjs } from 'dayjs'
 
 import type { ProjectStage, ProjectStagePayload, UpdateProjectStagePayload } from '@/types/project'
 
@@ -37,10 +38,10 @@ interface FormModel {
   name: string
   sort: number
   status: string | undefined
-  plannedStartAt: unknown
-  plannedEndAt: unknown
-  actualStartAt: unknown
-  actualEndAt: unknown
+  plannedStartAt: Dayjs | null
+  plannedEndAt: Dayjs | null
+  actualStartAt: Dayjs | null
+  actualEndAt: Dayjs | null
   description: string
 }
 
@@ -75,18 +76,14 @@ const rules = computed<Partial<Record<keyof FormModel, Rule[]>>>(() => ({
   name: [{ required: true, message: t('project.stageNameRequired'), trigger: 'blur' }],
 }))
 
-function toIsoString(value: unknown): string | undefined {
-  if (!value) return undefined
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value.toISOString()
-  if (typeof value === 'object' && value !== null && 'toISOString' in value) {
-    const v = value as { toISOString: () => string }
-    try {
-      return typeof v.toISOString === 'function' ? v.toISOString() : undefined
-    } catch {
-      return undefined
-    }
-  }
-  return undefined
+function toDayjs(value: string | null): Dayjs | null {
+  if (!value) return null
+  const parsed = dayjs(value)
+  return parsed.isValid() ? parsed : null
+}
+
+function toIsoString(value: Dayjs | null): string | undefined {
+  return value?.isValid() ? value.toISOString() : undefined
 }
 
 function reset(): void {
@@ -104,10 +101,10 @@ function fill(s: ProjectStage): void {
   form.name = s.name
   form.sort = s.sort
   form.status = s.status
-  form.plannedStartAt = s.plannedStartAt ? new Date(s.plannedStartAt) : null
-  form.plannedEndAt = s.plannedEndAt ? new Date(s.plannedEndAt) : null
-  form.actualStartAt = s.actualStartAt ? new Date(s.actualStartAt) : null
-  form.actualEndAt = s.actualEndAt ? new Date(s.actualEndAt) : null
+  form.plannedStartAt = toDayjs(s.plannedStartAt)
+  form.plannedEndAt = toDayjs(s.plannedEndAt)
+  form.actualStartAt = toDayjs(s.actualStartAt)
+  form.actualEndAt = toDayjs(s.actualEndAt)
   form.description = s.description ?? ''
 }
 

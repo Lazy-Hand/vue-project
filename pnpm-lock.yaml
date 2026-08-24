@@ -98,6 +98,9 @@ importers:
       antdv-next:
         specifier: ^1.4.6
         version: 1.4.6(vue@3.6.0-rc.4(typescript@6.0.3))
+      dayjs:
+        specifier: ^1.11.21
+        version: 1.11.21
       echarts:
         specifier: ^6.1.0
         version: 6.1.0

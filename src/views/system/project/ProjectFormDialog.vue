@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { FormInstance, Rule } from 'antdv-next'
 import { Button, DatePicker, Form, FormItem, Input, Modal, Select, TreeSelect } from 'antdv-next'
+import dayjs, { type Dayjs } from 'dayjs'
 
 import type { Client } from '@/types/client'
 import type { DeptTreeNode } from '@/types/dept'
@@ -38,8 +39,8 @@ interface FormModel {
   budgetedCost: string
   actualCost: string
   settlementStatus: string | undefined
-  startDate: unknown
-  endDate: unknown
+  startDate: Dayjs | null
+  endDate: Dayjs | null
   managerId: string | undefined
   deptId: unknown
 }
@@ -137,18 +138,14 @@ const rules = computed<Partial<Record<keyof FormModel, Rule[]>>>(() => ({
   ],
 }))
 
-function toIsoString(value: unknown): string | undefined {
-  if (!value) return undefined
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value.toISOString()
-  if (typeof value === 'object' && value !== null && 'toISOString' in value) {
-    const v = value as { toISOString: () => string }
-    try {
-      return typeof v.toISOString === 'function' ? v.toISOString() : undefined
-    } catch {
-      return undefined
-    }
-  }
-  return undefined
+function toDayjs(value: string | null): Dayjs | null {
+  if (!value) return null
+  const parsed = dayjs(value)
+  return parsed.isValid() ? parsed : null
+}
+
+function toIsoString(value: Dayjs | null): string | undefined {
+  return value?.isValid() ? value.toISOString() : undefined
 }
 
 function resetForm(): void {
@@ -175,8 +172,8 @@ function fillFromEditing(p: Project): void {
   form.budgetedCost = p.budgetedCost ?? ''
   form.actualCost = p.actualCost ?? ''
   form.settlementStatus = p.settlementStatus
-  form.startDate = p.startDate ? new Date(p.startDate) : null
-  form.endDate = p.endDate ? new Date(p.endDate) : null
+  form.startDate = toDayjs(p.startDate)
+  form.endDate = toDayjs(p.endDate)
   form.managerId = p.managerId ?? undefined
   form.deptId = p.deptId ?? null
 }
