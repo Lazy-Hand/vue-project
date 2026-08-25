@@ -128,5 +128,47 @@ const textAlovaInstance = createAlova({
   }),
 })
 
-export { refreshAccessToken, alovaInstance as request, textAlovaInstance as textRequest }
+/** Raw binary response instance for authenticated project-file downloads. */
+const blobAlovaInstance = createAlova({
+  statesHook: VueHook,
+  requestAdapter,
+  baseURL: API_BASE_URL,
+  cacheFor: {
+    GET: 0,
+    get: 0,
+  },
+  beforeRequest: onAuthRequired((method) => {
+    method.config.credentials = 'include'
+    method.config.headers = {
+      Accept: 'application/octet-stream',
+      'X-Locale': useAppConfigStore(pinia).locale,
+      ...method.config.headers,
+    }
+  }),
+  responded: onResponseRefreshToken({
+    onSuccess: async (response) => {
+      if (response instanceof Blob) return response
+      if (response instanceof Response) {
+        if (!response.ok) {
+          throw new ApiRequestError('HTTP ' + response.status, { status: response.status })
+        }
+        return response.blob()
+      }
+
+      const blob = (response as { blob?: unknown }).blob
+      if (typeof blob === 'function') {
+        return (blob as () => Blob | Promise<Blob>)()
+      }
+      throw new ApiRequestError('Invalid binary response')
+    },
+    onError: (error: unknown) => normalizeRequestError(error),
+  }),
+})
+
+export {
+  refreshAccessToken,
+  alovaInstance as request,
+  textAlovaInstance as textRequest,
+  blobAlovaInstance as blobRequest,
+}
 export { ApiRequestError, unwrapResponse } from './response'

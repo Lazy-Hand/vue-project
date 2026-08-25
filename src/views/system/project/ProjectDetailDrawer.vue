@@ -14,7 +14,11 @@ import {
   message,
 } from 'antdv-next'
 
-import { buildFileUrl, fetchFileList } from '@/api/file'
+import {
+  downloadProjectFileAsset,
+  linkProjectFileAssets,
+  unlinkProjectFileLink,
+} from '@/api/project-file'
 import {
   createProjectApproval,
   createProjectDeliverable,
@@ -25,18 +29,19 @@ import {
   updateProjectDeliverable,
   updateProjectStage,
 } from '@/api/project'
-import FileUpload from '@/components/FileUpload/index.vue'
+import ProjectFilePicker, {
+  type ProjectFilePickerExpose,
+} from '@/components/ProjectFilePicker/index.vue'
+import { usePermission } from '@/composables/usePermission'
 import type { Client } from '@/types/client'
 import type { ManagedUser } from '@/types/user'
 import type {
   ApprovalType,
   Project,
   ProjectApprovalPayload,
-  ProjectAttachment,
   ProjectDeliverable,
   ProjectDeliverablePayload,
   ProjectDetail,
-  ProjectFile,
   ProjectMember,
   ProjectMemberHistory,
   ProjectStage,
@@ -44,10 +49,12 @@ import type {
   UpdateProjectDeliverablePayload,
   UpdateProjectStagePayload,
 } from '@/types/project'
+import type { ProjectFileAsset } from '@/types/project-file'
 import { getProjectApprovalType } from '@/types/project'
 import { ApiRequestError } from '@/utils/request'
 import ProjectApprovalDialog from './ProjectApprovalDialog.vue'
 import ProjectDeliverableDialog from './ProjectDeliverableDialog.vue'
+import ProjectKnowledgeDrawer from './ProjectKnowledgeDrawer.vue'
 import ProjectStageDialog from './ProjectStageDialog.vue'
 
 interface Props {
@@ -61,6 +68,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 
 const { t, locale } = useI18n()
+const { hasPermission } = usePermission()
 
 const visible = computed({
   get: () => props.open,
@@ -70,7 +78,11 @@ const visible = computed({
 const detail = ref<ProjectDetail | null>(null)
 const stages = ref<ProjectStage[]>([])
 const deliverables = ref<ProjectDeliverable[]>([])
-const attachments = ref<ProjectAttachment[]>([])
+const attachments = ref<ProjectFileAsset[]>([])
+const attachmentDraft = ref<ProjectFileAsset[]>([])
+const attachmentPickerRef = ref<ProjectFilePickerExpose>()
+const savingAttachments = ref(false)
+const unlinkingAttachmentId = ref<string | null>(null)
 const loading = ref(false)
 const activeTab = ref('overview')
 
@@ -86,6 +98,7 @@ const deliverableDialogRef = ref<InstanceType<typeof ProjectDeliverableDialog> |
 
 const approvalDialogVisible = ref(false)
 const approvalDialogRef = ref<InstanceType<typeof ProjectApprovalDialog> | null>(null)
+const knowledgeDrawerVisible = ref(false)
 
 const clientName = computed(() => {
   if (!detail.value) return '-'
@@ -114,6 +127,9 @@ const approvalType = computed<ApprovalType | null>(() =>
 )
 
 const canStartApproval = computed(() => approvalType.value !== null)
+const canQueryKnowledge = computed(() => hasPermission('system:project:query'))
+const canQueryFiles = computed(() => hasPermission('system:project:queryFiles'))
+const canManageFiles = computed(() => hasPermission('system:project:manageFiles'))
 
 /** 审批进行中：项目数据锁定，所有写入口禁用并给出原因 */
 const approvalLocked = computed(
@@ -204,38 +220,10 @@ function memberLabel(member: ProjectMember | ProjectMemberHistory): string {
   return `${memberName(member)} (${role === key ? member.role : role})`
 }
 
-function attachmentFile(attachment: ProjectAttachment): ProjectFile {
-  return attachment.file ?? attachment
-}
-
-function fileUrl(file: ProjectFile | null | undefined): string {
-  if (!file) return ''
-  return file.url || (file.path ? buildFileUrl(file.path) : '')
-}
-
-function fileName(file: ProjectFile | null | undefined): string {
-  if (!file) return '-'
-  return file.originalName || file.filename || file.id
-}
-
 function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return error.message
   if (error instanceof Error) return error.message
   return t('project.requestFailed')
-}
-
-async function loadAttachments(projectId: string): Promise<void> {
-  try {
-    const result = await fetchFileList({
-      businessType: 'PROJECT_ATTACHMENT',
-      businessId: projectId,
-      page: 1,
-      pageSize: 100,
-    })
-    attachments.value = result.items
-  } catch {
-    // The detail payload remains the fallback when the generic file list is unavailable.
-  }
 }
 
 async function load(): Promise<void> {
@@ -247,7 +235,6 @@ async function load(): Promise<void> {
     stages.value = result.stages ?? []
     deliverables.value = result.deliverables ?? []
     attachments.value = result.attachments ?? []
-    await loadAttachments(result.id)
   } catch (error) {
     message.error(errorMessage(error))
   } finally {
@@ -264,6 +251,7 @@ watch(
       stages.value = []
       deliverables.value = []
       attachments.value = []
+      attachmentDraft.value = []
     }
   },
 )
@@ -363,9 +351,11 @@ async function handleDeliverableSubmit(
       )
       message.success(t('project.deliverableUpdateSuccess'))
     }
+    deliverableDialogRef.value?.commitFiles()
     deliverableDialogVisible.value = false
     await load()
   } catch (error) {
+    await deliverableDialogRef.value?.rollbackFiles()
     message.error(errorMessage(error))
   } finally {
     deliverableDialogRef.value?.setSubmitting(false)
@@ -400,6 +390,11 @@ function openApproval(): void {
   if (approvalType.value) approvalDialogVisible.value = true
 }
 
+function openKnowledge(): void {
+  if (!detail.value || !canQueryKnowledge.value) return
+  knowledgeDrawerVisible.value = true
+}
+
 async function handleApprovalSubmit(payload: ProjectApprovalPayload): Promise<void> {
   if (!props.project) return
   approvalDialogRef.value?.setSubmitting(true)
@@ -415,10 +410,69 @@ async function handleApprovalSubmit(payload: ProjectApprovalPayload): Promise<vo
   }
 }
 
-async function handleAttachmentUpload(): Promise<void> {
+async function handleDownload(asset: ProjectFileAsset): Promise<void> {
   if (!detail.value) return
-  await loadAttachments(detail.value.id)
-  message.success(t('project.attachmentUploadSuccess'))
+  try {
+    await downloadProjectFileAsset(detail.value.id, asset)
+  } catch (error) {
+    message.error(errorMessage(error))
+  }
+}
+
+async function handleAttachmentSave(): Promise<void> {
+  if (!detail.value || guardLockedAction()) return
+  savingAttachments.value = true
+  try {
+    const assetIds = (await attachmentPickerRef.value?.prepareFiles()) ?? []
+    if (!assetIds.length) {
+      message.warning(t('project.attachmentSelectRequired'))
+      return
+    }
+    await linkProjectFileAssets(detail.value.id, {
+      assetIds,
+      targetType: 'PROJECT',
+    })
+    attachmentPickerRef.value?.commitFiles()
+    attachmentDraft.value = []
+    message.success(t('project.attachmentSaveSuccess'))
+    await load()
+  } catch (error) {
+    await attachmentPickerRef.value?.rollbackFiles()
+    message.error(errorMessage(error))
+  } finally {
+    savingAttachments.value = false
+  }
+}
+
+async function handleAttachmentUnlink(asset: ProjectFileAsset): Promise<void> {
+  if (!detail.value || guardLockedAction() || unlinkingAttachmentId.value) return
+  const link = asset.links?.find((item) => item.targetType === 'PROJECT')
+  if (!link) {
+    message.error(t('project.attachmentLinkMissing'))
+    return
+  }
+  const confirmed = await new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: t('common.tip'),
+      content: t('project.attachmentUnlinkConfirm', { name: asset.file.originalName }),
+      okType: 'danger',
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
+    })
+  })
+  if (!confirmed) return
+  unlinkingAttachmentId.value = asset.id
+  try {
+    await unlinkProjectFileLink(detail.value.id, link.id)
+    message.success(t('project.attachmentUnlinkSuccess'))
+    await load()
+  } catch (error) {
+    message.error(errorMessage(error))
+  } finally {
+    unlinkingAttachmentId.value = null
+  }
 }
 </script>
 
@@ -438,7 +492,10 @@ async function handleAttachmentUpload(): Promise<void> {
       >
         {{ t('project.approvalLockedTip') }}
       </div>
-      <div class="mb-4 flex justify-end">
+      <div class="mb-4 flex justify-end gap-2">
+        <Button v-if="canQueryKnowledge" size="small" @click="openKnowledge">
+          {{ t('projectKnowledge.openWorkbench') }}
+        </Button>
         <Button v-if="canStartApproval" type="primary" size="small" @click="openApproval">
           {{ t('project.approvalCreate', { type: approvalTypeLabel }) }}
         </Button>
@@ -612,15 +669,21 @@ async function handleAttachmentUpload(): Promise<void> {
                 {{ deliverableStatusLabel(String(text ?? '')) }}
               </template>
               <template v-else-if="column.key === 'file'">
-                <a
-                  v-if="(record as ProjectDeliverable).file"
-                  :href="fileUrl((record as ProjectDeliverable).file)"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-blue-600 hover:text-blue-700"
+                <div
+                  v-if="(record as ProjectDeliverable).assets.length"
+                  class="flex flex-wrap gap-1"
                 >
-                  {{ fileName((record as ProjectDeliverable).file) }}
-                </a>
+                  <Button
+                    v-for="asset in (record as ProjectDeliverable).assets"
+                    :key="asset.id"
+                    type="link"
+                    size="small"
+                    :disabled="!canQueryFiles"
+                    @click="void handleDownload(asset)"
+                  >
+                    {{ asset.file.originalName }}
+                  </Button>
+                </div>
                 <span v-else class="text-slate-400">{{ t('project.deliverableFileEmpty') }}</span>
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -647,27 +710,65 @@ async function handleAttachmentUpload(): Promise<void> {
         </TabPane>
 
         <TabPane key="attachments" :tab="t('project.tabAttachments')">
-          <FileUpload
-            v-if="!approvalLocked"
-            category="FILE"
-            multiple
-            :max-count="20"
-            :business-type="'PROJECT_ATTACHMENT'"
-            :business-id="detail.id"
-            @success="handleAttachmentUpload"
-          />
-          <div v-else class="mb-2 text-sm text-slate-400">{{ t('project.approvalLockedTip') }}</div>
-          <div v-if="attachments.length" class="mt-4 flex flex-col gap-2">
-            <a
+          <div
+            v-if="!approvalLocked && canManageFiles"
+            class="rounded-lg border border-slate-200 bg-slate-50 p-3"
+          >
+            <ProjectFilePicker
+              ref="attachmentPickerRef"
+              v-model="attachmentDraft"
+              :project-id="detail.id"
+              kind="ATTACHMENT"
+              :disabled="savingAttachments"
+            />
+            <div class="mt-3 flex justify-end">
+              <Button type="primary" :loading="savingAttachments" @click="handleAttachmentSave">
+                {{ t('project.attachmentSave') }}
+              </Button>
+            </div>
+          </div>
+          <div v-else-if="approvalLocked" class="mb-2 text-sm text-slate-400">
+            {{ t('project.approvalLockedTip') }}
+          </div>
+          <div
+            v-if="attachments.length"
+            class="mt-4 overflow-hidden rounded-lg border border-slate-200"
+          >
+            <div
               v-for="attachment in attachments"
               :key="attachment.id"
-              :href="fileUrl(attachmentFile(attachment))"
-              target="_blank"
-              rel="noreferrer"
-              class="text-sm text-blue-600 hover:text-blue-700"
+              class="flex items-center gap-3 border-b border-slate-100 px-3 py-2.5 last:border-b-0"
             >
-              {{ fileName(attachmentFile(attachment)) }}
-            </a>
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-sm font-medium text-slate-700">
+                  {{ attachment.file.originalName }}
+                </div>
+                <div class="mt-0.5 text-xs text-slate-400">
+                  {{ attachment.file.mimeType }}
+                </div>
+              </div>
+              <Tag :color="attachment.status === 'ACTIVE' ? 'green' : 'blue'">
+                {{ t(`projectFile.assetStatus${attachment.status}`) }}
+              </Tag>
+              <Button
+                type="link"
+                size="small"
+                :disabled="!canQueryFiles"
+                @click="void handleDownload(attachment)"
+              >
+                {{ t('projectFile.download') }}
+              </Button>
+              <Button
+                type="link"
+                size="small"
+                danger
+                :disabled="approvalLocked || !canManageFiles"
+                :loading="unlinkingAttachmentId === attachment.id"
+                @click="void handleAttachmentUnlink(attachment)"
+              >
+                {{ t('project.attachmentUnlink') }}
+              </Button>
+            </div>
           </div>
           <div v-else class="mt-4 text-sm text-slate-400">{{ t('project.attachmentEmpty') }}</div>
         </TabPane>
@@ -687,6 +788,7 @@ async function handleAttachmentUpload(): Promise<void> {
         :project-id="detail.id"
         :editing="editingDeliverable"
         :stages="stages"
+        :can-manage-files="canManageFiles"
         @submit="handleDeliverableSubmit"
       />
       <ProjectApprovalDialog
@@ -698,4 +800,11 @@ async function handleAttachmentUpload(): Promise<void> {
       />
     </template>
   </Drawer>
+
+  <ProjectKnowledgeDrawer
+    v-if="detail"
+    v-model:open="knowledgeDrawerVisible"
+    :project-id="detail.id"
+    :project-name="detail.name"
+  />
 </template>

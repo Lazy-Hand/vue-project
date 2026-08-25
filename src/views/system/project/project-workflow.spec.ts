@@ -81,7 +81,7 @@ describe('project workflow contract', () => {
     })
     await createProjectDeliverable('project-1', {
       name: 'Release PDF',
-      fileId: 'uploaded-file-1',
+      assetIds: ['uploaded-asset-1'],
     })
     await createProjectStage('project-1', {
       name: 'Delivery',
@@ -101,7 +101,7 @@ describe('project workflow contract', () => {
     expect(requestMethods.post).toHaveBeenNthCalledWith(
       1,
       '/project/project-1/deliverables',
-      { name: 'Release PDF', fileId: 'uploaded-file-1' },
+      { name: 'Release PDF', assetIds: ['uploaded-asset-1'] },
       { cacheFor: 0 },
     )
     expect(requestMethods.post).toHaveBeenNthCalledWith(

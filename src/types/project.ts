@@ -1,3 +1,5 @@
+import type { ProjectFileAsset, ProjectFileMetadata } from '@/types/project-file'
+
 export type ProjectStatus =
   | 'DRAFT'
   | 'PENDING_INITIATION_APPROVAL'
@@ -19,26 +21,8 @@ export type StageStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'BLOCKED
 
 export type DeliverableStatus = 'DRAFT' | 'SUBMITTED' | 'ACCEPTED' | 'REJECTED'
 
-export interface ProjectFile {
-  id: string
-  originalName: string
-  filename?: string | null
-  path: string
-  url?: string | null
-  mimeType?: string | null
-  mimetype?: string | null
-  category?: string | null
-  size?: number
-  businessType?: string | null
-  businessId?: string | null
-  createdAt?: string
-  updatedAt?: string
-}
-
-export interface ProjectAttachment extends ProjectFile {
-  fileId?: string | null
-  file?: ProjectFile | null
-}
+export type ProjectFile = ProjectFileMetadata
+export type ProjectAttachment = ProjectFileAsset
 
 export interface ProjectMemberUser {
   id: string
@@ -122,8 +106,7 @@ export interface ProjectDeliverable {
   projectId: string
   stageId: string | null
   name: string
-  fileId: string | null
-  file: ProjectFile | null
+  assets: ProjectFileAsset[]
   version: string | null
   status: DeliverableStatus
   description: string | null
@@ -137,7 +120,7 @@ export interface ProjectDetail extends Project {
   members: ProjectMember[]
   memberHistory: ProjectMemberHistory[]
   stages: ProjectStage[]
-  attachments: ProjectAttachment[]
+  attachments: ProjectFileAsset[]
   deliverables: ProjectDeliverable[]
 }
 
@@ -204,7 +187,7 @@ export interface UpdateProjectStagePayload extends Partial<ProjectStagePayload> 
 export interface ProjectDeliverablePayload {
   name: string
   stageId?: string | null
-  fileId?: string | null
+  assetIds?: string[]
   version?: string
   status?: DeliverableStatus
   description?: string

@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Descriptions, DescriptionsItem, Tag } from 'antdv-next'
+import { Button, Descriptions, DescriptionsItem, Tag, message } from 'antdv-next'
 
 import { buildFileUrl } from '@/api/file'
+import { downloadProjectFileAsset } from '@/api/project-file'
 import type {
   ApprovalType,
   ProjectApprovalFormData,
   ProjectAttachment,
   ProjectDetail,
-  ProjectFile,
   ProjectMember,
   ProjectMemberHistory,
   ProjectStage,
 } from '@/types/project'
+import type { ProjectFileAsset } from '@/types/project-file'
 
 interface Props {
   businessId: string
@@ -188,16 +189,48 @@ function formatDateTime(value: string | null | undefined): string {
   }
 }
 
-function attachmentFile(attachment: ProjectAttachment): ProjectFile {
-  return attachment.file ?? attachment
+function attachmentRecord(attachment: ProjectAttachment): Record<string, unknown> {
+  return attachment as unknown as Record<string, unknown>
 }
 
-function fileUrl(file: ProjectFile): string {
-  return file.url || (file.path ? buildFileUrl(file.path) : '')
+function attachmentFile(attachment: ProjectAttachment): Record<string, unknown> {
+  const record = attachmentRecord(attachment)
+  return isRecord(record.file) ? record.file : record
 }
 
-function fileName(file: ProjectFile): string {
-  return file.originalName || file.filename || file.id
+function fileUrl(attachment: ProjectAttachment): string {
+  const record = attachmentRecord(attachment)
+  if (typeof record.downloadUrl === 'string') return record.downloadUrl
+  const file = attachmentFile(attachment)
+  if (typeof file.url === 'string') return file.url
+  return typeof file.path === 'string' ? buildFileUrl(file.path) : ''
+}
+
+function fileName(attachment: ProjectAttachment): string {
+  const file = attachmentFile(attachment)
+  if (typeof file.originalName === 'string') return file.originalName
+  if (typeof file.filename === 'string') return file.filename
+  return typeof file.id === 'string' ? file.id : '-'
+}
+
+function isProtectedAsset(attachment: ProjectAttachment): attachment is ProjectFileAsset {
+  const record = attachmentRecord(attachment)
+  return typeof record.downloadUrl === 'string' && isRecord(record.file)
+}
+
+async function handleDownload(attachment: ProjectAttachment): Promise<void> {
+  if (!isProtectedAsset(attachment)) return
+  try {
+    await downloadProjectFileAsset(project.value?.id ?? props.businessId, attachment)
+  } catch {
+    message.error(t('projectFile.downloadFailed'))
+  }
+}
+
+function deliverableFiles(deliverable: ProjectDetail['deliverables'][number]): ProjectAttachment[] {
+  const record = deliverable as unknown as Record<string, unknown>
+  if (Array.isArray(record.assets)) return record.assets as ProjectAttachment[]
+  return isRecord(record.file) ? [record.file as unknown as ProjectAttachment] : []
 }
 
 const memberRows = computed(() => project.value?.members ?? [])
@@ -319,16 +352,25 @@ const deliverableRows = computed(() => project.value?.deliverables ?? [])
       <section class="mt-4">
         <h4 class="mb-2 text-sm font-semibold text-slate-800">{{ t('project.attachments') }}</h4>
         <div v-if="attachmentRows.length" class="flex flex-col gap-1 text-sm">
-          <a
-            v-for="attachment in attachmentRows"
-            :key="attachment.id"
-            :href="fileUrl(attachmentFile(attachment))"
-            target="_blank"
-            rel="noreferrer"
-            class="text-blue-600 hover:text-blue-700"
-          >
-            {{ fileName(attachmentFile(attachment)) }}
-          </a>
+          <template v-for="attachment in attachmentRows" :key="attachment.id">
+            <Button
+              v-if="isProtectedAsset(attachment)"
+              type="link"
+              size="small"
+              @click="void handleDownload(attachment)"
+            >
+              {{ fileName(attachment) }}
+            </Button>
+            <a
+              v-else
+              :href="fileUrl(attachment)"
+              target="_blank"
+              rel="noreferrer"
+              class="text-blue-600 hover:text-blue-700"
+            >
+              {{ fileName(attachment) }}
+            </a>
+          </template>
         </div>
         <span v-else class="text-sm text-slate-400">{{ t('project.attachmentEmpty') }}</span>
       </section>
@@ -343,15 +385,27 @@ const deliverableRows = computed(() => project.value?.deliverables ?? [])
           >
             <span class="font-medium text-slate-700">{{ deliverable.name }}</span>
             <Tag>{{ deliverableStatusLabel(deliverable.status) }}</Tag>
-            <a
-              v-if="deliverable.file"
-              :href="fileUrl(deliverable.file)"
-              target="_blank"
-              rel="noreferrer"
-              class="text-blue-600 hover:text-blue-700"
-            >
-              {{ fileName(deliverable.file) }}
-            </a>
+            <template v-if="deliverableFiles(deliverable).length">
+              <template v-for="file in deliverableFiles(deliverable)" :key="file.id">
+                <Button
+                  v-if="isProtectedAsset(file)"
+                  type="link"
+                  size="small"
+                  @click="void handleDownload(file)"
+                >
+                  {{ fileName(file) }}
+                </Button>
+                <a
+                  v-else
+                  :href="fileUrl(file)"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="text-blue-600 hover:text-blue-700"
+                >
+                  {{ fileName(file) }}
+                </a>
+              </template>
+            </template>
             <span v-else class="text-slate-400">{{ t('project.deliverableFileEmpty') }}</span>
           </div>
         </div>

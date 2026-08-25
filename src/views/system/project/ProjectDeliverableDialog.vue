@@ -2,11 +2,12 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { FormInstance, Rule } from 'antdv-next'
-import { Button, Form, FormItem, Input, Modal, Select, TextArea } from 'antdv-next'
+import { Button, Form, FormItem, Input, Modal, Select, TextArea, message } from 'antdv-next'
 
-import FileUpload from '@/components/FileUpload/index.vue'
-import { buildFileUrl } from '@/api/file'
-import type { UploadResponse } from '@/types/file'
+import ProjectFilePicker, {
+  type ProjectFilePickerExpose,
+} from '@/components/ProjectFilePicker/index.vue'
+import type { ProjectFileAsset } from '@/types/project-file'
 import type {
   ProjectDeliverable,
   ProjectDeliverablePayload,
@@ -20,6 +21,7 @@ interface Props {
   projectId: string
   editing?: ProjectDeliverable | null
   stages: ProjectStage[]
+  canManageFiles: boolean
 }
 
 const props = defineProps<Props>()
@@ -31,7 +33,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const formRef = ref<FormInstance>()
+const filePickerRef = ref<ProjectFilePickerExpose>()
 const submitting = ref(false)
+const preparingFiles = ref(false)
+const files = ref<ProjectFileAsset[]>([])
 
 interface FormModel {
   name: string
@@ -39,9 +44,6 @@ interface FormModel {
   version: string
   status: string | undefined
   description: string
-  fileId: string | undefined
-  fileName: string
-  filePath: string
 }
 
 const form = reactive<FormModel>({
@@ -50,9 +52,6 @@ const form = reactive<FormModel>({
   version: '',
   status: undefined,
   description: '',
-  fileId: undefined,
-  fileName: '',
-  filePath: '',
 })
 
 const visible = computed({
@@ -75,14 +74,6 @@ const statusOptions = computed(() => [
 
 const rules = computed<Partial<Record<keyof FormModel, Rule[]>>>(() => ({
   name: [{ required: true, message: t('project.deliverableNameRequired'), trigger: 'blur' }],
-  fileId: [
-    {
-      validator: async (_rule, value) => {
-        if (props.mode === 'create' && !value) throw new Error(t('project.deliverableFileRequired'))
-      },
-      trigger: 'change',
-    },
-  ],
 }))
 
 function reset(): void {
@@ -91,9 +82,7 @@ function reset(): void {
   form.version = ''
   form.status = undefined
   form.description = ''
-  form.fileId = undefined
-  form.fileName = ''
-  form.filePath = ''
+  files.value = []
 }
 
 function fill(d: ProjectDeliverable): void {
@@ -102,9 +91,7 @@ function fill(d: ProjectDeliverable): void {
   form.version = d.version ?? ''
   form.status = d.status
   form.description = d.description ?? ''
-  form.fileId = d.fileId ?? d.file?.id ?? undefined
-  form.fileName = d.file?.originalName ?? ''
-  form.filePath = d.file?.path ?? ''
+  files.value = [...d.assets]
 }
 
 watch(
@@ -117,13 +104,15 @@ watch(
   { immediate: true },
 )
 
-function buildPayload(): ProjectDeliverablePayload | UpdateProjectDeliverablePayload {
+function buildPayload(
+  assetIds?: string[],
+): ProjectDeliverablePayload | UpdateProjectDeliverablePayload {
   const payload: ProjectDeliverablePayload = {
     name: form.name.trim(),
+    ...(assetIds !== undefined ? { assetIds } : {}),
   }
   if (form.stageId) payload.stageId = form.stageId
   else if (props.mode === 'edit') payload.stageId = null
-  if (form.fileId) payload.fileId = form.fileId
   const version = form.version.trim()
   if (version) payload.version = version
   if (form.status) payload.status = form.status as ProjectDeliverablePayload['status']
@@ -132,20 +121,40 @@ function buildPayload(): ProjectDeliverablePayload | UpdateProjectDeliverablePay
   return payload
 }
 
-function handleFileSuccess(response: UploadResponse): void {
-  form.fileId = response.id
-  form.fileName = response.originalName
-  form.filePath = response.path
-}
-
 async function handleSubmit(): Promise<void> {
   if (!formRef.value) return
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
-  emit('submit', buildPayload())
+  preparingFiles.value = true
+  try {
+    const assetIds = props.canManageFiles
+      ? ((await filePickerRef.value?.prepareFiles()) ?? [])
+      : undefined
+    if (props.canManageFiles && props.mode === 'create' && assetIds?.length === 0) {
+      message.warning(t('project.deliverableFileRequired'))
+      return
+    }
+    emit('submit', buildPayload(assetIds))
+  } catch {
+    message.error(t('projectFile.uploadFailed'))
+  } finally {
+    preparingFiles.value = false
+  }
 }
 
-defineExpose({ setSubmitting: (v: boolean) => (submitting.value = v) })
+function commitFiles(): void {
+  filePickerRef.value?.commitFiles()
+}
+
+async function rollbackFiles(): Promise<void> {
+  await filePickerRef.value?.rollbackFiles()
+}
+
+defineExpose({
+  setSubmitting: (value: boolean) => (submitting.value = value),
+  commitFiles,
+  rollbackFiles,
+})
 </script>
 
 <template>
@@ -155,7 +164,9 @@ defineExpose({ setSubmitting: (v: boolean) => (submitting.value = v) })
     width="560px"
     destroy-on-hidden
     :get-container="false"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting || preparingFiles"
+    :closable="!submitting && !preparingFiles"
+    :mask-closable="!submitting && !preparingFiles"
   >
     <Form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <FormItem :label="t('project.deliverableName')" name="name">
@@ -165,23 +176,18 @@ defineExpose({ setSubmitting: (v: boolean) => (submitting.value = v) })
           :placeholder="t('project.deliverableNamePlaceholder')"
         />
       </FormItem>
-      <FormItem :label="t('project.deliverableFile')" name="fileId">
-        <FileUpload
-          category="FILE"
-          :max-count="1"
-          :business-type="'PROJECT_DELIVERABLE'"
-          :business-id="props.projectId"
-          @success="handleFileSuccess"
+      <FormItem
+        v-if="props.canManageFiles"
+        :label="t('project.deliverableFile')"
+        :required="props.mode === 'create'"
+      >
+        <ProjectFilePicker
+          ref="filePickerRef"
+          v-model="files"
+          :project-id="props.projectId"
+          kind="DELIVERABLE"
+          :disabled="submitting || preparingFiles"
         />
-        <a
-          v-if="form.fileId && form.fileName && form.filePath"
-          :href="buildFileUrl(form.filePath)"
-          target="_blank"
-          rel="noreferrer"
-          class="mt-2 block text-sm text-blue-600 hover:text-blue-700"
-        >
-          {{ form.fileName }}
-        </a>
       </FormItem>
       <div class="grid grid-cols-2 gap-4">
         <FormItem :label="t('project.deliverableStage')" name="stageId">
@@ -213,8 +219,10 @@ defineExpose({ setSubmitting: (v: boolean) => (submitting.value = v) })
       </FormItem>
     </Form>
     <template #footer>
-      <Button @click="visible = false">{{ t('common.cancel') }}</Button>
-      <Button type="primary" :loading="submitting" @click="handleSubmit">{{
+      <Button :disabled="submitting || preparingFiles" @click="visible = false">
+        {{ t('common.cancel') }}
+      </Button>
+      <Button type="primary" :loading="submitting || preparingFiles" @click="handleSubmit">{{
         t('common.confirm')
       }}</Button>
     </template>

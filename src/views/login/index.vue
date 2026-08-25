@@ -25,7 +25,7 @@ const formRef = ref<FormInstance>()
 const loading = ref(false)
 const form = reactive({
   username: 'admin',
-  password: 'Admin@123456',
+  password: 'Ng7-gtlIc6OWeVkhke3jOuQGSwOL',
 })
 
 const rules = computed<Record<string, Rule[]>>(() => ({
