@@ -92,6 +92,17 @@ export function deleteProjectFileAsset(projectId: string, assetId: string): Prom
   )
 }
 
+export function retryParseProjectFileAsset(
+  projectId: string,
+  assetId: string,
+): Promise<ProjectFileAsset> {
+  return request.Post<ProjectFileAsset>(
+    `/project/${encodeURIComponent(projectId)}/file-assets/${encodeURIComponent(assetId)}/parse`,
+    {},
+    { cacheFor: 0 },
+  )
+}
+
 export function fetchProjectFileAssetBlob(projectId: string, assetId: string): Promise<Blob> {
   return blobRequest.Get<Blob>(
     `/project/${encodeURIComponent(projectId)}/file-assets/${encodeURIComponent(assetId)}/download`,

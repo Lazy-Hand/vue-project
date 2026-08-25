@@ -17,7 +17,7 @@ export type RequirementStatus = 'DRAFT' | 'CONFIRMED' | 'CHANGED' | 'REJECTED'
 
 export type KnowledgeQuestionStatus = 'OPEN' | 'ANSWERED' | 'CLOSED'
 
-export type PrdDocumentType = 'PRODUCT' | 'FRONTEND' | 'BACKEND' | 'API' | 'TEST' | 'OTHER'
+export type PrdDocumentType = 'PRODUCT' | 'FRONTEND' | 'BACKEND' | 'API' | 'DATABASE' | 'TEST' | 'OTHER'
 
 export type PrdDocumentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 
@@ -67,6 +67,7 @@ export interface ProjectResearchRecord extends ProjectKnowledgeRecordBase {
   summary: string | null
   content: string
   assets: ProjectFileAsset[]
+  materials: ProjectKnowledgeMaterial[]
 }
 
 export interface ProjectResearchRecordPayload {
@@ -92,6 +93,7 @@ export interface ProjectRequirement extends ProjectKnowledgeRecordBase {
   description: string | null
   content: string | null
   acceptanceCriteria: string | null
+  documentId: string | null
 }
 
 export interface ProjectRequirementPayload {
@@ -103,6 +105,7 @@ export interface ProjectRequirementPayload {
   description?: string | null
   content?: string | null
   acceptanceCriteria?: string | null
+  documentId?: string | null
   origin: KnowledgeOrigin
   aiRunId?: string | null
 }

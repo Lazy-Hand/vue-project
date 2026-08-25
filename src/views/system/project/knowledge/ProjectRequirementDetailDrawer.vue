@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Drawer, Empty, Tag, Tabs, TabPane, message } from 'antdv-next'
+import { Button, Drawer, Empty, Select, Tag, Tabs, TabPane, message } from 'antdv-next'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@antdv-next/icons'
 
 import {
@@ -10,14 +10,17 @@ import {
   deleteProjectRequirementEvidence,
   deleteProjectRequirementTrace,
   fetchProjectKnowledgeMaterials,
+  fetchProjectPrdDocuments,
   fetchProjectRequirementEvidence,
   fetchProjectRequirementTraces,
   fetchProjectResearchRecords,
+  updateProjectRequirement,
   updateProjectRequirementEvidence,
   updateProjectRequirementTrace,
 } from '@/api/project-knowledge'
 import type {
   ProjectKnowledgeMaterial,
+  ProjectPrdDocument,
   ProjectRequirement,
   ProjectRequirementEvidence,
   ProjectRequirementEvidencePayload,
@@ -52,6 +55,8 @@ const evidence = ref<ProjectRequirementEvidence[]>([])
 const traces = ref<ProjectRequirementTrace[]>([])
 const materials = ref<ProjectKnowledgeMaterial[]>([])
 const researchRecords = ref<ProjectResearchRecord[]>([])
+const prdDocuments = ref<ProjectPrdDocument[]>([])
+const documentSaving = ref(false)
 const deletingId = ref<string | null>(null)
 const evidenceFormOpen = ref(false)
 const evidenceFormMode = ref<'create' | 'edit'>('create')
@@ -75,6 +80,21 @@ const materialOptions = computed(() =>
 const researchOptions = computed(() =>
   researchRecords.value.map((row) => ({ label: row.title, value: row.id })),
 )
+
+const documentOptions = computed(() =>
+  prdDocuments.value.map((row) => ({
+    label: `${row.title}（${t(`projectKnowledge.prdType${row.type}`)}）`,
+    value: row.id,
+  })),
+)
+
+const requirementDocumentLabel = computed(() => {
+  const documentId = props.requirement?.documentId
+  if (!documentId) return null
+  return (
+    prdDocuments.value.find((document) => document.id === documentId)?.title ?? documentId
+  )
+})
 
 const traceTargetOptions = computed(() =>
   (['TASK', 'API', 'TEST_CASE', 'PRD', 'DELIVERABLE', 'OTHER'] as const).map((value) => ({
@@ -224,20 +244,40 @@ async function load(): Promise<void> {
   if (!props.open || !props.projectId || !requirementId) return
   loading.value = true
   try {
-    const [loadedEvidence, loadedTraces, loadedMaterials, loadedResearch] = await Promise.all([
-      fetchProjectRequirementEvidence(props.projectId, requirementId),
-      fetchProjectRequirementTraces(props.projectId, requirementId),
-      fetchProjectKnowledgeMaterials(props.projectId),
-      fetchProjectResearchRecords(props.projectId),
-    ])
+    const [loadedEvidence, loadedTraces, loadedMaterials, loadedResearch, loadedDocuments] =
+      await Promise.all([
+        fetchProjectRequirementEvidence(props.projectId, requirementId),
+        fetchProjectRequirementTraces(props.projectId, requirementId),
+        fetchProjectKnowledgeMaterials(props.projectId),
+        fetchProjectResearchRecords(props.projectId),
+        fetchProjectPrdDocuments(props.projectId),
+      ])
     evidence.value = loadedEvidence
     traces.value = loadedTraces
     materials.value = loadedMaterials
     researchRecords.value = loadedResearch
+    prdDocuments.value = loadedDocuments
   } catch (error) {
     message.error(errorMessage(error, t('projectKnowledge.requestFailed')))
   } finally {
     loading.value = false
+  }
+}
+
+async function handleDocumentChange(value: string | undefined): Promise<void> {
+  const requirementId = props.requirement?.id
+  if (!props.canManage || !requirementId) return
+  documentSaving.value = true
+  try {
+    await updateProjectRequirement(props.projectId, requirementId, {
+      documentId: value ?? null,
+    })
+    message.success(t('projectKnowledge.updateSuccess'))
+    emit('changed')
+  } catch (error) {
+    message.error(errorMessage(error, t('projectKnowledge.requestFailed')))
+  } finally {
+    documentSaving.value = false
   }
 }
 
@@ -452,6 +492,27 @@ watch(
           }}</Tag>
         </div>
         <p>{{ requirement.description || t('projectKnowledge.noDescription') }}</p>
+        <div class="requirement-detail__document">
+          <span class="requirement-detail__document-label">{{
+            t('projectKnowledge.requirementDocument')
+          }}</span>
+          <Select
+            v-if="canManage"
+            :value="requirement.documentId ?? undefined"
+            :placeholder="t('projectKnowledge.requirementDocumentPlaceholder')"
+            :options="documentOptions"
+            :loading="documentSaving"
+            allow-clear
+            class="requirement-detail__document-select"
+            @change="handleDocumentChange"
+          />
+          <Tag v-else-if="requirementDocumentLabel" color="blue">
+            {{ requirementDocumentLabel }}
+          </Tag>
+          <span v-else class="requirement-detail__document-unset">{{
+            t('projectKnowledge.requirementDocumentUnset')
+          }}</span>
+        </div>
         <div v-if="requirement.acceptanceCriteria" class="requirement-detail__acceptance">
           <span>{{ t('projectKnowledge.requirementAcceptanceCriteria') }}</span>
           <pre>{{ requirement.acceptanceCriteria }}</pre>
@@ -580,6 +641,27 @@ watch(
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.requirement-detail__document {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.requirement-detail__document-label {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.requirement-detail__document-select {
+  min-width: 260px;
+}
+
+.requirement-detail__document-unset {
+  color: #94a3b8;
+  font-size: 13px;
 }
 
 .requirement-detail__intro p {

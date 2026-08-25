@@ -15,12 +15,14 @@ import {
   createProjectPrdDocumentVersion,
   deleteProjectPrdDocumentVersion,
   fetchProjectPrdDocumentVersions,
+  fetchProjectRequirements,
   updateProjectPrdDocumentVersion,
 } from '@/api/project-knowledge'
 import type {
   ProjectPrdDocument,
   ProjectPrdDocumentVersion,
   ProjectPrdDocumentVersionPayload,
+  ProjectRequirement,
   UpdateProjectPrdDocumentVersionPayload,
 } from '@/types/project-knowledge'
 import type { ProjectFileAsset } from '@/types/project-file'
@@ -46,6 +48,7 @@ const visible = computed({
   set: (value: boolean) => emit('update:open', value),
 })
 const versions = ref<ProjectPrdDocumentVersion[]>([])
+const coveredRequirements = ref<ProjectRequirement[]>([])
 const loading = ref(false)
 const submitting = ref(false)
 const deletingId = ref<string | null>(null)
@@ -112,7 +115,14 @@ async function load(): Promise<void> {
   if (!props.open || !props.projectId || !props.document?.id) return
   loading.value = true
   try {
-    versions.value = await fetchProjectPrdDocumentVersions(props.projectId, props.document.id)
+    const [loadedVersions, loadedRequirements] = await Promise.all([
+      fetchProjectPrdDocumentVersions(props.projectId, props.document.id),
+      fetchProjectRequirements(props.projectId),
+    ])
+    versions.value = loadedVersions
+    coveredRequirements.value = loadedRequirements.filter(
+      (requirement) => requirement.documentId === props.document?.id,
+    )
   } catch (error) {
     message.error(errorMessage(error, t('projectKnowledge.requestFailed')))
   } finally {
@@ -251,6 +261,27 @@ watch(
         </div>
       </div>
 
+      <div class="prd-detail__covered">
+        <div class="prd-detail__covered-header">
+          <span>{{ t('projectKnowledge.documentCoveredRequirements') }}</span>
+          <Tag v-if="coveredRequirements.length" color="blue">
+            {{ coveredRequirements.length }}
+          </Tag>
+        </div>
+        <Empty
+          v-if="!coveredRequirements.length"
+          :description="t('projectKnowledge.documentCoveredRequirementsEmpty')"
+          :image="Empty.PRESENTED_IMAGE_SIMPLE"
+        />
+        <div v-else class="covered-requirement-list">
+          <div v-for="row in coveredRequirements" :key="row.id" class="covered-requirement-row">
+            <span class="covered-requirement-row__code">{{ row.code }}</span>
+            <span class="covered-requirement-row__title">{{ row.title }}</span>
+            <Tag>{{ t(`projectKnowledge.requirementStatus${row.status}`) }}</Tag>
+          </div>
+        </div>
+      </div>
+
       <div class="prd-detail__versions-header">
         <div>
           <div class="prd-detail__kicker">{{ t('projectKnowledge.prdVersionsKicker') }}</div>
@@ -353,6 +384,50 @@ watch(
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.prd-detail__covered {
+  margin: 16px 0;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.prd-detail__covered-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.covered-requirement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.covered-requirement-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.covered-requirement-row__code {
+  color: #64748b;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.covered-requirement-row__title {
+  flex: 1;
+  overflow: hidden;
+  color: #1e293b;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .prd-detail__intro p {

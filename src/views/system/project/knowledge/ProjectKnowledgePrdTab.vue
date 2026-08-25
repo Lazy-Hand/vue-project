@@ -42,10 +42,12 @@ const detailOpen = ref(false)
 const detailDocument = ref<ProjectPrdDocument | null>(null)
 
 const typeOptions = computed(() =>
-  (['PRODUCT', 'FRONTEND', 'BACKEND', 'API', 'TEST', 'OTHER'] as const).map((value) => ({
-    label: t(`projectKnowledge.prdType${value}`),
-    value,
-  })),
+  (['PRODUCT', 'FRONTEND', 'BACKEND', 'API', 'DATABASE', 'TEST', 'OTHER'] as const).map(
+    (value) => ({
+      label: t(`projectKnowledge.prdType${value}`),
+      value,
+    }),
+  ),
 )
 
 const statusOptions = computed(() =>

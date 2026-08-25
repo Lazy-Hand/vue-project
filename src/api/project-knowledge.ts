@@ -116,6 +116,30 @@ export function deleteProjectResearchRecord(projectId: string, id: string): Prom
   )
 }
 
+export function linkResearchRecordMaterials(
+  projectId: string,
+  id: string,
+  materialIds: string[],
+): Promise<ProjectResearchRecord> {
+  return request.Put<ProjectResearchRecord>(
+    knowledgePath(projectId, `/research-records/${encodeId(id)}/materials`),
+    { materialIds },
+    { cacheFor: 0 },
+  )
+}
+
+export function unlinkResearchRecordMaterial(
+  projectId: string,
+  id: string,
+  materialId: string,
+): Promise<void> {
+  return request.Delete<void>(
+    knowledgePath(projectId, `/research-records/${encodeId(id)}/materials/${encodeId(materialId)}`),
+    {},
+    { cacheFor: 0 },
+  )
+}
+
 // Requirements
 
 export function fetchProjectRequirements(projectId: string): Promise<ProjectRequirement[]> {

@@ -7,9 +7,11 @@ import {
   Empty,
   Input,
   Modal,
+  Popover,
   Progress,
   Spin,
   Tag,
+  Tooltip,
   UploadDragger,
   message,
   type UploadProps,
@@ -21,12 +23,14 @@ import {
   FileAddOutlined,
   FolderOpenOutlined,
   InboxOutlined,
+  RedoOutlined,
 } from '@antdv-next/icons'
 
 import {
   discardProjectFileAsset,
   downloadProjectFileAsset,
   fetchProjectFileAssets,
+  retryParseProjectFileAsset,
   uploadProjectFileAsset,
 } from '@/api/project-file'
 import { usePermission } from '@/composables/usePermission'
@@ -124,6 +128,43 @@ function assetStatusColor(asset: ProjectFileAsset): string {
 
 function assetStatusLabel(asset: ProjectFileAsset): string {
   return t(`projectFile.assetStatus${asset.status}`)
+}
+
+function parseStatusColor(asset: ProjectFileAsset): string {
+  if (asset.parseStatus === 'SUCCEEDED') return 'green'
+  if (asset.parseStatus === 'FAILED') return 'red'
+  if (asset.parseStatus === 'PROCESSING' || asset.parseStatus === 'PENDING') return 'processing'
+  return 'default'
+}
+
+function parseStatusLabel(asset: ProjectFileAsset): string {
+  return t(`projectFile.parseStatus${asset.parseStatus}`)
+}
+
+function parsePreviewText(asset: ProjectFileAsset): string {
+  if (!asset.extractedText) return ''
+  return asset.extractedText.length > 2000
+    ? `${asset.extractedText.slice(0, 2000)}\n...`
+    : asset.extractedText
+}
+
+const retryingId = ref<string | null>(null)
+
+async function handleRetryParse(asset: ProjectFileAsset): Promise<void> {
+  if (!canManageFiles.value || retryingId.value) return
+  retryingId.value = asset.id
+  try {
+    const updated = await retryParseProjectFileAsset(props.projectId, asset.id)
+    updateSelected(
+      selectedAssets.value.map((item) => (item.id === updated.id ? updated : item)),
+    )
+    if (libraryOpen.value) await loadLibrary()
+    message.success(t('projectFile.parseRetrySuccess'))
+  } catch {
+    message.error(t('projectFile.parseRetryFailed'))
+  } finally {
+    retryingId.value = null
+  }
 }
 
 function handleBeforeUpload(uploadFile: UploadBeforeFile): false {
@@ -367,9 +408,39 @@ defineExpose<ProjectFilePickerExpose>({ prepareFiles, commitFiles, rollbackFiles
                 {{ asset.file.originalName }}
               </span>
               <Tag :color="assetStatusColor(asset)">{{ assetStatusLabel(asset) }}</Tag>
+              <Popover
+                v-if="asset.parseStatus === 'SUCCEEDED' && asset.extractedText"
+                :title="t('projectFile.parsePreview')"
+                placement="top"
+              >
+                <template #content>
+                  <pre class="project-file-picker__parse-preview">{{
+                    parsePreviewText(asset)
+                  }}</pre>
+                </template>
+                <Tag color="green">{{ parseStatusLabel(asset) }}</Tag>
+              </Popover>
+              <Tooltip
+                v-else-if="asset.parseStatus === 'FAILED'"
+                :title="asset.parseError || t('projectFile.parseFailed')"
+                placement="top"
+              >
+                <Tag color="red">{{ parseStatusLabel(asset) }}</Tag>
+              </Tooltip>
+              <Tag v-else :color="parseStatusColor(asset)">{{ parseStatusLabel(asset) }}</Tag>
             </div>
             <span class="project-file-picker__meta">{{ formatBytes(asset.file.size) }}</span>
           </div>
+          <Button
+            v-if="asset.parseStatus === 'FAILED'"
+            type="text"
+            :disabled="!canManageFiles"
+            :loading="retryingId === asset.id"
+            :aria-label="t('projectFile.parseRetry')"
+            @click="void handleRetryParse(asset)"
+          >
+            <RedoOutlined />
+          </Button>
           <Button
             type="text"
             :disabled="!canQueryFiles"
@@ -426,6 +497,14 @@ defineExpose<ProjectFilePickerExpose>({ prepareFiles, commitFiles, rollbackFiles
               <div class="project-file-picker__item-line">
                 <span class="project-file-picker__name">{{ asset.file.originalName }}</span>
                 <Tag :color="assetStatusColor(asset)">{{ assetStatusLabel(asset) }}</Tag>
+                <Tooltip
+                  v-if="asset.parseStatus === 'FAILED'"
+                  :title="asset.parseError || t('projectFile.parseFailed')"
+                  placement="top"
+                >
+                  <Tag color="red">{{ parseStatusLabel(asset) }}</Tag>
+                </Tooltip>
+                <Tag v-else :color="parseStatusColor(asset)">{{ parseStatusLabel(asset) }}</Tag>
               </div>
               <span class="project-file-picker__meta">
                 {{ formatBytes(asset.file.size) }} · {{ t(`projectFile.kind${asset.kind}`) }}
@@ -555,6 +634,15 @@ defineExpose<ProjectFilePickerExpose>({ prepareFiles, commitFiles, rollbackFiles
     font-weight: 500;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  &__parse-preview {
+    max-width: 420px;
+    max-height: 280px;
+    margin: 0;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
   }
 
   &__search {

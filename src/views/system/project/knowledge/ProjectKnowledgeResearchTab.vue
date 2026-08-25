@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Empty, Tag, message } from 'antdv-next'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@antdv-next/icons'
+import { Button, Checkbox, CheckboxGroup, Empty, Modal, Tag, message } from 'antdv-next'
+import {
+  DeleteOutlined,
+  EditOutlined,
+  LinkOutlined,
+  PlusOutlined,
+} from '@antdv-next/icons'
 
 import {
   createProjectResearchRecord,
   deleteProjectResearchRecord,
+  fetchProjectKnowledgeMaterials,
   fetchProjectResearchRecords,
+  linkResearchRecordMaterials,
+  unlinkResearchRecordMaterial,
   updateProjectResearchRecord,
 } from '@/api/project-knowledge'
 import type {
+  ProjectKnowledgeMaterial,
   ProjectResearchRecord,
   ProjectResearchRecordPayload,
   UpdateProjectResearchRecordPayload,
@@ -37,6 +46,13 @@ const editing = ref<ProjectResearchRecord | null>(null)
 const formModel = ref<Record<string, string>>({})
 const formDialogRef = ref<InstanceType<typeof KnowledgeFormDialog> | null>(null)
 const formAssets = computed(() => editing.value?.assets ?? [])
+
+const pickerOpen = ref(false)
+const pickerTarget = ref<ProjectResearchRecord | null>(null)
+const allMaterials = ref<ProjectKnowledgeMaterial[]>([])
+const selectedMaterialIds = ref<string[]>([])
+const linking = ref(false)
+const unloadingId = ref<string | null>(null)
 
 const fields = computed<KnowledgeFormField[]>(() => [
   {
@@ -209,6 +225,63 @@ async function handleDelete(row: ProjectResearchRecord): Promise<void> {
   }
 }
 
+async function openMaterialPicker(row: ProjectResearchRecord): Promise<void> {
+  if (!props.canManage) return
+  pickerTarget.value = row
+  selectedMaterialIds.value = row.materials.map((material) => material.id)
+  pickerOpen.value = true
+  if (!allMaterials.value.length) {
+    try {
+      allMaterials.value = await fetchProjectKnowledgeMaterials(props.projectId)
+    } catch (error) {
+      message.error(errorMessage(error, t('projectKnowledge.requestFailed')))
+    }
+  }
+}
+
+async function handleLinkMaterials(): Promise<void> {
+  const target = pickerTarget.value
+  if (!target) return
+  if (!selectedMaterialIds.value.length) {
+    message.warning(t('projectKnowledge.linkMaterialsRequired'))
+    return
+  }
+  linking.value = true
+  try {
+    await linkResearchRecordMaterials(props.projectId, target.id, selectedMaterialIds.value)
+    message.success(t('projectKnowledge.materialLinkSuccess'))
+    pickerOpen.value = false
+    await load()
+    emit('changed')
+  } catch (error) {
+    message.error(errorMessage(error, t('projectKnowledge.requestFailed')))
+  } finally {
+    linking.value = false
+  }
+}
+
+async function handleUnlinkMaterial(row: ProjectResearchRecord, materialId: string): Promise<void> {
+  if (!props.canManage || unloadingId.value) return
+  const confirmed = await confirmKnowledgeDelete(
+    t('common.tip'),
+    t('projectKnowledge.materialUnlinkConfirm'),
+    t('common.confirm'),
+    t('common.cancel'),
+  )
+  if (!confirmed) return
+  unloadingId.value = materialId
+  try {
+    await unlinkResearchRecordMaterial(props.projectId, row.id, materialId)
+    message.success(t('projectKnowledge.materialUnlinkSuccess'))
+    await load()
+    emit('changed')
+  } catch (error) {
+    message.error(errorMessage(error, t('projectKnowledge.requestFailed')))
+  } finally {
+    unloadingId.value = null
+  }
+}
+
 watch(
   () => props.projectId,
   () => void load(),
@@ -250,11 +323,37 @@ watch(
           </div>
           <h3>{{ row.title }}</h3>
           <p>{{ row.summary || row.content || t('projectKnowledge.noDescription') }}</p>
+          <div v-if="row.materials.length" class="knowledge-ledger__materials">
+            <span
+              v-for="material in row.materials"
+              :key="material.id"
+              class="material-chip"
+              :title="material.title"
+            >
+              <span class="material-chip__label">{{ material.title }}</span>
+              <span class="material-chip__type">{{
+                t(`projectKnowledge.materialType${material.type}`)
+              }}</span>
+              <Button
+                v-if="canManage"
+                type="text"
+                size="small"
+                class="material-chip__unlink"
+                :loading="unloadingId === material.id"
+                @click.stop="handleUnlinkMaterial(row, material.id)"
+              >
+                <DeleteOutlined />
+              </Button>
+            </span>
+          </div>
         </div>
         <div class="knowledge-ledger__date">
           {{ formatKnowledgeDate(row.occurredAt || row.updatedAt, locale) }}
         </div>
         <div v-if="canManage" class="knowledge-ledger__actions">
+          <Button type="link" size="small" @click="openMaterialPicker(row)">
+            <LinkOutlined />{{ t('projectKnowledge.researchLinkMaterials') }}
+          </Button>
           <Button type="link" size="small" @click="openEdit(row)">
             <EditOutlined />{{ t('common.edit') }}
           </Button>
@@ -270,6 +369,27 @@ watch(
         </div>
       </article>
     </div>
+
+    <Modal
+      v-model:open="pickerOpen"
+      :title="t('projectKnowledge.linkMaterialsTitle')"
+      :ok-text="t('common.confirm')"
+      :cancel-text="t('common.cancel')"
+      :confirm-loading="linking"
+      @ok="handleLinkMaterials"
+    >
+      <div v-if="!allMaterials.length" class="knowledge-state">
+        {{ t('projectKnowledge.linkMaterialsEmpty') }}
+      </div>
+      <div v-else class="material-picker-list">
+        <CheckboxGroup v-model:value="selectedMaterialIds" class="material-picker-list__group">
+          <div v-for="material in allMaterials" :key="material.id" class="material-picker-item">
+            <Checkbox :value="material.id">{{ material.title }}</Checkbox>
+            <Tag color="blue">{{ t(`projectKnowledge.materialType${material.type}`) }}</Tag>
+          </div>
+        </CheckboxGroup>
+      </div>
+    </Modal>
 
     <KnowledgeFormDialog
       ref="formDialogRef"
@@ -381,6 +501,60 @@ watch(
 .knowledge-origin {
   color: #94a3b8;
   font-size: 12px;
+}
+
+.knowledge-ledger__materials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.material-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  padding: 2px 8px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.material-chip__label {
+  overflow: hidden;
+  color: #334155;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-chip__type {
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.material-chip__unlink {
+  padding: 0;
+  color: #94a3b8;
+}
+
+.material-picker-list {
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.material-picker-list__group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.material-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .knowledge-ledger__date {

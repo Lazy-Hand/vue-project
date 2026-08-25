@@ -65,6 +65,7 @@ const requirement: ProjectRequirement = {
   description: null,
   content: 'Users can export records.',
   acceptanceCriteria: null,
+  documentId: null,
   origin: 'MANUAL',
   aiRunId: null,
   createdAt: '2026-08-24T00:00:00.000Z',
