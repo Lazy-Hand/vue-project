@@ -533,7 +533,7 @@ async function handleAttachmentUnlink(asset: ProjectFileAsset): Promise<void> {
         <DescriptionsItem :label="t('project.endDate')">
           {{ formatDateTime(detail.endDate) }}
         </DescriptionsItem>
-        <DescriptionsItem :label="t('project.description')" :span="2">
+        <DescriptionsItem :label="t('project.description')">
           {{ detail.description ?? '-' }}
         </DescriptionsItem>
       </Descriptions>
