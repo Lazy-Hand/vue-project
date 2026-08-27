@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Empty, Tag, message } from 'antdv-next'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@antdv-next/icons'
+import { Button, Card, Empty, Space, Tag, message } from 'antdv-next'
+import {
+  ClockCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  LinkOutlined,
+  PlusOutlined,
+} from '@antdv-next/icons'
 
 import {
   createProjectKnowledgeMaterial,
@@ -86,6 +92,19 @@ function typeLabel(type: KnowledgeMaterialType): string {
 
 function originLabel(origin: ProjectKnowledgeMaterial['origin']): string {
   return t(`projectKnowledge.origin${origin}`)
+}
+
+function typeTagColor(type: KnowledgeMaterialType): string {
+  const map: Record<KnowledgeMaterialType, string> = {
+    DOCUMENT: 'blue',
+    INTERVIEW_NOTE: 'purple',
+    IMAGE: 'green',
+    AUDIO: 'orange',
+    VIDEO: 'magenta',
+    LINK: 'cyan',
+    OTHER: 'default',
+  }
+  return map[type] ?? 'default'
 }
 
 function resetForm(): void {
@@ -221,7 +240,7 @@ watch(
           {{ t('projectKnowledge.materialsDescription') }}
         </p>
       </div>
-      <Button v-if="canManage" type="primary" size="small" @click="openCreate">
+      <Button v-if="canManage" type="primary" size="middle" @click="openCreate">
         <PlusOutlined />
         {{ t('projectKnowledge.materialCreate') }}
       </Button>
@@ -229,37 +248,65 @@ watch(
 
     <div v-if="loading" class="knowledge-state">{{ t('common.loading') }}</div>
     <Empty v-else-if="!rows.length" :description="t('projectKnowledge.materialEmpty')" />
-    <div v-else class="knowledge-ledger">
-      <article v-for="row in rows" :key="row.id" class="knowledge-ledger__row">
-        <div class="knowledge-ledger__main">
-          <div class="knowledge-ledger__meta">
-            <Tag>{{ typeLabel(row.type) }}</Tag>
-            <Tag v-if="row.assets.length" color="blue">
-              {{ t('projectFile.fileCount', { count: row.assets.length }) }}
-            </Tag>
-            <span class="knowledge-origin">{{ originLabel(row.origin) }}</span>
+    <div v-else class="knowledge-ledger space-y-3">
+      <Card
+        v-for="row in rows"
+        :key="row.id"
+        size="small"
+        class="knowledge-ledger__row transition-all hover:border-teal-500/40 hover:shadow-xs"
+      >
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div class="knowledge-ledger__main min-w-0 flex-1">
+            <div class="knowledge-ledger__meta flex flex-wrap items-center gap-2">
+              <Tag :color="typeTagColor(row.type)">{{ typeLabel(row.type) }}</Tag>
+              <Tag v-if="row.assets.length" color="blue">
+                {{ t('projectFile.fileCount', { count: row.assets.length }) }}
+              </Tag>
+              <span class="knowledge-origin text-xs text-slate-400">{{
+                originLabel(row.origin)
+              }}</span>
+            </div>
+            <h3 class="mt-1 text-base font-semibold text-slate-800 dark:text-slate-100">
+              {{ row.title }}
+            </h3>
+            <p class="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-400">
+              {{ row.description || row.sourceUrl || t('projectKnowledge.noDescription') }}
+            </p>
+            <div
+              v-if="row.sourceUrl"
+              class="mt-1.5 flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400"
+            >
+              <LinkOutlined />
+              <span class="truncate">{{ row.sourceUrl }}</span>
+            </div>
           </div>
-          <h3>{{ row.title }}</h3>
-          <p>
-            {{ row.description || row.sourceUrl || t('projectKnowledge.noDescription') }}
-          </p>
-        </div>
-        <div class="knowledge-ledger__date">{{ formatKnowledgeDate(row.updatedAt, locale) }}</div>
-        <div v-if="canManage" class="knowledge-ledger__actions">
-          <Button type="link" size="small" @click="openEdit(row)">
-            <EditOutlined />{{ t('common.edit') }}
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            :loading="deletingId === row.id"
-            @click="handleDelete(row)"
+
+          <div
+            class="flex shrink-0 items-center justify-between gap-3 pt-1 sm:flex-col sm:items-end sm:pt-0"
           >
-            <DeleteOutlined />{{ t('common.delete') }}
-          </Button>
+            <div class="knowledge-ledger__date flex items-center gap-1 text-xs text-slate-400">
+              <ClockCircleOutlined class="text-[11px]" />
+              <span>{{ formatKnowledgeDate(row.updatedAt, locale) }}</span>
+            </div>
+            <div v-if="canManage" class="knowledge-ledger__actions">
+              <Space :size="4">
+                <Button type="link" size="small" @click="openEdit(row)">
+                  <EditOutlined />{{ t('common.edit') }}
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  danger
+                  :loading="deletingId === row.id"
+                  @click="handleDelete(row)"
+                >
+                  <DeleteOutlined />{{ t('common.delete') }}
+                </Button>
+              </Space>
+            </div>
+          </div>
         </div>
-      </article>
+      </Card>
     </div>
 
     <KnowledgeFormDialog
@@ -287,21 +334,21 @@ watch(
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .knowledge-section__kicker {
-  color: #64748b;
+  color: #0f766e;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .knowledge-section__title {
-  margin: 4px 0 4px;
+  margin: 2px 0 4px;
   color: #0f172a;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 650;
 }
 
@@ -317,84 +364,5 @@ watch(
   padding: 56px 20px;
   color: #94a3b8;
   text-align: center;
-}
-
-.knowledge-ledger {
-  overflow: hidden;
-  border-top: 1px solid #e2e8f0;
-}
-
-.knowledge-ledger__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 170px auto;
-  gap: 20px;
-  align-items: center;
-  padding: 18px 4px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.knowledge-ledger__main {
-  min-width: 0;
-}
-
-.knowledge-ledger__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.knowledge-ledger__main h3 {
-  margin: 0;
-  overflow: hidden;
-  color: #1e293b;
-  font-size: 15px;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.knowledge-ledger__main p {
-  margin: 5px 0 0;
-  overflow: hidden;
-  color: #64748b;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.knowledge-origin {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.knowledge-ledger__date {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.knowledge-ledger__actions {
-  display: flex;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-@media (max-width: 720px) {
-  .knowledge-section__header {
-    flex-direction: column;
-  }
-
-  .knowledge-ledger__row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .knowledge-ledger__date {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .knowledge-ledger__actions {
-    grid-column: 1 / -1;
-  }
 }
 </style>

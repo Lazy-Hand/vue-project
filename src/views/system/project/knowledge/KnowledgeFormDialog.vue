@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Form, FormItem, Input, Modal, Select, message } from 'antdv-next'
+import { Button, Form, FormItem, Input, Modal, Select, Space, message } from 'antdv-next'
 
 import ProjectFilePicker, {
   type ProjectFilePickerExpose,
@@ -112,7 +112,7 @@ defineExpose({ commitFiles, rollbackFiles })
     :mask-closable="!submitting && !preparingFiles"
     class="knowledge-form-dialog"
   >
-    <Form layout="vertical">
+    <Form layout="vertical" class="pt-1">
       <FormItem
         v-for="field in fields"
         :key="field.key"
@@ -125,18 +125,21 @@ defineExpose({ commitFiles, rollbackFiles })
           :options="field.options"
           :placeholder="field.placeholder"
           allow-clear
+          class="w-full"
         />
         <Input.TextArea
           v-else-if="field.type === 'textarea'"
           v-model:value="form[field.key]"
           :rows="field.rows ?? 4"
           :placeholder="field.placeholder"
+          allow-clear
         />
         <Input
           v-else
           v-model:value="form[field.key]"
           :placeholder="field.placeholder"
           :maxlength="field.key === 'content' ? undefined : 512"
+          allow-clear
         />
       </FormItem>
       <FormItem v-if="hasFileSection" :label="t('projectFile.relatedFiles')">
@@ -151,12 +154,14 @@ defineExpose({ commitFiles, rollbackFiles })
       </FormItem>
     </Form>
     <template #footer>
-      <Button :disabled="submitting || preparingFiles" @click="visible = false">
-        {{ t('common.cancel') }}
-      </Button>
-      <Button type="primary" :loading="submitting || preparingFiles" @click="handleSubmit">
-        {{ t('common.confirm') }}
-      </Button>
+      <Space>
+        <Button :disabled="submitting || preparingFiles" @click="visible = false">
+          {{ t('common.cancel') }}
+        </Button>
+        <Button type="primary" :loading="submitting || preparingFiles" @click="handleSubmit">
+          {{ t('common.confirm') }}
+        </Button>
+      </Space>
     </template>
   </Modal>
 </template>

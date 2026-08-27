@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Empty, Tag, message } from 'antdv-next'
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@antdv-next/icons'
+import { Button, Card, Empty, Space, Tag, message } from 'antdv-next'
+import {
+  ClockCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+} from '@antdv-next/icons'
 
 import {
   createProjectPrdDocument,
@@ -215,45 +221,66 @@ watch(
         <h2 class="prd-section__title">{{ t('projectKnowledge.prdTitleSection') }}</h2>
         <p class="prd-section__description">{{ t('projectKnowledge.prdDescription') }}</p>
       </div>
-      <Button v-if="canManage" type="primary" size="small" @click="openCreate">
+      <Button v-if="canManage" type="primary" size="middle" @click="openCreate">
         <PlusOutlined />{{ t('projectKnowledge.prdCreate') }}
       </Button>
     </div>
 
     <div v-if="loading" class="knowledge-state">{{ t('common.loading') }}</div>
     <Empty v-else-if="!rows.length" :description="t('projectKnowledge.prdEmpty')" />
-    <div v-else class="prd-ledger">
-      <article v-for="row in rows" :key="row.id" class="prd-ledger__row">
-        <Button type="text" block class="prd-ledger__main" @click="openDetail(row)">
-          <div class="prd-ledger__meta">
-            <Tag :color="statusColor(row.status)">{{
-              t(`projectKnowledge.prdStatus${row.status}`)
-            }}</Tag>
-            <span>{{ t(`projectKnowledge.prdType${row.type}`) }}</span>
-          </div>
-          <h3>{{ row.title }}</h3>
-        </Button>
-        <div class="prd-ledger__date">{{ formatKnowledgeDate(row.updatedAt, locale) }}</div>
-        <div class="prd-ledger__actions">
-          <Button type="link" size="small" @click="openDetail(row)">
-            <EyeOutlined />{{ t('projectKnowledge.prdDetail') }}
-          </Button>
-          <template v-if="canManage">
-            <Button type="link" size="small" @click="openEdit(row)">
-              <EditOutlined />{{ t('common.edit') }}
-            </Button>
-            <Button
-              type="link"
-              size="small"
-              danger
-              :loading="deletingId === row.id"
-              @click="handleDelete(row)"
+    <div v-else class="prd-ledger space-y-3">
+      <Card
+        v-for="row in rows"
+        :key="row.id"
+        size="small"
+        class="prd-ledger__row transition-all hover:border-teal-500/40 hover:shadow-xs"
+      >
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div class="prd-ledger__main min-w-0 flex-1 cursor-pointer" @click="openDetail(row)">
+            <div class="prd-ledger__meta flex flex-wrap items-center gap-2">
+              <Tag :color="statusColor(row.status)">{{
+                t(`projectKnowledge.prdStatus${row.status}`)
+              }}</Tag>
+              <Tag>{{ t(`projectKnowledge.prdType${row.type}`) }}</Tag>
+            </div>
+            <h3
+              class="mt-1 text-base font-semibold text-slate-800 hover:text-teal-600 dark:text-slate-100 dark:hover:text-teal-400"
             >
-              <DeleteOutlined />{{ t('common.delete') }}
-            </Button>
-          </template>
+              {{ row.title }}
+            </h3>
+          </div>
+
+          <div
+            class="flex shrink-0 items-center justify-between gap-3 pt-1 sm:flex-col sm:items-end sm:pt-0"
+          >
+            <div class="prd-ledger__date flex items-center gap-1 text-xs text-slate-400">
+              <ClockCircleOutlined class="text-[11px]" />
+              <span>{{ formatKnowledgeDate(row.updatedAt, locale) }}</span>
+            </div>
+            <div class="prd-ledger__actions">
+              <Space :size="4">
+                <Button type="link" size="small" @click="openDetail(row)">
+                  <EyeOutlined />{{ t('projectKnowledge.prdDetail') }}
+                </Button>
+                <template v-if="canManage">
+                  <Button type="link" size="small" @click="openEdit(row)">
+                    <EditOutlined />{{ t('common.edit') }}
+                  </Button>
+                  <Button
+                    type="link"
+                    size="small"
+                    danger
+                    :loading="deletingId === row.id"
+                    @click="handleDelete(row)"
+                  >
+                    <DeleteOutlined />{{ t('common.delete') }}
+                  </Button>
+                </template>
+              </Space>
+            </div>
+          </div>
         </div>
-      </article>
+      </Card>
     </div>
 
     <KnowledgeFormDialog
@@ -284,26 +311,26 @@ watch(
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .prd-section__kicker {
-  color: #64748b;
+  color: #0f766e;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .prd-section__title {
-  margin: 4px 0;
+  margin: 2px 0 4px;
   color: #0f172a;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 650;
 }
 
 .prd-section__description {
-  max-width: 640px;
+  max-width: 620px;
   margin: 0;
   color: #64748b;
   font-size: 13px;
@@ -314,90 +341,5 @@ watch(
   padding: 56px 20px;
   color: #94a3b8;
   text-align: center;
-}
-
-.prd-ledger {
-  border-top: 1px solid #e2e8f0;
-}
-
-.prd-ledger__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 170px auto;
-  gap: 20px;
-  align-items: center;
-  padding: 16px 4px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.prd-ledger__main {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  height: auto;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
-  line-height: inherit;
-  text-align: left;
-  white-space: normal;
-}
-
-.prd-ledger__main:hover {
-  background: #f8fafc;
-}
-
-.prd-ledger__main:focus-visible {
-  outline: 2px solid #0f766e;
-  outline-offset: 4px;
-}
-
-.prd-ledger__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.prd-ledger__main h3 {
-  margin: 7px 0 0;
-  color: #1e293b;
-  font-size: 15px;
-  font-weight: 650;
-}
-
-.prd-ledger__date {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.prd-ledger__actions {
-  display: flex;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-@media (max-width: 780px) {
-  .prd-section__header {
-    flex-direction: column;
-  }
-
-  .prd-ledger__row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .prd-ledger__date {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .prd-ledger__actions {
-    grid-column: 1 / -1;
-  }
 }
 </style>

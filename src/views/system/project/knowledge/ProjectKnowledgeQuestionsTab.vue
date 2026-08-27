@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Empty, Tag, message } from 'antdv-next'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@antdv-next/icons'
+import { Button, Card, Empty, Space, Tag, message } from 'antdv-next'
+import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+} from '@antdv-next/icons'
 
 import {
   createProjectKnowledgeQuestion,
@@ -261,7 +268,7 @@ watch(
           {{ t('projectKnowledge.questionsDescription') }}
         </p>
       </div>
-      <Button v-if="canManage" type="primary" size="small" @click="openCreate">
+      <Button v-if="canManage" type="primary" size="middle" @click="openCreate">
         <PlusOutlined />
         {{ t('projectKnowledge.questionCreate') }}
       </Button>
@@ -269,41 +276,86 @@ watch(
 
     <div v-if="loading" class="knowledge-state">{{ t('common.loading') }}</div>
     <Empty v-else-if="!rows.length" :description="t('projectKnowledge.questionEmpty')" />
-    <div v-else class="knowledge-ledger">
-      <article v-for="row in rows" :key="row.id" class="knowledge-ledger__row">
-        <div class="knowledge-ledger__main">
-          <div class="knowledge-ledger__meta">
-            <Tag :color="statusColor(row.status)">{{
-              t(`projectKnowledge.questionStatus${row.status}`)
-            }}</Tag>
-            <span class="knowledge-origin">
-              {{
-                requirements.find((item) => item.id === row.requirementId)?.code ||
-                t('projectKnowledge.questionRequirementUnset')
-              }}
-            </span>
+    <div v-else class="knowledge-ledger space-y-3">
+      <Card
+        v-for="row in rows"
+        :key="row.id"
+        size="small"
+        class="knowledge-ledger__row transition-all hover:border-teal-500/40 hover:shadow-xs"
+      >
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div class="knowledge-ledger__main min-w-0 flex-1">
+            <div class="knowledge-ledger__meta flex flex-wrap items-center gap-2">
+              <Tag :color="statusColor(row.status)">{{
+                t(`projectKnowledge.questionStatus${row.status}`)
+              }}</Tag>
+              <Tag v-if="row.priority" color="default" class="text-xs"> P: {{ row.priority }} </Tag>
+              <Tag v-if="row.requirementId" color="blue" class="text-xs font-mono">
+                {{
+                  requirements.find((item) => item.id === row.requirementId)?.code ||
+                  row.requirementId
+                }}
+              </Tag>
+              <span v-else class="knowledge-origin text-xs text-slate-400">
+                {{ t('projectKnowledge.questionRequirementUnset') }}
+              </span>
+            </div>
+            <div class="mt-1 flex items-start gap-1.5">
+              <QuestionCircleOutlined class="mt-1 text-sm text-teal-600 dark:text-teal-400" />
+              <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">
+                {{ row.question }}
+              </h3>
+            </div>
+
+            <!-- 答案区域 -->
+            <div
+              v-if="row.answer"
+              class="mt-2 rounded-md bg-emerald-50/70 p-2.5 text-xs text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40"
+            >
+              <div
+                class="flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400"
+              >
+                <CheckCircleOutlined />
+                <span>{{ t('projectKnowledge.questionAnswer') }}</span>
+              </div>
+              <p class="mt-1 whitespace-pre-wrap">{{ row.answer }}</p>
+            </div>
+
+            <!-- 上下文区域 -->
+            <p
+              v-if="row.context"
+              class="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-400"
+            >
+              {{ row.context }}
+            </p>
           </div>
-          <h3>{{ row.question }}</h3>
-          <p>{{ row.answer || row.context || t('projectKnowledge.questionUnanswered') }}</p>
-        </div>
-        <div class="knowledge-ledger__date">
-          {{ formatKnowledgeDate(row.dueAt || row.updatedAt, locale) }}
-        </div>
-        <div v-if="canManage" class="knowledge-ledger__actions">
-          <Button type="link" size="small" @click="openEdit(row)">
-            <EditOutlined />{{ t('common.edit') }}
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            :loading="deletingId === row.id"
-            @click="handleDelete(row)"
+
+          <div
+            class="flex shrink-0 items-center justify-between gap-3 pt-1 sm:flex-col sm:items-end sm:pt-0"
           >
-            <DeleteOutlined />{{ t('common.delete') }}
-          </Button>
+            <div class="knowledge-ledger__date flex items-center gap-1 text-xs text-slate-400">
+              <ClockCircleOutlined class="text-[11px]" />
+              <span>{{ formatKnowledgeDate(row.dueAt || row.updatedAt, locale) }}</span>
+            </div>
+            <div v-if="canManage" class="knowledge-ledger__actions">
+              <Space :size="4">
+                <Button type="link" size="small" @click="openEdit(row)">
+                  <EditOutlined />{{ t('common.edit') }}
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  danger
+                  :loading="deletingId === row.id"
+                  @click="handleDelete(row)"
+                >
+                  <DeleteOutlined />{{ t('common.delete') }}
+                </Button>
+              </Space>
+            </div>
+          </div>
         </div>
-      </article>
+      </Card>
     </div>
 
     <KnowledgeFormDialog
@@ -327,21 +379,21 @@ watch(
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .knowledge-section__kicker {
-  color: #64748b;
+  color: #0f766e;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .knowledge-section__title {
-  margin: 4px 0;
+  margin: 2px 0 4px;
   color: #0f172a;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 650;
 }
 
@@ -357,84 +409,5 @@ watch(
   padding: 56px 20px;
   color: #94a3b8;
   text-align: center;
-}
-
-.knowledge-ledger {
-  overflow: hidden;
-  border-top: 1px solid #e2e8f0;
-}
-
-.knowledge-ledger__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 170px auto;
-  gap: 20px;
-  align-items: center;
-  padding: 18px 4px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.knowledge-ledger__main {
-  min-width: 0;
-}
-
-.knowledge-ledger__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.knowledge-ledger__main h3 {
-  margin: 0;
-  overflow: hidden;
-  color: #1e293b;
-  font-size: 15px;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.knowledge-ledger__main p {
-  margin: 5px 0 0;
-  overflow: hidden;
-  color: #64748b;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.knowledge-origin {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.knowledge-ledger__date {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.knowledge-ledger__actions {
-  display: flex;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-@media (max-width: 720px) {
-  .knowledge-section__header {
-    flex-direction: column;
-  }
-
-  .knowledge-ledger__row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .knowledge-ledger__date {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .knowledge-ledger__actions {
-    grid-column: 1 / -1;
-  }
 }
 </style>

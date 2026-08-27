@@ -155,9 +155,7 @@ async function handleRetryParse(asset: ProjectFileAsset): Promise<void> {
   retryingId.value = asset.id
   try {
     const updated = await retryParseProjectFileAsset(props.projectId, asset.id)
-    updateSelected(
-      selectedAssets.value.map((item) => (item.id === updated.id ? updated : item)),
-    )
+    updateSelected(selectedAssets.value.map((item) => (item.id === updated.id ? updated : item)))
     if (libraryOpen.value) await loadLibrary()
     message.success(t('projectFile.parseRetrySuccess'))
   } catch {

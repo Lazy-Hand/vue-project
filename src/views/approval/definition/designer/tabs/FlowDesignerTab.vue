@@ -204,7 +204,10 @@ function getAssigneeInfo(node: ApprovalNodeInput): {
     .filter(Boolean)
   if (ids.length === 0) {
     if (type === 'USER') {
-      return { displayText: t('approval.definition.assigneeUnassignedWarning'), isConfigured: false }
+      return {
+        displayText: t('approval.definition.assigneeUnassignedWarning'),
+        isConfigured: false,
+      }
     }
     if (type === 'ROLE') {
       return {
@@ -426,7 +429,10 @@ const currentRejectTargetOptions = computed(() => {
 })
 
 const currentForkBranches = computed(() => {
-  if (!currentNode.value || (currentNode.value.type !== 'FORK' && currentNode.value.type !== 'JOIN'))
+  if (
+    !currentNode.value ||
+    (currentNode.value.type !== 'FORK' && currentNode.value.type !== 'JOIN')
+  )
     return []
   const g = graph.value
   let forkKey: string | null = null
@@ -1083,8 +1089,7 @@ const FlowNodeView = markRaw({
                   'button',
                   {
                     type: 'button',
-                    class:
-                      'text-red-500 hover:text-red-600 flex items-center gap-1 cursor-pointer',
+                    class: 'text-red-500 hover:text-red-600 flex items-center gap-1 cursor-pointer',
                     onClick: (e: MouseEvent) => {
                       e.stopPropagation()
                       removeNode(index)
@@ -1596,11 +1601,7 @@ function clearEdgeSelection(): void {
           <PlusOutlined />
           {{ t('approval.definition.addApprover') }}
         </Button>
-        <Button
-          size="small"
-          class="text-xs"
-          @click="insertNode(props.nodes.length - 1, 'CC')"
-        >
+        <Button size="small" class="text-xs" @click="insertNode(props.nodes.length - 1, 'CC')">
           <SendOutlined />
           {{ t('approval.definition.addCc') }}
         </Button>
@@ -1722,7 +1723,9 @@ function clearEdgeSelection(): void {
                 {{ t('approval.definition.branchListTitle') }}
               </span>
               <Tag class="m-0 font-mono text-3xs text-indigo-700 bg-indigo-50 border-indigo-200">
-                {{ t('approval.definition.branchCountBadge', { count: currentForkBranches.length }) }}
+                {{
+                  t('approval.definition.branchCountBadge', { count: currentForkBranches.length })
+                }}
               </Tag>
             </div>
 

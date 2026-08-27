@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Drawer, Empty, Modal, Tag, message } from 'antdv-next'
+import { Button, Card, Drawer, Empty, Modal, Space, Tag, message } from 'antdv-next'
 import {
+  ClockCircleOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
@@ -254,17 +255,19 @@ watch(
     destroy-on-hidden
   >
     <template v-if="document">
-      <div class="prd-detail__intro">
-        <div class="prd-detail__meta">
-          <Tag>{{ t(`projectKnowledge.prdType${document.type}`) }}</Tag>
+      <div class="prd-detail__intro mb-4">
+        <div class="prd-detail__meta flex flex-wrap items-center gap-2">
+          <Tag color="blue">{{ t(`projectKnowledge.prdType${document.type}`) }}</Tag>
           <Tag color="processing">{{ t(`projectKnowledge.prdStatus${document.status}`) }}</Tag>
         </div>
       </div>
 
-      <div class="prd-detail__covered">
-        <div class="prd-detail__covered-header">
-          <span>{{ t('projectKnowledge.documentCoveredRequirements') }}</span>
-          <Tag v-if="coveredRequirements.length" color="blue">
+      <Card size="small" class="prd-detail__covered mb-4 bg-slate-50/70 dark:bg-slate-900/50">
+        <div class="prd-detail__covered-header flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">{{
+            t('projectKnowledge.documentCoveredRequirements')
+          }}</span>
+          <Tag v-if="coveredRequirements.length" color="blue" class="text-xs">
             {{ coveredRequirements.length }}
           </Tag>
         </div>
@@ -273,19 +276,38 @@ watch(
           :description="t('projectKnowledge.documentCoveredRequirementsEmpty')"
           :image="Empty.PRESENTED_IMAGE_SIMPLE"
         />
-        <div v-else class="covered-requirement-list">
-          <div v-for="row in coveredRequirements" :key="row.id" class="covered-requirement-row">
-            <span class="covered-requirement-row__code">{{ row.code }}</span>
-            <span class="covered-requirement-row__title">{{ row.title }}</span>
-            <Tag>{{ t(`projectKnowledge.requirementStatus${row.status}`) }}</Tag>
+        <div v-else class="covered-requirement-list space-y-1.5">
+          <div
+            v-for="row in coveredRequirements"
+            :key="row.id"
+            class="covered-requirement-row flex items-center justify-between rounded-md bg-white p-2 text-xs shadow-2xs dark:bg-slate-800"
+          >
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="covered-requirement-row__code font-mono font-medium text-slate-500">{{
+                row.code
+              }}</span>
+              <span
+                class="covered-requirement-row__title truncate text-slate-800 dark:text-slate-100"
+                >{{ row.title }}</span
+              >
+            </div>
+            <Tag class="text-xs shrink-0">{{
+              t(`projectKnowledge.requirementStatus${row.status}`)
+            }}</Tag>
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div class="prd-detail__versions-header">
+      <div class="prd-detail__versions-header flex items-center justify-between mb-3">
         <div>
-          <div class="prd-detail__kicker">{{ t('projectKnowledge.prdVersionsKicker') }}</div>
-          <h2>{{ t('projectKnowledge.prdVersionsTitle') }}</h2>
+          <div
+            class="prd-detail__kicker text-[11px] font-bold tracking-wider text-teal-600 uppercase"
+          >
+            {{ t('projectKnowledge.prdVersionsKicker') }}
+          </div>
+          <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">
+            {{ t('projectKnowledge.prdVersionsTitle') }}
+          </h2>
         </div>
         <Button v-if="canManage" type="primary" size="small" @click="openCreateVersion">
           <PlusOutlined />{{ t('projectKnowledge.prdVersionCreate') }}
@@ -294,46 +316,63 @@ watch(
 
       <div v-if="loading" class="knowledge-state">{{ t('common.loading') }}</div>
       <Empty v-else-if="!versions.length" :description="t('projectKnowledge.prdVersionEmpty')" />
-      <div v-else class="version-ledger">
-        <article v-for="row in versions" :key="row.id" class="version-ledger__row">
-          <div>
-            <div class="version-ledger__meta">
-              <strong>{{ t('projectKnowledge.prdVersionLabel', { version: row.version }) }}</strong>
-              <Tag v-if="row.status === 'PUBLISHED'" color="success">{{
-                t('projectKnowledge.prdPublished')
-              }}</Tag>
-              <Tag v-else>{{ t('projectKnowledge.prdUnpublished') }}</Tag>
-              <Tag v-if="row.assets.length" color="blue">
-                {{ t('projectFile.fileCount', { count: row.assets.length }) }}
-              </Tag>
+      <div v-else class="version-ledger space-y-3">
+        <Card
+          v-for="row in versions"
+          :key="row.id"
+          size="small"
+          class="version-ledger__row transition-all hover:border-teal-500/40 hover:shadow-xs"
+        >
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0 flex-1">
+              <div class="version-ledger__meta flex flex-wrap items-center gap-2">
+                <Tag color="blue" class="font-mono font-semibold">
+                  {{ t('projectKnowledge.prdVersionLabel', { version: row.version }) }}
+                </Tag>
+                <Tag v-if="row.status === 'PUBLISHED'" color="success">{{
+                  t('projectKnowledge.prdPublished')
+                }}</Tag>
+                <Tag v-else>{{ t('projectKnowledge.prdUnpublished') }}</Tag>
+                <Tag v-if="row.assets.length" color="blue">
+                  {{ t('projectFile.fileCount', { count: row.assets.length }) }}
+                </Tag>
+              </div>
+              <p class="mt-1.5 text-xs text-slate-600 line-clamp-2 dark:text-slate-300">
+                {{ row.changeSummary || t('projectKnowledge.prdNoChangeSummary') }}
+              </p>
+              <div class="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                <ClockCircleOutlined class="text-[11px]" />
+                <span>{{ formatKnowledgeDate(row.updatedAt, locale) }}</span>
+              </div>
             </div>
-            <p>{{ row.changeSummary || t('projectKnowledge.prdNoChangeSummary') }}</p>
-            <small>{{ formatKnowledgeDate(row.updatedAt, locale) }}</small>
+
+            <div class="version-ledger__actions shrink-0 pt-1 sm:pt-0">
+              <Space :size="4">
+                <Button type="link" size="small" @click="openViewVersion(row)">
+                  <EyeOutlined />{{ t('projectKnowledge.prdVersionView') }}
+                </Button>
+                <Button
+                  v-if="canManage && row.status !== 'PUBLISHED'"
+                  type="link"
+                  size="small"
+                  @click="openEditVersion(row)"
+                >
+                  <EditOutlined />{{ t('common.edit') }}
+                </Button>
+                <Button
+                  v-if="canManage && row.status !== 'PUBLISHED'"
+                  type="link"
+                  size="small"
+                  danger
+                  :loading="deletingId === row.id"
+                  @click="handleDelete(row)"
+                >
+                  <DeleteOutlined />{{ t('common.delete') }}
+                </Button>
+              </Space>
+            </div>
           </div>
-          <div class="version-ledger__actions">
-            <Button type="link" size="small" @click="openViewVersion(row)">
-              <EyeOutlined />{{ t('projectKnowledge.prdVersionView') }}
-            </Button>
-            <Button
-              v-if="canManage && row.status !== 'PUBLISHED'"
-              type="link"
-              size="small"
-              @click="openEditVersion(row)"
-            >
-              <EditOutlined />{{ t('common.edit') }}
-            </Button>
-            <Button
-              v-if="canManage && row.status !== 'PUBLISHED'"
-              type="link"
-              size="small"
-              danger
-              :loading="deletingId === row.id"
-              @click="handleDelete(row)"
-            >
-              <DeleteOutlined />{{ t('common.delete') }}
-            </Button>
-          </div>
-        </article>
+        </Card>
       </div>
     </template>
 
@@ -354,204 +393,46 @@ watch(
       :title="t('projectKnowledge.prdVersionLabel', { version: viewingVersion?.version ?? '-' })"
       width="760px"
     >
-      <pre class="prd-version-view">{{
-        viewingVersion?.content || t('projectKnowledge.prdNoContent')
-      }}</pre>
-      <div v-if="viewingVersion?.assets.length" class="prd-version-view__files">
-        <Button
-          v-for="asset in viewingVersion.assets"
-          :key="asset.id"
-          size="small"
-          @click="void handleDownload(asset)"
+      <div class="space-y-3 pt-1">
+        <div
+          class="rounded-lg border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-700 dark:bg-slate-900/60"
         >
-          <DownloadOutlined />{{ asset.file.originalName }}
-        </Button>
-      </div>
-      <div class="prd-version-view__note">
-        {{ viewingVersion?.changeSummary || t('projectKnowledge.prdNoChangeSummary') }}
+          <pre
+            class="prd-version-view m-0 max-h-96 overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-slate-800 dark:text-slate-200"
+            >{{ viewingVersion?.content || t('projectKnowledge.prdNoContent') }}</pre>
+        </div>
+        <div
+          v-if="viewingVersion?.assets.length"
+          class="prd-version-view__files flex flex-wrap gap-2 pt-1"
+        >
+          <Button
+            v-for="asset in viewingVersion.assets"
+            :key="asset.id"
+            size="small"
+            class="flex items-center gap-1 text-xs"
+            @click="void handleDownload(asset)"
+          >
+            <DownloadOutlined />{{ asset.file.originalName }}
+          </Button>
+        </div>
+        <div
+          v-if="viewingVersion?.changeSummary"
+          class="rounded-md bg-slate-100 p-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+        >
+          <span class="font-semibold text-slate-700 dark:text-slate-200"
+            >{{ t('projectKnowledge.prdChangeSummary') }}:
+          </span>
+          {{ viewingVersion.changeSummary }}
+        </div>
       </div>
     </Modal>
   </Drawer>
 </template>
 
 <style scoped lang="scss">
-.prd-detail__intro {
-  padding-bottom: 22px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.prd-detail__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.prd-detail__covered {
-  margin: 16px 0;
-  padding: 12px 14px;
-  background: #f8fafc;
-  border-radius: 8px;
-}
-
-.prd-detail__covered-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.covered-requirement-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.covered-requirement-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.covered-requirement-row__code {
-  color: #64748b;
-  font-family: ui-monospace, monospace;
-  font-size: 12px;
-}
-
-.covered-requirement-row__title {
-  flex: 1;
-  overflow: hidden;
-  color: #1e293b;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.prd-detail__intro p {
-  margin: 12px 0 0;
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.prd-detail__intro pre {
-  max-height: 220px;
-  margin: 16px 0 0;
-  overflow: auto;
-  color: #334155;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.65;
-  white-space: pre-wrap;
-}
-
-.prd-detail__versions-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 24px 0 16px;
-}
-
-.prd-detail__kicker {
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.prd-detail__versions-header h2 {
-  margin: 4px 0 0;
-  color: #0f172a;
-  font-size: 20px;
-  font-weight: 650;
-}
-
 .knowledge-state {
   padding: 48px 20px;
   color: #94a3b8;
   text-align: center;
-}
-
-.version-ledger {
-  border-top: 1px solid #e2e8f0;
-}
-
-.version-ledger__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.version-ledger__meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  color: #1e293b;
-}
-
-.version-ledger__row p {
-  margin: 7px 0 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.version-ledger__row small {
-  display: block;
-  margin-top: 8px;
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-.version-ledger__actions {
-  display: flex;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-.prd-version-view {
-  max-height: 60vh;
-  margin: 0;
-  overflow: auto;
-  color: #334155;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-
-.prd-version-view__note {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #e2e8f0;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.prd-version-view__files {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-@media (max-width: 560px) {
-  .prd-detail__versions-header,
-  .version-ledger__row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .version-ledger__row {
-    display: flex;
-  }
 }
 </style>

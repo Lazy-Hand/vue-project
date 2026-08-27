@@ -17,7 +17,14 @@ export type RequirementStatus = 'DRAFT' | 'CONFIRMED' | 'CHANGED' | 'REJECTED'
 
 export type KnowledgeQuestionStatus = 'OPEN' | 'ANSWERED' | 'CLOSED'
 
-export type PrdDocumentType = 'PRODUCT' | 'FRONTEND' | 'BACKEND' | 'API' | 'DATABASE' | 'TEST' | 'OTHER'
+export type PrdDocumentType =
+  | 'PRODUCT'
+  | 'FRONTEND'
+  | 'BACKEND'
+  | 'API'
+  | 'DATABASE'
+  | 'TEST'
+  | 'OTHER'
 
 export type PrdDocumentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 

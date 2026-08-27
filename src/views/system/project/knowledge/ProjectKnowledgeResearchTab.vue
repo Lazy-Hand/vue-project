@@ -1,12 +1,26 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Checkbox, CheckboxGroup, Empty, Modal, Tag, message } from 'antdv-next'
 import {
+  Button,
+  Card,
+  Checkbox,
+  CheckboxGroup,
+  Empty,
+  Input,
+  Modal,
+  Space,
+  Tag,
+  message,
+} from 'antdv-next'
+import {
+  ClockCircleOutlined,
   DeleteOutlined,
   EditOutlined,
+  EnvironmentOutlined,
   LinkOutlined,
   PlusOutlined,
+  TeamOutlined,
 } from '@antdv-next/icons'
 
 import {
@@ -51,8 +65,15 @@ const pickerOpen = ref(false)
 const pickerTarget = ref<ProjectResearchRecord | null>(null)
 const allMaterials = ref<ProjectKnowledgeMaterial[]>([])
 const selectedMaterialIds = ref<string[]>([])
+const materialSearchKeyword = ref('')
 const linking = ref(false)
 const unloadingId = ref<string | null>(null)
+
+const filteredMaterials = computed(() => {
+  const keyword = materialSearchKeyword.value.trim().toLowerCase()
+  if (!keyword) return allMaterials.value
+  return allMaterials.value.filter((material) => material.title.toLowerCase().includes(keyword))
+})
 
 const fields = computed<KnowledgeFormField[]>(() => [
   {
@@ -229,6 +250,7 @@ async function openMaterialPicker(row: ProjectResearchRecord): Promise<void> {
   if (!props.canManage) return
   pickerTarget.value = row
   selectedMaterialIds.value = row.materials.map((material) => material.id)
+  materialSearchKeyword.value = ''
   pickerOpen.value = true
   if (!allMaterials.value.length) {
     try {
@@ -299,7 +321,7 @@ watch(
           {{ t('projectKnowledge.researchDescription') }}
         </p>
       </div>
-      <Button v-if="canManage" type="primary" size="small" @click="openCreate">
+      <Button v-if="canManage" type="primary" size="middle" @click="openCreate">
         <PlusOutlined />
         {{ t('projectKnowledge.researchCreate') }}
       </Button>
@@ -307,67 +329,83 @@ watch(
 
     <div v-if="loading" class="knowledge-state">{{ t('common.loading') }}</div>
     <Empty v-else-if="!rows.length" :description="t('projectKnowledge.researchEmpty')" />
-    <div v-else class="knowledge-ledger">
-      <article v-for="row in rows" :key="row.id" class="knowledge-ledger__row">
-        <div class="knowledge-ledger__main">
-          <div class="knowledge-ledger__meta">
-            <Tag color="purple">{{
-              row.location || t('projectKnowledge.researchLocationUnset')
-            }}</Tag>
-            <Tag v-if="row.assets.length" color="blue">
-              {{ t('projectFile.fileCount', { count: row.assets.length }) }}
-            </Tag>
-            <span class="knowledge-origin">{{
-              row.participants || t('projectKnowledge.researchParticipantsUnset')
-            }}</span>
-          </div>
-          <h3>{{ row.title }}</h3>
-          <p>{{ row.summary || row.content || t('projectKnowledge.noDescription') }}</p>
-          <div v-if="row.materials.length" class="knowledge-ledger__materials">
-            <span
-              v-for="material in row.materials"
-              :key="material.id"
-              class="material-chip"
-              :title="material.title"
+    <div v-else class="knowledge-ledger space-y-3">
+      <Card
+        v-for="row in rows"
+        :key="row.id"
+        size="small"
+        class="knowledge-ledger__row transition-all hover:border-teal-500/40 hover:shadow-xs"
+      >
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div class="knowledge-ledger__main min-w-0 flex-1">
+            <div class="knowledge-ledger__meta flex flex-wrap items-center gap-2">
+              <Tag color="purple" class="flex items-center gap-1">
+                <EnvironmentOutlined class="text-[11px]" />
+                {{ row.location || t('projectKnowledge.researchLocationUnset') }}
+              </Tag>
+              <Tag v-if="row.assets.length" color="blue">
+                {{ t('projectFile.fileCount', { count: row.assets.length }) }}
+              </Tag>
+              <span class="knowledge-origin flex items-center gap-1 text-xs text-slate-400">
+                <TeamOutlined class="text-[11px]" />
+                {{ row.participants || t('projectKnowledge.researchParticipantsUnset') }}
+              </span>
+            </div>
+            <h3 class="mt-1 text-base font-semibold text-slate-800 dark:text-slate-100">
+              {{ row.title }}
+            </h3>
+            <p class="mt-1 text-xs text-slate-500 line-clamp-3 dark:text-slate-400">
+              {{ row.summary || row.content || t('projectKnowledge.noDescription') }}
+            </p>
+            <div
+              v-if="row.materials.length"
+              class="knowledge-ledger__materials mt-2 flex flex-wrap gap-1.5"
             >
-              <span class="material-chip__label">{{ material.title }}</span>
-              <span class="material-chip__type">{{
-                t(`projectKnowledge.materialType${material.type}`)
-              }}</span>
-              <Button
-                v-if="canManage"
-                type="text"
-                size="small"
-                class="material-chip__unlink"
-                :loading="unloadingId === material.id"
-                @click.stop="handleUnlinkMaterial(row, material.id)"
+              <Tag
+                v-for="material in row.materials"
+                :key="material.id"
+                color="cyan"
+                :closable="canManage"
+                class="flex items-center gap-1 text-xs"
+                @close.prevent="handleUnlinkMaterial(row, material.id)"
               >
-                <DeleteOutlined />
-              </Button>
-            </span>
+                <span>{{ material.title }}</span>
+                <span class="text-[10px] opacity-75"
+                  >({{ t(`projectKnowledge.materialType${material.type}`) }})</span
+                >
+              </Tag>
+            </div>
+          </div>
+
+          <div
+            class="flex shrink-0 items-center justify-between gap-3 pt-1 sm:flex-col sm:items-end sm:pt-0"
+          >
+            <div class="knowledge-ledger__date flex items-center gap-1 text-xs text-slate-400">
+              <ClockCircleOutlined class="text-[11px]" />
+              <span>{{ formatKnowledgeDate(row.occurredAt || row.updatedAt, locale) }}</span>
+            </div>
+            <div v-if="canManage" class="knowledge-ledger__actions">
+              <Space :size="4">
+                <Button type="link" size="small" @click="openMaterialPicker(row)">
+                  <LinkOutlined />{{ t('projectKnowledge.researchLinkMaterials') }}
+                </Button>
+                <Button type="link" size="small" @click="openEdit(row)">
+                  <EditOutlined />{{ t('common.edit') }}
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  danger
+                  :loading="deletingId === row.id"
+                  @click="handleDelete(row)"
+                >
+                  <DeleteOutlined />{{ t('common.delete') }}
+                </Button>
+              </Space>
+            </div>
           </div>
         </div>
-        <div class="knowledge-ledger__date">
-          {{ formatKnowledgeDate(row.occurredAt || row.updatedAt, locale) }}
-        </div>
-        <div v-if="canManage" class="knowledge-ledger__actions">
-          <Button type="link" size="small" @click="openMaterialPicker(row)">
-            <LinkOutlined />{{ t('projectKnowledge.researchLinkMaterials') }}
-          </Button>
-          <Button type="link" size="small" @click="openEdit(row)">
-            <EditOutlined />{{ t('common.edit') }}
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            :loading="deletingId === row.id"
-            @click="handleDelete(row)"
-          >
-            <DeleteOutlined />{{ t('common.delete') }}
-          </Button>
-        </div>
-      </article>
+      </Card>
     </div>
 
     <Modal
@@ -376,18 +414,40 @@ watch(
       :ok-text="t('common.confirm')"
       :cancel-text="t('common.cancel')"
       :confirm-loading="linking"
+      width="560px"
       @ok="handleLinkMaterials"
     >
       <div v-if="!allMaterials.length" class="knowledge-state">
         {{ t('projectKnowledge.linkMaterialsEmpty') }}
       </div>
-      <div v-else class="material-picker-list">
-        <CheckboxGroup v-model:value="selectedMaterialIds" class="material-picker-list__group">
-          <div v-for="material in allMaterials" :key="material.id" class="material-picker-item">
-            <Checkbox :value="material.id">{{ material.title }}</Checkbox>
-            <Tag color="blue">{{ t(`projectKnowledge.materialType${material.type}`) }}</Tag>
-          </div>
-        </CheckboxGroup>
+      <div v-else class="material-picker-list space-y-3 pt-1">
+        <Input
+          v-model:value="materialSearchKeyword"
+          :placeholder="t('common.search')"
+          allow-clear
+          class="mb-2"
+        />
+        <div
+          class="max-h-72 overflow-y-auto rounded-md border border-slate-200 p-2 dark:border-slate-700"
+        >
+          <CheckboxGroup
+            v-model:value="selectedMaterialIds"
+            class="material-picker-list__group flex w-full flex-col gap-2"
+          >
+            <div
+              v-for="material in filteredMaterials"
+              :key="material.id"
+              class="material-picker-item flex items-center justify-between rounded-md p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <Checkbox :value="material.id" class="truncate text-xs">
+                {{ material.title }}
+              </Checkbox>
+              <Tag color="blue" class="text-[11px]">{{
+                t(`projectKnowledge.materialType${material.type}`)
+              }}</Tag>
+            </div>
+          </CheckboxGroup>
+        </div>
       </div>
     </Modal>
 
@@ -407,12 +467,6 @@ watch(
 </template>
 
 <style scoped lang="scss">
-.research-section {
-  .knowledge-ledger__row {
-    grid-template-columns: minmax(0, 1fr) 190px auto;
-  }
-}
-
 .knowledge-section {
   min-width: 0;
 }
@@ -422,21 +476,21 @@ watch(
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .knowledge-section__kicker {
-  color: #64748b;
+  color: #0f766e;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .knowledge-section__title {
-  margin: 4px 0;
+  margin: 2px 0 4px;
   color: #0f172a;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 650;
 }
 
@@ -452,139 +506,5 @@ watch(
   padding: 56px 20px;
   color: #94a3b8;
   text-align: center;
-}
-
-.knowledge-ledger {
-  overflow: hidden;
-  border-top: 1px solid #e2e8f0;
-}
-
-.knowledge-ledger__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 170px auto;
-  gap: 20px;
-  align-items: center;
-  padding: 18px 4px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.knowledge-ledger__main {
-  min-width: 0;
-}
-
-.knowledge-ledger__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.knowledge-ledger__main h3 {
-  margin: 0;
-  overflow: hidden;
-  color: #1e293b;
-  font-size: 15px;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.knowledge-ledger__main p {
-  margin: 5px 0 0;
-  overflow: hidden;
-  color: #64748b;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.knowledge-origin {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.knowledge-ledger__materials {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.material-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 260px;
-  padding: 2px 8px;
-  background: #f1f5f9;
-  border-radius: 999px;
-  font-size: 12px;
-}
-
-.material-chip__label {
-  overflow: hidden;
-  color: #334155;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.material-chip__type {
-  color: #64748b;
-  white-space: nowrap;
-}
-
-.material-chip__unlink {
-  padding: 0;
-  color: #94a3b8;
-}
-
-.material-picker-list {
-  max-height: 46vh;
-  overflow-y: auto;
-}
-
-.material-picker-list__group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.material-picker-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 4px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.knowledge-ledger__date {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.knowledge-ledger__actions {
-  display: flex;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-@media (max-width: 720px) {
-  .knowledge-section__header {
-    flex-direction: column;
-  }
-
-  .research-section .knowledge-ledger__row,
-  .knowledge-ledger__row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .knowledge-ledger__date {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .knowledge-ledger__actions {
-    grid-column: 1 / -1;
-  }
 }
 </style>

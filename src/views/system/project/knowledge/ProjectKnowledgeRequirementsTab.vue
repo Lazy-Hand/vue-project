@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Empty, Tag, message } from 'antdv-next'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@antdv-next/icons'
+import { Button, Card, Empty, Space, Tag, message } from 'antdv-next'
+import {
+  ClockCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+} from '@antdv-next/icons'
 
 import {
   createProjectRequirement,
@@ -280,19 +286,27 @@ watch(
           {{ t('projectKnowledge.requirementsDescription') }}
         </p>
       </div>
-      <Button v-if="canManage" type="primary" size="small" @click="openCreate">
+      <Button v-if="canManage" type="primary" size="middle" @click="openCreate">
         <PlusOutlined />
         {{ t('projectKnowledge.requirementCreate') }}
       </Button>
     </div>
 
-    <div class="requirement-chain-legend">
+    <div class="requirement-chain-legend mb-4 flex items-center gap-2 text-xs text-slate-400">
       <span class="requirement-chain-legend__node">{{ t('projectKnowledge.chainEvidence') }}</span>
-      <span class="requirement-chain-legend__line" aria-hidden="true"></span>
-      <span class="requirement-chain-legend__node requirement-chain-legend__node--active">
+      <span
+        class="requirement-chain-legend__line inline-block h-px w-6 bg-slate-200 dark:bg-slate-700"
+        aria-hidden="true"
+      ></span>
+      <span
+        class="requirement-chain-legend__node requirement-chain-legend__node--active font-semibold text-teal-600 dark:text-teal-400"
+      >
         {{ t('projectKnowledge.chainRequirement') }}
       </span>
-      <span class="requirement-chain-legend__line" aria-hidden="true"></span>
+      <span
+        class="requirement-chain-legend__line inline-block h-px w-6 bg-slate-200 dark:bg-slate-700"
+        aria-hidden="true"
+      ></span>
       <span class="requirement-chain-legend__node">{{
         t('projectKnowledge.chainDeliverable')
       }}</span>
@@ -300,42 +314,73 @@ watch(
 
     <div v-if="loading" class="knowledge-state">{{ t('common.loading') }}</div>
     <Empty v-else-if="!rows.length" :description="t('projectKnowledge.requirementEmpty')" />
-    <div v-else class="requirement-ledger">
-      <article v-for="row in rows" :key="row.id" class="requirement-ledger__row">
-        <Button type="text" block class="requirement-ledger__main" @click="openDetail(row)">
-          <div class="requirement-ledger__meta">
-            <span v-if="row.code" class="requirement-ledger__code">{{ row.code }}</span>
-            <Tag :color="statusColor(row.status)">{{
-              t(`projectKnowledge.requirementStatus${row.status}`)
-            }}</Tag>
-            <span>{{ t(`projectKnowledge.requirementType${row.type}`) }}</span>
-          </div>
-          <h3>{{ row.title }}</h3>
-          <p>{{ row.description || t('projectKnowledge.noDescription') }}</p>
-        </Button>
-        <div class="requirement-ledger__date">
-          {{ formatKnowledgeDate(row.updatedAt, locale) }}
-        </div>
-        <div class="requirement-ledger__actions">
-          <Button type="link" size="small" @click="openDetail(row)">
-            {{ t('projectKnowledge.requirementDetail') }}
-          </Button>
-          <template v-if="canManage">
-            <Button type="link" size="small" @click="openEdit(row)">
-              <EditOutlined />{{ t('common.edit') }}
-            </Button>
-            <Button
-              type="link"
-              size="small"
-              danger
-              :loading="deletingId === row.id"
-              @click="handleDelete(row)"
+    <div v-else class="requirement-ledger space-y-3">
+      <Card
+        v-for="row in rows"
+        :key="row.id"
+        size="small"
+        class="requirement-ledger__row transition-all hover:border-teal-500/40 hover:shadow-xs"
+      >
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div
+            class="requirement-ledger__main min-w-0 flex-1 cursor-pointer"
+            @click="openDetail(row)"
+          >
+            <div class="requirement-ledger__meta flex flex-wrap items-center gap-2">
+              <Tag
+                v-if="row.code"
+                color="blue"
+                class="requirement-ledger__code font-mono font-medium"
+              >
+                {{ row.code }}
+              </Tag>
+              <Tag :color="statusColor(row.status)">{{
+                t(`projectKnowledge.requirementStatus${row.status}`)
+              }}</Tag>
+              <Tag>{{ t(`projectKnowledge.requirementType${row.type}`) }}</Tag>
+              <span v-if="row.priority" class="text-xs text-slate-400">P: {{ row.priority }}</span>
+            </div>
+            <h3
+              class="mt-1 text-base font-semibold text-slate-800 hover:text-teal-600 dark:text-slate-100 dark:hover:text-teal-400"
             >
-              <DeleteOutlined />{{ t('common.delete') }}
-            </Button>
-          </template>
+              {{ row.title }}
+            </h3>
+            <p class="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-400">
+              {{ row.description || t('projectKnowledge.noDescription') }}
+            </p>
+          </div>
+
+          <div
+            class="flex shrink-0 items-center justify-between gap-3 pt-1 sm:flex-col sm:items-end sm:pt-0"
+          >
+            <div class="requirement-ledger__date flex items-center gap-1 text-xs text-slate-400">
+              <ClockCircleOutlined class="text-[11px]" />
+              <span>{{ formatKnowledgeDate(row.updatedAt, locale) }}</span>
+            </div>
+            <div class="requirement-ledger__actions">
+              <Space :size="4">
+                <Button type="link" size="small" @click="openDetail(row)">
+                  <EyeOutlined />{{ t('projectKnowledge.requirementDetail') }}
+                </Button>
+                <template v-if="canManage">
+                  <Button type="link" size="small" @click="openEdit(row)">
+                    <EditOutlined />{{ t('common.edit') }}
+                  </Button>
+                  <Button
+                    type="link"
+                    size="small"
+                    danger
+                    :loading="deletingId === row.id"
+                    @click="handleDelete(row)"
+                  >
+                    <DeleteOutlined />{{ t('common.delete') }}
+                  </Button>
+                </template>
+              </Space>
+            </div>
+          </div>
         </div>
-      </article>
+      </Card>
     </div>
 
     <KnowledgeFormDialog
@@ -370,17 +415,17 @@ watch(
 }
 
 .requirements-section__kicker {
-  color: #64748b;
+  color: #0f766e;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .requirements-section__title {
-  margin: 4px 0;
+  margin: 2px 0 4px;
   color: #0f172a;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 650;
 }
 
@@ -392,147 +437,9 @@ watch(
   line-height: 1.6;
 }
 
-.requirement-chain-legend {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 20px;
-  color: #94a3b8;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.requirement-chain-legend__node {
-  padding: 5px 8px;
-  border: 1px solid #cbd5e1;
-  color: #64748b;
-}
-
-.requirement-chain-legend__node--active {
-  border-color: #0f766e;
-  background: #f0fdfa;
-  color: #0f766e;
-}
-
-.requirement-chain-legend__line {
-  width: 30px;
-  height: 1px;
-  background: #cbd5e1;
-}
-
 .knowledge-state {
   padding: 56px 20px;
   color: #94a3b8;
   text-align: center;
-}
-
-.requirement-ledger {
-  border-top: 1px solid #e2e8f0;
-}
-
-.requirement-ledger__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 170px auto;
-  gap: 20px;
-  align-items: center;
-  padding: 16px 4px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.requirement-ledger__main {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  height: auto;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
-  line-height: inherit;
-  text-align: left;
-  white-space: normal;
-}
-
-.requirement-ledger__main:hover {
-  background: #f8fafc;
-}
-
-.requirement-ledger__main:focus-visible {
-  outline: 2px solid #0f766e;
-  outline-offset: 4px;
-}
-
-.requirement-ledger__meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.requirement-ledger__code {
-  color: #0f766e;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 700;
-}
-
-.requirement-ledger__main h3 {
-  margin: 7px 0 0;
-  color: #1e293b;
-  font-size: 15px;
-  font-weight: 650;
-}
-
-.requirement-ledger__main p {
-  margin: 5px 0 0;
-  overflow: hidden;
-  color: #64748b;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.requirement-ledger__date {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.requirement-ledger__actions {
-  display: flex;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-@media (max-width: 780px) {
-  .requirements-section__header {
-    flex-direction: column;
-  }
-
-  .requirement-ledger__row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .requirement-ledger__date {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .requirement-ledger__actions {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 480px) {
-  .requirement-chain-legend {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
 }
 </style>

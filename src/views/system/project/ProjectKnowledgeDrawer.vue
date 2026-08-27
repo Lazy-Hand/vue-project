@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Drawer, Empty, Menu, MenuItem, message } from 'antdv-next'
+import { Badge, Card, Drawer, Empty, Menu, MenuItem, message } from 'antdv-next'
 import {
   ApartmentOutlined,
   BookOutlined,
@@ -201,26 +201,71 @@ watch(
       <Empty :description="t('projectKnowledge.queryPermissionRequired')" />
     </div>
     <div v-else class="knowledge-workbench">
-      <header class="knowledge-workbench__hero">
-        <div>
-          <div class="knowledge-workbench__kicker">{{ t('projectKnowledge.workbenchKicker') }}</div>
-          <h1>{{ projectName }}</h1>
-          <p>{{ t('projectKnowledge.workbenchDescription') }}</p>
-        </div>
-        <div class="knowledge-chain" :aria-label="t('projectKnowledge.chainAriaLabel')">
-          <span>{{ t('projectKnowledge.chainEvidence') }}</span>
-          <span class="knowledge-chain__arrow">→</span>
-          <span class="knowledge-chain__active">{{ t('projectKnowledge.chainRequirement') }}</span>
-          <span class="knowledge-chain__arrow">→</span>
-          <span>{{ t('projectKnowledge.chainDeliverable') }}</span>
-        </div>
-      </header>
+      <Card
+        variant="borderless"
+        class="knowledge-workbench__hero-card mb-4 bg-slate-50/80 dark:bg-slate-900/60"
+      >
+        <header class="knowledge-workbench__hero">
+          <div class="min-w-0">
+            <div class="knowledge-workbench__kicker">
+              {{ t('projectKnowledge.workbenchKicker') }}
+            </div>
+            <h1
+              class="truncate text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100"
+            >
+              {{ projectName }}
+            </h1>
+            <p class="mt-1 text-xs text-slate-500 sm:text-sm dark:text-slate-400">
+              {{ t('projectKnowledge.workbenchDescription') }}
+            </p>
+          </div>
+          <div
+            class="knowledge-chain shrink-0 rounded-lg bg-white/80 px-3 py-2 shadow-xs border border-slate-200/70 dark:bg-slate-800/80 dark:border-slate-700/60"
+            :aria-label="t('projectKnowledge.chainAriaLabel')"
+          >
+            <span class="text-xs text-slate-500 dark:text-slate-400">{{
+              t('projectKnowledge.chainEvidence')
+            }}</span>
+            <span class="knowledge-chain__arrow text-slate-400">→</span>
+            <span class="knowledge-chain__active font-semibold text-teal-600 dark:text-teal-400">{{
+              t('projectKnowledge.chainRequirement')
+            }}</span>
+            <span class="knowledge-chain__arrow text-slate-400">→</span>
+            <span class="text-xs text-slate-500 dark:text-slate-400">{{
+              t('projectKnowledge.chainDeliverable')
+            }}</span>
+          </div>
+        </header>
+      </Card>
 
-      <div class="knowledge-stats" :class="{ 'is-loading': statsLoading }">
-        <div v-for="domain in domains" :key="domain.key" class="knowledge-stats__item">
-          <span>{{ domain.label }}</span>
-          <strong>{{ stats[domain.statKey] }}</strong>
-        </div>
+      <div
+        class="knowledge-stats mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+        :class="{ 'is-loading': statsLoading }"
+      >
+        <Card
+          v-for="domain in domains"
+          :key="domain.key"
+          size="small"
+          class="knowledge-stats__item cursor-pointer transition-all hover:border-teal-500/50 hover:shadow-xs"
+          :class="
+            activeDomain === domain.key
+              ? 'border-teal-500/80 bg-teal-50/30 dark:bg-teal-950/20'
+              : ''
+          "
+          @click="selectDomain(domain.key)"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <span class="truncate text-xs text-slate-500 dark:text-slate-400">{{
+              domain.label
+            }}</span>
+            <component :is="domain.icon" class="text-sm text-slate-400" />
+          </div>
+          <div class="mt-1">
+            <strong class="text-lg font-bold text-slate-900 dark:text-slate-100">{{
+              stats[domain.statKey]
+            }}</strong>
+          </div>
+        </Card>
       </div>
 
       <div class="knowledge-workbench__body">
@@ -244,7 +289,12 @@ watch(
                   <strong>{{ domain.label }}</strong>
                   <small>{{ domain.description }}</small>
                 </span>
-                <span class="knowledge-nav__count">{{ stats[domain.statKey] }}</span>
+                <Badge
+                  :count="stats[domain.statKey]"
+                  :overflow-count="99"
+                  :color="activeDomain === domain.key ? '#0f766e' : '#94a3b8'"
+                  class="knowledge-nav__count"
+                />
               </MenuItem>
             </Menu>
           </div>
@@ -277,11 +327,9 @@ watch(
 
 .knowledge-workbench__hero {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 32px;
-  padding: 4px 0 24px;
-  border-bottom: 1px solid #cbd5e1;
+  gap: 24px;
 }
 
 .knowledge-workbench__kicker {
@@ -292,32 +340,12 @@ watch(
   text-transform: uppercase;
 }
 
-.knowledge-workbench__hero h1 {
-  margin: 6px 0 4px;
-  color: #0f172a;
-  font-size: clamp(24px, 3vw, 36px);
-  font-weight: 650;
-  letter-spacing: -0.03em;
-}
-
-.knowledge-workbench__hero p {
-  max-width: 620px;
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 .knowledge-chain {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 0;
-  color: #64748b;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -326,57 +354,22 @@ watch(
 }
 
 .knowledge-chain__arrow {
-  color: #94a3b8;
-  font-size: 17px;
-}
-
-.knowledge-stats {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  border-bottom: 1px solid #cbd5e1;
-  transition: opacity 160ms ease;
+  font-size: 14px;
 }
 
 .knowledge-stats.is-loading {
   opacity: 0.55;
 }
 
-.knowledge-stats__item {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 5px;
-  padding: 14px 12px;
-  border-right: 1px solid #e2e8f0;
-}
-
-.knowledge-stats__item:last-child {
-  border-right: 0;
-}
-
-.knowledge-stats__item span {
-  overflow: hidden;
-  color: #64748b;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.knowledge-stats__item strong {
-  color: #0f172a;
-  font-size: 20px;
-  font-weight: 650;
-}
-
 .knowledge-workbench__body {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   min-height: 560px;
 }
 
 .knowledge-nav {
-  padding: 18px 18px 18px 0;
-  border-right: 1px solid #cbd5e1;
+  padding: 8px 16px 16px 0;
+  border-right: 1px solid #e2e8f0;
 }
 
 .knowledge-nav__menu-shell {
@@ -392,29 +385,23 @@ watch(
 
 .knowledge-nav__menu-shell :deep(.ant-menu-item) {
   display: grid !important;
-  grid-template-columns: 28px 20px minmax(0, 1fr) auto;
+  grid-template-columns: 24px 20px minmax(0, 1fr) auto;
   gap: 8px;
-  align-items: start !important;
+  align-items: center !important;
   height: auto !important;
   min-height: 0;
-  margin: 0 0 2px;
-  padding: 13px 10px !important;
-  border: 0;
-  border-left: 2px solid transparent;
-  border-radius: 0;
+  margin: 0 0 4px;
+  padding: 10px 10px !important;
+  border-radius: 8px;
   background: transparent;
   color: #64748b;
   line-height: normal !important;
   overflow: visible !important;
-  text-overflow: clip;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    color 160ms ease;
+  transition: all 160ms ease;
 }
 
 .knowledge-nav__menu-shell :deep(.ant-menu-item:hover) {
-  background: #f8fafc;
+  background: #f1f5f9;
   color: #0f766e;
 }
 
@@ -423,10 +410,11 @@ watch(
   outline-offset: -2px;
 }
 
-.knowledge-nav__menu-shell :deep(.ant-menu-item-selected) {
-  border-left-color: #0f766e;
-  background: #f0fdfa;
-  color: #0f766e;
+.knowledge-nav__menu-shell :deep(.ant-menu-item-selected),
+.knowledge-nav__menu-shell :deep(.ant-menu-item.is-active) {
+  background: #f0fdfa !important;
+  color: #0f766e !important;
+  font-weight: 600;
 }
 
 .knowledge-nav__menu-shell :deep(.ant-menu-item::after) {
@@ -437,7 +425,6 @@ watch(
   display: contents !important;
   min-width: 0;
   overflow: visible !important;
-  text-overflow: clip;
 }
 
 .knowledge-nav__index {
@@ -447,7 +434,6 @@ watch(
 }
 
 .knowledge-nav__icon {
-  margin-top: 1px;
   font-size: 15px;
 }
 
@@ -455,34 +441,26 @@ watch(
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .knowledge-nav__copy strong {
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .knowledge-nav__copy small {
   overflow: hidden;
   color: #94a3b8;
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.knowledge-nav__count {
-  min-width: 22px;
-  color: #64748b;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  text-align: right;
-}
-
 .knowledge-workbench__main {
   min-width: 0;
-  padding: 28px 0 40px 28px;
+  padding: 8px 0 32px 24px;
 }
 
 @media (max-width: 840px) {
@@ -492,22 +470,14 @@ watch(
     gap: 16px;
   }
 
-  .knowledge-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .knowledge-stats__item:nth-child(3) {
-    border-right: 0;
-  }
-
   .knowledge-workbench__body {
     grid-template-columns: 1fr;
   }
 
   .knowledge-nav {
-    padding: 14px 0;
+    padding: 12px 0;
     border-right: 0;
-    border-bottom: 1px solid #cbd5e1;
+    border-bottom: 1px solid #e2e8f0;
   }
 
   .knowledge-nav__menu-shell :deep(.ant-menu) {
@@ -517,41 +487,7 @@ watch(
   }
 
   .knowledge-workbench__main {
-    padding: 24px 0 36px;
-  }
-}
-
-@media (max-width: 480px) {
-  .knowledge-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .knowledge-stats__item:nth-child(3) {
-    border-right: 1px solid #e2e8f0;
-  }
-
-  .knowledge-stats__item:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .knowledge-nav {
-    padding-top: 12px;
-  }
-
-  .knowledge-nav__menu-shell :deep(.ant-menu) {
-    grid-template-columns: 1fr;
-  }
-
-  .knowledge-chain {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .knowledge-nav__menu-shell :deep(.ant-menu-item),
-  .knowledge-stats {
-    transition: none;
+    padding: 20px 0 28px;
   }
 }
 </style>

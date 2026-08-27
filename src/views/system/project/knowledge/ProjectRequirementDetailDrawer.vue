@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Drawer, Empty, Select, Tag, Tabs, TabPane, message } from 'antdv-next'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@antdv-next/icons'
+import { Button, Card, Drawer, Empty, Select, Space, Tag, Tabs, TabPane, message } from 'antdv-next'
+import {
+  CheckSquareOutlined,
+  ClockCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  LinkOutlined,
+  PlusOutlined,
+} from '@antdv-next/icons'
 
 import {
   createProjectRequirementEvidence,
@@ -91,9 +98,7 @@ const documentOptions = computed(() =>
 const requirementDocumentLabel = computed(() => {
   const documentId = props.requirement?.documentId
   if (!documentId) return null
-  return (
-    prdDocuments.value.find((document) => document.id === documentId)?.title ?? documentId
-  )
+  return prdDocuments.value.find((document) => document.id === documentId)?.title ?? documentId
 })
 
 const traceTargetOptions = computed(() =>
@@ -483,19 +488,31 @@ watch(
     destroy-on-hidden
   >
     <template v-if="requirement">
-      <div class="requirement-detail__intro">
-        <div class="requirement-detail__eyebrow">
-          {{ requirement.code || t('projectKnowledge.requirementCodeUnset') }}
+      <div class="requirement-detail__intro mb-4">
+        <div class="requirement-detail__eyebrow flex flex-wrap items-center gap-2">
+          <Tag v-if="requirement.code" color="blue" class="font-mono font-semibold">
+            {{ requirement.code }}
+          </Tag>
+          <span v-else class="text-xs text-slate-400">{{
+            t('projectKnowledge.requirementCodeUnset')
+          }}</span>
           <Tag>{{ t(`projectKnowledge.requirementType${requirement.type}`) }}</Tag>
           <Tag color="processing">{{
             t(`projectKnowledge.requirementStatus${requirement.status}`)
           }}</Tag>
+          <span v-if="requirement.priority" class="text-xs text-slate-400"
+            >P: {{ requirement.priority }}</span
+          >
         </div>
-        <p>{{ requirement.description || t('projectKnowledge.noDescription') }}</p>
-        <div class="requirement-detail__document">
-          <span class="requirement-detail__document-label">{{
-            t('projectKnowledge.requirementDocument')
-          }}</span>
+
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          {{ requirement.description || t('projectKnowledge.noDescription') }}
+        </p>
+
+        <div class="requirement-detail__document mt-3 flex items-center gap-2 text-xs">
+          <span class="requirement-detail__document-label text-slate-500"
+            >{{ t('projectKnowledge.requirementDocument') }}:</span
+          >
           <Select
             v-if="canManage"
             :value="requirement.documentId ?? undefined"
@@ -503,104 +520,169 @@ watch(
             :options="documentOptions"
             :loading="documentSaving"
             allow-clear
-            class="requirement-detail__document-select"
+            class="requirement-detail__document-select min-w-56"
             @change="handleDocumentChange"
           />
           <Tag v-else-if="requirementDocumentLabel" color="blue">
             {{ requirementDocumentLabel }}
           </Tag>
-          <span v-else class="requirement-detail__document-unset">{{
+          <span v-else class="requirement-detail__document-unset text-slate-400">{{
             t('projectKnowledge.requirementDocumentUnset')
           }}</span>
         </div>
-        <div v-if="requirement.acceptanceCriteria" class="requirement-detail__acceptance">
-          <span>{{ t('projectKnowledge.requirementAcceptanceCriteria') }}</span>
-          <pre>{{ requirement.acceptanceCriteria }}</pre>
+
+        <div
+          v-if="requirement.acceptanceCriteria"
+          class="requirement-detail__acceptance mt-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/60"
+        >
+          <div
+            class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200"
+          >
+            <CheckSquareOutlined class="text-teal-600 dark:text-teal-400" />
+            <span>{{ t('projectKnowledge.requirementAcceptanceCriteria') }}</span>
+          </div>
+          <pre
+            class="m-0 mt-1.5 whitespace-pre-wrap font-sans text-xs leading-relaxed text-slate-600 dark:text-slate-300"
+            >{{ requirement.acceptanceCriteria }}</pre>
         </div>
       </div>
 
       <div v-if="loading" class="knowledge-state">{{ t('common.loading') }}</div>
-      <Tabs v-else v-model:active-key="activeTab">
+      <Tabs v-else v-model:active-key="activeTab" class="requirement-detail__tabs">
         <TabPane key="evidence" :tab="t('projectKnowledge.evidenceTitle')">
-          <div class="knowledge-subsection__header">
-            <p>{{ t('projectKnowledge.evidenceDescription') }}</p>
+          <div class="knowledge-subsection__header flex items-center justify-between mb-3">
+            <p class="m-0 text-xs text-slate-500 dark:text-slate-400">
+              {{ t('projectKnowledge.evidenceDescription') }}
+            </p>
             <Button v-if="canManage" type="primary" size="small" @click="openCreateEvidence">
               <PlusOutlined />{{ t('projectKnowledge.evidenceCreate') }}
             </Button>
           </div>
           <Empty v-if="!evidence.length" :description="t('projectKnowledge.evidenceEmpty')" />
-          <div v-else class="detail-ledger">
-            <article v-for="row in evidence" :key="row.id" class="detail-ledger__row">
-              <div>
-                <div class="detail-ledger__meta">
-                  <Tag color="blue">
+          <div v-else class="detail-ledger space-y-3">
+            <Card
+              v-for="row in evidence"
+              :key="row.id"
+              size="small"
+              class="detail-ledger__row transition-all hover:border-teal-500/40 hover:shadow-xs"
+            >
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0 flex-1">
+                  <div class="detail-ledger__meta flex flex-wrap items-center gap-2">
+                    <Tag color="blue" class="text-xs">
+                      {{
+                        row.materialId
+                          ? t('projectKnowledge.evidenceMaterial')
+                          : t('projectKnowledge.evidenceResearch')
+                      }}
+                    </Tag>
+                    <span class="text-xs font-medium text-slate-700 dark:text-slate-200">{{
+                      evidenceSourceLabel(row)
+                    }}</span>
+                    <Tag v-if="row.locator" color="default" class="text-[11px]">
+                      {{ row.locator }}
+                    </Tag>
+                  </div>
+                  <p class="mt-1.5 text-xs text-slate-600 dark:text-slate-300">
                     {{
-                      row.materialId
-                        ? t('projectKnowledge.evidenceMaterial')
-                        : t('projectKnowledge.evidenceResearch')
+                      row.quote || row.content || row.locator || t('projectKnowledge.noDescription')
                     }}
-                  </Tag>
-                  <span>{{ evidenceSourceLabel(row) }}</span>
+                  </p>
+                  <div class="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                    <ClockCircleOutlined class="text-[11px]" />
+                    <span>{{ formatKnowledgeDate(row.updatedAt, locale) }}</span>
+                  </div>
                 </div>
-                <p>
-                  {{
-                    row.quote || row.content || row.locator || t('projectKnowledge.noDescription')
-                  }}
-                </p>
-                <small>{{ formatKnowledgeDate(row.updatedAt, locale) }}</small>
+
+                <div v-if="canManage" class="detail-ledger__actions shrink-0 pt-1 sm:pt-0">
+                  <Space :size="4">
+                    <Button type="link" size="small" @click="openEditEvidence(row)">
+                      <EditOutlined />{{ t('common.edit') }}
+                    </Button>
+                    <Button
+                      type="link"
+                      danger
+                      size="small"
+                      :loading="deletingId === row.id"
+                      @click="handleDeleteEvidence(row)"
+                    >
+                      <DeleteOutlined />{{ t('common.delete') }}
+                    </Button>
+                  </Space>
+                </div>
               </div>
-              <div v-if="canManage" class="detail-ledger__actions">
-                <Button type="link" size="small" @click="openEditEvidence(row)">
-                  <EditOutlined />{{ t('common.edit') }}
-                </Button>
-                <Button
-                  type="link"
-                  danger
-                  size="small"
-                  :loading="deletingId === row.id"
-                  @click="handleDeleteEvidence(row)"
-                >
-                  <DeleteOutlined />{{ t('common.delete') }}
-                </Button>
-              </div>
-            </article>
+            </Card>
           </div>
         </TabPane>
+
         <TabPane key="traces" :tab="t('projectKnowledge.tracesTitle')">
-          <div class="knowledge-subsection__header">
-            <p>{{ t('projectKnowledge.tracesDescription') }}</p>
+          <div class="knowledge-subsection__header flex items-center justify-between mb-3">
+            <p class="m-0 text-xs text-slate-500 dark:text-slate-400">
+              {{ t('projectKnowledge.tracesDescription') }}
+            </p>
             <Button v-if="canManage" type="primary" size="small" @click="openCreateTrace">
               <PlusOutlined />{{ t('projectKnowledge.traceCreate') }}
             </Button>
           </div>
           <Empty v-if="!traces.length" :description="t('projectKnowledge.traceEmpty')" />
-          <div v-else class="detail-ledger">
-            <article v-for="row in traces" :key="row.id" class="detail-ledger__row">
-              <div>
-                <div class="detail-ledger__meta">
-                  <Tag color="cyan">{{
-                    t(`projectKnowledge.traceRelation${row.relationType}`)
-                  }}</Tag>
-                  <span>{{ t(`projectKnowledge.traceTarget${row.targetType}`) }}</span>
+          <div v-else class="detail-ledger space-y-3">
+            <Card
+              v-for="row in traces"
+              :key="row.id"
+              size="small"
+              class="detail-ledger__row transition-all hover:border-teal-500/40 hover:shadow-xs"
+            >
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0 flex-1">
+                  <div class="detail-ledger__meta flex flex-wrap items-center gap-2">
+                    <Tag color="cyan" class="text-xs">
+                      {{ t(`projectKnowledge.traceRelation${row.relationType}`) }}
+                    </Tag>
+                    <Tag color="purple" class="text-xs">
+                      {{ t(`projectKnowledge.traceTarget${row.targetType}`) }}
+                    </Tag>
+                  </div>
+                  <h3 class="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {{ row.targetName || row.targetKey }}
+                  </h3>
+                  <div
+                    v-if="row.targetUrl"
+                    class="mt-1 flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400"
+                  >
+                    <LinkOutlined />
+                    <a
+                      :href="row.targetUrl"
+                      target="_blank"
+                      rel="noreferrer"
+                      class="truncate hover:underline"
+                    >
+                      {{ row.targetUrl }}
+                    </a>
+                  </div>
+                  <div class="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                    <ClockCircleOutlined class="text-[11px]" />
+                    <span>{{ formatKnowledgeDate(row.updatedAt, locale) }}</span>
+                  </div>
                 </div>
-                <h3>{{ row.targetName || row.targetKey }}</h3>
-                <p>{{ row.targetUrl || t('projectKnowledge.noDescription') }}</p>
+
+                <div v-if="canManage" class="detail-ledger__actions shrink-0 pt-1 sm:pt-0">
+                  <Space :size="4">
+                    <Button type="link" size="small" @click="openEditTrace(row)">
+                      <EditOutlined />{{ t('common.edit') }}
+                    </Button>
+                    <Button
+                      type="link"
+                      danger
+                      size="small"
+                      :loading="deletingId === row.id"
+                      @click="handleDeleteTrace(row)"
+                    >
+                      <DeleteOutlined />{{ t('common.delete') }}
+                    </Button>
+                  </Space>
+                </div>
               </div>
-              <div v-if="canManage" class="detail-ledger__actions">
-                <Button type="link" size="small" @click="openEditTrace(row)">
-                  <EditOutlined />{{ t('common.edit') }}
-                </Button>
-                <Button
-                  type="link"
-                  danger
-                  size="small"
-                  :loading="deletingId === row.id"
-                  @click="handleDeleteTrace(row)"
-                >
-                  <DeleteOutlined />{{ t('common.delete') }}
-                </Button>
-              </div>
-            </article>
+            </Card>
           </div>
         </TabPane>
       </Tabs>
@@ -626,150 +708,9 @@ watch(
 </template>
 
 <style scoped lang="scss">
-.requirement-detail__intro {
-  padding-bottom: 20px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.requirement-detail__eyebrow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.requirement-detail__document {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.requirement-detail__document-label {
-  color: #64748b;
-  font-size: 13px;
-}
-
-.requirement-detail__document-select {
-  min-width: 260px;
-}
-
-.requirement-detail__document-unset {
-  color: #94a3b8;
-  font-size: 13px;
-}
-
-.requirement-detail__intro p {
-  margin: 12px 0 0;
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.65;
-  white-space: pre-wrap;
-}
-
-.requirement-detail__acceptance {
-  margin-top: 16px;
-  padding: 12px 14px;
-  border-left: 3px solid #0f766e;
-  background: #f0fdfa;
-}
-
-.requirement-detail__acceptance span {
-  color: #0f766e;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.requirement-detail__acceptance pre {
-  margin: 8px 0 0;
-  color: #334155;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
 .knowledge-state {
   padding: 48px 20px;
   color: #94a3b8;
   text-align: center;
-}
-
-.knowledge-subsection__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 8px 0 16px;
-}
-
-.knowledge-subsection__header p {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.detail-ledger {
-  border-top: 1px solid #e2e8f0;
-}
-
-.detail-ledger__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.detail-ledger__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #475569;
-  font-size: 13px;
-}
-
-.detail-ledger__row h3 {
-  margin: 7px 0 0;
-  color: #1e293b;
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.detail-ledger__row p {
-  margin: 7px 0 0;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
-.detail-ledger__row small {
-  display: block;
-  margin-top: 8px;
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-.detail-ledger__actions {
-  display: flex;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-@media (max-width: 560px) {
-  .knowledge-subsection__header,
-  .detail-ledger__row {
-    display: flex;
-    align-items: flex-start;
-    flex-direction: column;
-  }
 }
 </style>

@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Empty, Tag, message } from 'antdv-next'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@antdv-next/icons'
+import { Button, Card, Empty, Space, Tag, message } from 'antdv-next'
+import {
+  ArrowRightOutlined,
+  ClockCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  LinkOutlined,
+  PlusOutlined,
+} from '@antdv-next/icons'
 
 import {
   createProjectRequirementTrace,
@@ -270,61 +277,100 @@ watch(
         <h2 class="traces-section__title">{{ t('projectKnowledge.tracesTitle') }}</h2>
         <p class="traces-section__description">{{ t('projectKnowledge.tracesDescription') }}</p>
       </div>
-      <Button v-if="canManage" type="primary" size="small" @click="openCreate">
+      <Button v-if="canManage" type="primary" size="middle" @click="openCreate">
         <PlusOutlined />{{ t('projectKnowledge.traceCreate') }}
       </Button>
     </div>
 
-    <div class="trace-chain-note">
+    <div class="trace-chain-note mb-4 flex items-center gap-2 text-xs text-slate-400">
       <span>{{ t('projectKnowledge.chainEvidence') }}</span>
-      <span class="trace-chain-note__arrow">→</span>
-      <span class="trace-chain-note__active">{{ t('projectKnowledge.chainRequirement') }}</span>
-      <span class="trace-chain-note__arrow">→</span>
+      <span class="trace-chain-note__arrow text-slate-300">→</span>
+      <span class="trace-chain-note__active font-semibold text-teal-600 dark:text-teal-400">{{
+        t('projectKnowledge.chainRequirement')
+      }}</span>
+      <span class="trace-chain-note__arrow text-slate-300">→</span>
       <span>{{ t('projectKnowledge.chainDeliverable') }}</span>
     </div>
 
     <div v-if="loading" class="knowledge-state">{{ t('common.loading') }}</div>
     <Empty v-else-if="!rows.length" :description="t('projectKnowledge.traceEmpty')" />
-    <div v-else class="trace-ledger">
-      <article v-for="row in rows" :key="row.trace.id" class="trace-ledger__row">
-        <div class="trace-ledger__requirement">
-          <span class="trace-ledger__code">{{ row.requirement.code }}</span>
-          <strong>{{ row.requirement.title }}</strong>
-        </div>
-        <div class="trace-ledger__arrow" aria-hidden="true">→</div>
-        <div class="trace-ledger__target">
-          <div class="trace-ledger__meta">
-            <Tag color="cyan">{{
-              t(`projectKnowledge.traceRelation${row.trace.relationType}`)
-            }}</Tag>
-            <span>{{ t(`projectKnowledge.traceTarget${row.trace.targetType}`) }}</span>
+    <div v-else class="trace-ledger space-y-3">
+      <Card
+        v-for="row in rows"
+        :key="row.trace.id"
+        size="small"
+        class="trace-ledger__row transition-all hover:border-teal-500/40 hover:shadow-xs"
+      >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div class="trace-ledger__main min-w-0 flex-1">
+            <!-- 关联需求与关系流向 -->
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <Tag color="blue" class="font-mono">
+                {{ row.requirement.code }}
+              </Tag>
+              <span class="font-medium text-slate-700 dark:text-slate-200">{{
+                row.requirement.title
+              }}</span>
+              <ArrowRightOutlined class="text-[11px] text-slate-400" />
+              <Tag color="cyan">
+                {{ t(`projectKnowledge.traceRelation${row.trace.relationType}`) }}
+              </Tag>
+              <Tag color="purple">
+                {{ t(`projectKnowledge.traceTarget${row.trace.targetType}`) }}
+              </Tag>
+            </div>
+
+            <!-- 目标名称和标识 -->
+            <div class="mt-2 flex items-baseline gap-2">
+              <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">
+                {{ row.trace.targetName || row.trace.targetKey }}
+              </h3>
+              <span class="font-mono text-xs text-slate-400">({{ row.trace.targetKey }})</span>
+            </div>
+
+            <!-- 目标 URL -->
+            <div
+              v-if="row.trace.targetUrl"
+              class="mt-1 flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400"
+            >
+              <LinkOutlined />
+              <a
+                :href="row.trace.targetUrl"
+                target="_blank"
+                rel="noreferrer"
+                class="truncate hover:underline"
+              >
+                {{ row.trace.targetUrl }}
+              </a>
+            </div>
           </div>
-          <strong>{{ row.trace.targetName || row.trace.targetKey }}</strong>
-          <a
-            v-if="row.trace.targetUrl"
-            :href="row.trace.targetUrl"
-            target="_blank"
-            rel="noreferrer"
+
+          <div
+            class="flex shrink-0 items-center justify-between gap-3 pt-1 sm:flex-col sm:items-end sm:pt-0"
           >
-            {{ row.trace.targetUrl }}
-          </a>
+            <div class="trace-ledger__date flex items-center gap-1 text-xs text-slate-400">
+              <ClockCircleOutlined class="text-[11px]" />
+              <span>{{ formatKnowledgeDate(row.trace.updatedAt, locale) }}</span>
+            </div>
+            <div v-if="canManage" class="trace-ledger__actions">
+              <Space :size="4">
+                <Button type="link" size="small" @click="openEdit(row)">
+                  <EditOutlined />{{ t('common.edit') }}
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  danger
+                  :loading="deletingId === row.trace.id"
+                  @click="handleDelete(row)"
+                >
+                  <DeleteOutlined />{{ t('common.delete') }}
+                </Button>
+              </Space>
+            </div>
+          </div>
         </div>
-        <div class="trace-ledger__date">{{ formatKnowledgeDate(row.trace.updatedAt, locale) }}</div>
-        <div v-if="canManage" class="trace-ledger__actions">
-          <Button type="link" size="small" @click="openEdit(row)">
-            <EditOutlined />{{ t('common.edit') }}
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            :loading="deletingId === row.trace.id"
-            @click="handleDelete(row)"
-          >
-            <DeleteOutlined />{{ t('common.delete') }}
-          </Button>
-        </div>
-      </article>
+      </Card>
     </div>
 
     <KnowledgeFormDialog
@@ -352,17 +398,17 @@ watch(
 }
 
 .traces-section__kicker {
-  color: #64748b;
+  color: #0f766e;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .traces-section__title {
-  margin: 4px 0;
+  margin: 2px 0 4px;
   color: #0f172a;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 650;
 }
 
@@ -374,139 +420,9 @@ watch(
   line-height: 1.6;
 }
 
-.trace-chain-note {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.trace-chain-note__arrow {
-  color: #94a3b8;
-  font-size: 16px;
-}
-
-.trace-chain-note__active {
-  color: #0f766e;
-}
-
 .knowledge-state {
   padding: 56px 20px;
   color: #94a3b8;
   text-align: center;
-}
-
-.trace-ledger {
-  border-top: 1px solid #e2e8f0;
-}
-
-.trace-ledger__row {
-  display: grid;
-  grid-template-columns: minmax(150px, 0.8fr) 30px minmax(180px, 1fr) 160px auto;
-  gap: 14px;
-  align-items: center;
-  padding: 16px 4px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.trace-ledger__requirement,
-.trace-ledger__target {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.trace-ledger__requirement strong,
-.trace-ledger__target strong {
-  overflow: hidden;
-  color: #1e293b;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.trace-ledger__code {
-  color: #0f766e;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.trace-ledger__arrow {
-  color: #94a3b8;
-  font-size: 18px;
-  text-align: center;
-}
-
-.trace-ledger__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #64748b;
-  font-size: 11px;
-}
-
-.trace-ledger__target a {
-  overflow: hidden;
-  color: #0f766e;
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.trace-ledger__date {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.trace-ledger__actions {
-  display: flex;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-@media (max-width: 900px) {
-  .traces-section__header {
-    flex-direction: column;
-  }
-
-  .trace-ledger__row {
-    grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
-  }
-
-  .trace-ledger__date {
-    grid-column: 1 / 3;
-  }
-
-  .trace-ledger__actions {
-    grid-column: 3;
-  }
-}
-
-@media (max-width: 560px) {
-  .trace-chain-note {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .trace-ledger__row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-
-  .trace-ledger__arrow {
-    display: none;
-  }
-
-  .trace-ledger__date,
-  .trace-ledger__actions {
-    grid-column: auto;
-  }
 }
 </style>
