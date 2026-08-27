@@ -1,6 +1,6 @@
 import type { PaginationQuery } from './common'
 
-export type JobStatus = 'ENABLED' | 'DISABLED'
+export type JobStatus = 'ENABLED' | 'DISABLED' | 'COMPLETED'
 export type MisfirePolicy = 'DEFAULT' | 'IGNORE' | 'FIRE_ONCE'
 export type JobLogStatus = 'RUNNING' | 'SUCCESS' | 'FAILED' | 'SKIPPED'
 
@@ -9,7 +9,9 @@ export interface Job {
   jobName: string
   jobGroup: string
   invokeTarget: string
-  cronExpression: string
+  cronExpression: string | null
+  /** 一次性执行时间（与 cronExpression 二选一） */
+  runAt: string | null
   misfirePolicy: MisfirePolicy
   concurrent: boolean
   status: JobStatus
@@ -29,7 +31,8 @@ export interface CreateJobPayload {
   jobName: string
   jobGroup?: string
   invokeTarget: string
-  cronExpression: string
+  cronExpression?: string
+  runAt?: string
   misfirePolicy?: MisfirePolicy
   concurrent?: boolean
   status?: JobStatus
@@ -37,7 +40,18 @@ export interface CreateJobPayload {
   remark?: string
 }
 
-export type UpdateJobPayload = Partial<CreateJobPayload>
+export interface UpdateJobPayload {
+  jobName?: string
+  jobGroup?: string
+  invokeTarget?: string
+  cronExpression?: string
+  runAt?: string | null
+  misfirePolicy?: MisfirePolicy
+  concurrent?: boolean
+  status?: JobStatus
+  args?: string
+  remark?: string
+}
 
 export interface ChangeJobStatusPayload {
   status: JobStatus

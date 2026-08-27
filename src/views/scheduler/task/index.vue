@@ -364,11 +364,23 @@ onMounted(() => {
       </template>
 
       <template #column-cron="{ row }">
-        <code class="task-page__cron">{{ row.cronExpression }}</code>
+        <template v-if="row.cronExpression">
+          <code class="task-page__cron">{{ row.cronExpression }}</code>
+        </template>
+        <template v-else-if="row.runAt">
+          <Tag color="purple">
+            {{ t('scheduler.task.onceTag') }} {{ formatDateTime(row.runAt, locale) }}
+          </Tag>
+        </template>
+        <span v-else>-</span>
       </template>
 
       <template #column-status="{ row }">
+        <Tag v-if="row.status === 'COMPLETED'" color="blue">
+          {{ t('scheduler.task.statusCompleted') }}
+        </Tag>
         <Switch
+          v-else
           :checked="row.status === 'ENABLED'"
           :disabled="!canChangeStatus"
           :loading="switchingJobId === row.id"

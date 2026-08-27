@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
 import type { FormInstance, Rule } from 'antdv-next'
 import {
   Alert,
   Button,
+  DatePicker,
   Form,
   FormItem,
   Input,
@@ -74,7 +77,9 @@ interface FormData {
   jobName: string
   jobGroup: string
   invokeTarget: string
+  scheduleType: 'cron' | 'once'
   cronExpression: string
+  runAt: string
   misfirePolicy: MisfirePolicy
   concurrent: boolean
   status: JobStatus
@@ -120,12 +125,22 @@ const formState = reactive<FormData>({
   jobName: '',
   jobGroup: 'DEFAULT',
   invokeTarget: '',
+  scheduleType: 'cron',
   cronExpression: '0 0 0 * * *',
+  runAt: '',
   misfirePolicy: 'DEFAULT',
   concurrent: false,
   status: 'ENABLED',
   args: '',
   remark: '',
+})
+
+/** DatePicker 绑定：ISO 字符串 ↔ dayjs */
+const runAtValue = computed<Dayjs | null>({
+  get: () => (formState.runAt ? dayjs(formState.runAt) : null),
+  set: (value: Dayjs | null) => {
+    formState.runAt = value ? value.toISOString() : ''
+  },
 })
 
 const cronPresets = computed(() => [
@@ -160,7 +175,14 @@ const rules = computed<Record<string, Rule[]>>(() => ({
   invokeTarget: [
     { required: true, message: t('scheduler.task.targetRequired'), trigger: 'change' },
   ],
-  cronExpression: [{ required: true, message: t('scheduler.task.cronRequired'), trigger: 'blur' }],
+  cronExpression:
+    formState.scheduleType === 'cron'
+      ? [{ required: true, message: t('scheduler.task.cronRequired'), trigger: 'blur' }]
+      : [],
+  runAt:
+    formState.scheduleType === 'once'
+      ? [{ required: true, message: t('scheduler.task.runAtRequired'), trigger: 'change' }]
+      : [],
   args: [
     {
       validator: (_rule, value: string, callback) => {
@@ -221,7 +243,9 @@ function resetForm(): void {
     formState.jobName = props.job.jobName
     formState.jobGroup = props.job.jobGroup
     formState.invokeTarget = props.job.invokeTarget
-    formState.cronExpression = props.job.cronExpression
+    formState.scheduleType = props.job.runAt ? 'once' : 'cron'
+    formState.cronExpression = props.job.cronExpression ?? ''
+    formState.runAt = props.job.runAt ?? ''
     formState.misfirePolicy = props.job.misfirePolicy
     formState.concurrent = props.job.concurrent
     formState.status = props.job.status
@@ -233,7 +257,9 @@ function resetForm(): void {
     formState.jobGroup = 'DEFAULT'
     formState.invokeTarget = defaultHandler?.name ?? 'operationLogRetention'
     formState.args = defaultHandler?.defaultArgs ?? '{"retentionDays": 90}'
+    formState.scheduleType = 'cron'
     formState.cronExpression = '0 0 0 * * *'
+    formState.runAt = ''
     formState.misfirePolicy = 'DEFAULT'
     formState.concurrent = false
     formState.status = 'ENABLED'
@@ -260,11 +286,10 @@ async function handleSubmit(): Promise<void> {
 
   submitting.value = true
   try {
-    const payload: CreateJobPayload | UpdateJobPayload = {
+    const basePayload = {
       jobName: formState.jobName.trim(),
       jobGroup: formState.jobGroup.trim() || 'DEFAULT',
       invokeTarget: formState.invokeTarget,
-      cronExpression: formState.cronExpression.trim(),
       misfirePolicy: formState.misfirePolicy,
       concurrent: formState.concurrent,
       status: formState.status,
@@ -272,8 +297,22 @@ async function handleSubmit(): Promise<void> {
       remark: formState.remark.trim() || undefined,
     }
 
+    let payload: UpdateJobPayload
+
+    if (formState.scheduleType === 'once') {
+      // 一次性：提交 runAt；编辑时清空后端 cron 表达式
+      payload = isEdit.value
+        ? { ...basePayload, runAt: formState.runAt || null, cronExpression: '' }
+        : { ...basePayload, runAt: formState.runAt || undefined }
+    } else {
+      // 定时：提交 cronExpression；编辑时清空后端 runAt
+      payload = isEdit.value
+        ? { ...basePayload, cronExpression: formState.cronExpression.trim(), runAt: null }
+        : { ...basePayload, cronExpression: formState.cronExpression.trim() }
+    }
+
     if (isEdit.value && props.job) {
-      await updateJob(props.job.id, payload)
+      await updateJob(props.job.id, payload as UpdateJobPayload)
       message.success(t('scheduler.task.updateSuccess'))
     } else {
       await createJob(payload as CreateJobPayload)
@@ -389,71 +428,102 @@ function getPopupContainer(triggerNode?: HTMLElement): HTMLElement {
           <span class="art-form-card__title">{{ t('scheduler.task.scheduleConfig') }}</span>
         </div>
 
-        <FormItem name="cronExpression">
-          <template #label>
-            <div class="art-form-label-row">
-              <span>{{ t('scheduler.task.cronExpression') }}</span>
-              <Button
-                type="primary"
-                ghost
-                size="small"
-                class="art-cron-trigger-btn"
-                @click="cronModalOpen = true"
-              >
-                <SettingOutlined />
-                {{ t('scheduler.task.cronConfig') }}
-              </Button>
-            </div>
-          </template>
+        <FormItem :label="t('scheduler.task.scheduleType')" class="mb-0">
+          <RadioGroup v-model:value="formState.scheduleType" class="art-radio-group">
+            <Radio value="cron">
+              <ClockCircleOutlined /> {{ t('scheduler.task.scheduleCron') }}
+            </Radio>
+            <Radio value="once">
+              <CalendarOutlined /> {{ t('scheduler.task.scheduleOnce') }}
+            </Radio>
+          </RadioGroup>
+        </FormItem>
 
-          <Input
-            v-model:value="formState.cronExpression"
-            :placeholder="t('scheduler.task.cronExpressionPlaceholder')"
-            class="font-mono"
-          >
-            <template #prefix>
-              <CalendarOutlined class="text-slate-400" />
+        <div v-if="formState.scheduleType === 'cron'" class="art-schedule-block">
+          <FormItem name="cronExpression">
+            <template #label>
+              <div class="art-form-label-row">
+                <span>{{ t('scheduler.task.cronExpression') }}</span>
+                <Button
+                  type="primary"
+                  ghost
+                  size="small"
+                  class="art-cron-trigger-btn"
+                  @click="cronModalOpen = true"
+                >
+                  <SettingOutlined />
+                  {{ t('scheduler.task.cronConfig') }}
+                </Button>
+              </div>
             </template>
-          </Input>
 
-          <!-- 快捷预设 Pills -->
-          <div class="art-presets-wrap">
-            <span class="art-presets-label">{{ t('scheduler.task.cronPresets') }}:</span>
-            <div class="art-presets-list">
-              <button
-                v-for="preset in cronPresets"
-                :key="preset.value"
-                type="button"
-                class="art-preset-pill"
-                :class="{ 'art-preset-pill--active': formState.cronExpression === preset.value }"
-                @click="handleApplyCron(preset.value)"
-              >
-                {{ preset.label }}
-              </button>
-            </div>
-          </div>
+            <Input
+              v-model:value="formState.cronExpression"
+              :placeholder="t('scheduler.task.cronExpressionPlaceholder')"
+              class="font-mono"
+            >
+              <template #prefix>
+                <CalendarOutlined class="text-slate-400" />
+              </template>
+            </Input>
 
-          <!-- 近 5 次执行时间预估面板 -->
-          <div class="art-runs-panel">
-            <div class="art-runs-panel__header">
-              <ClockCircleOutlined class="text-blue-500" />
-              <span>{{ t('scheduler.task.nextRuns') }}</span>
-            </div>
-            <div v-if="nextExecutionTimes.length > 0" class="art-runs-tags">
-              <div v-for="(timeStr, index) in nextExecutionTimes" :key="index" class="art-run-chip">
-                <span class="art-run-chip__idx">#{{ index + 1 }}</span>
-                <span class="art-run-chip__time">{{ timeStr }}</span>
+            <!-- 快捷预设 Pills -->
+            <div class="art-presets-wrap">
+              <span class="art-presets-label">{{ t('scheduler.task.cronPresets') }}:</span>
+              <div class="art-presets-list">
+                <button
+                  v-for="preset in cronPresets"
+                  :key="preset.value"
+                  type="button"
+                  class="art-preset-pill"
+                  :class="{ 'art-preset-pill--active': formState.cronExpression === preset.value }"
+                  @click="handleApplyCron(preset.value)"
+                >
+                  {{ preset.label }}
+                </button>
               </div>
             </div>
-            <Alert
-              v-else
-              type="warning"
-              show-icon
-              :message="t('scheduler.task.noUpcomingRuns')"
-              class="art-runs-alert"
+
+            <!-- 近 5 次执行时间预估面板 -->
+            <div class="art-runs-panel">
+              <div class="art-runs-panel__header">
+                <ClockCircleOutlined class="text-blue-500" />
+                <span>{{ t('scheduler.task.nextRuns') }}</span>
+              </div>
+              <div v-if="nextExecutionTimes.length > 0" class="art-runs-tags">
+                <div v-for="(timeStr, index) in nextExecutionTimes" :key="index" class="art-run-chip">
+                  <span class="art-run-chip__idx">#{{ index + 1 }}</span>
+                  <span class="art-run-chip__time">{{ timeStr }}</span>
+                </div>
+              </div>
+              <Alert
+                v-else
+                type="warning"
+                show-icon
+                :message="t('scheduler.task.noUpcomingRuns')"
+                class="art-runs-alert"
+              />
+            </div>
+          </FormItem>
+        </div>
+
+        <div v-else class="art-schedule-block">
+          <FormItem :label="t('scheduler.task.runAt')" name="runAt">
+            <DatePicker
+              v-model:value="runAtValue"
+              show-time
+              format="YYYY-MM-DD HH:mm:ss"
+              :placeholder="t('scheduler.task.runAtPlaceholder')"
+              style="width: 100%"
             />
-          </div>
-        </FormItem>
+            <Alert
+              type="info"
+              show-icon
+              :message="t('scheduler.task.onceHint')"
+              class="art-once-alert"
+            />
+          </FormItem>
+        </div>
       </div>
 
       <!-- Section 3: 执行策略与参数卡片 -->
@@ -533,7 +603,11 @@ function getPopupContainer(triggerNode?: HTMLElement): HTMLElement {
     </Form>
 
     <!-- Cron 表达式可视化生成弹窗 -->
-    <CronModal v-model:open="cronModalOpen" v-model="formState.cronExpression" />
+    <CronModal
+      v-if="formState.scheduleType === 'cron'"
+      v-model:open="cronModalOpen"
+      v-model="formState.cronExpression"
+    />
   </Modal>
 </template>
 
@@ -755,6 +829,16 @@ function getPopupContainer(triggerNode?: HTMLElement): HTMLElement {
 }
 
 .art-runs-alert {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.art-schedule-block {
+  margin-top: 4px;
+}
+
+.art-once-alert {
+  margin-top: 8px;
   padding: 4px 8px;
   font-size: 12px;
 }

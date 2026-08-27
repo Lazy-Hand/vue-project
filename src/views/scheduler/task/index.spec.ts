@@ -66,6 +66,7 @@ describe('TaskPage (index.vue)', () => {
           jobGroup: 'SYSTEM',
           invokeTarget: 'operationLogRetention',
           cronExpression: '0 0 0 * * *',
+          runAt: null,
           misfirePolicy: 'DEFAULT',
           concurrent: false,
           status: 'ENABLED',
