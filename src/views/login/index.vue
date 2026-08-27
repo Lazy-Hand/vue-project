@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -13,8 +13,14 @@ import {
   type Rule,
 } from 'antdv-next'
 
-import { bootstrapAccess, loginAuth } from '@/api/auth'
+import { bootstrapAccess, fetchCaptcha, loginAuth } from '@/api/auth'
 import { registerDynamicRoutes } from '@/router/dynamic'
+import {
+  CAPTCHA_CODE_INVALID,
+  CAPTCHA_CODE_REQUIRED,
+  type CaptchaInfo,
+} from '@/types/auth'
+import { ApiRequestError } from '@/utils/request/response'
 import AppConfigControls from '@/layouts/main/AppConfigControls.vue'
 
 const { t } = useI18n()
@@ -26,12 +32,42 @@ const loading = ref(false)
 const form = reactive({
   username: 'admin',
   password: 'Ng7-gtlIc6OWeVkhke3jOuQGSwOL',
+  captchaId: '',
+  captchaCode: '',
 })
 
 const rules = computed<Record<string, Rule[]>>(() => ({
   username: [{ required: true, message: t('login.usernameRequired'), trigger: 'blur' }],
   password: [{ required: true, message: t('login.passwordRequired'), trigger: 'blur' }],
+  captchaCode: [{ required: true, message: t('login.captchaRequired'), trigger: 'blur' }],
 }))
+
+/** 验证码是否已成功加载；加载失败（如后端未提供该接口）时隐藏输入区并跳过提交携带。 */
+const captchaVisible = ref(false)
+const captchaImage = ref('')
+const captchaLoading = ref(false)
+
+async function refreshCaptcha() {
+  captchaLoading.value = true
+  try {
+    const captcha: CaptchaInfo = await fetchCaptcha()
+    captchaImage.value = captcha.image
+    form.captchaId = captcha.captchaId
+    form.captchaCode = ''
+    captchaVisible.value = true
+  } catch {
+    captchaVisible.value = false
+    form.captchaId = ''
+  } finally {
+    captchaLoading.value = false
+  }
+}
+
+/** 验证码错误或过期：刷新图片并清空输入，引导用户重输。 */
+async function handleCaptchaMismatch() {
+  await refreshCaptcha()
+  formRef.value?.validateFields(['captchaCode']).catch(() => undefined)
+}
 
 async function handleSubmit() {
   loading.value = true
@@ -39,6 +75,7 @@ async function handleSubmit() {
     await loginAuth({
       username: form.username,
       password: form.password,
+      ...(captchaVisible.value ? { captchaId: form.captchaId, captchaCode: form.captchaCode } : {}),
     })
     await bootstrapAccess()
     registerDynamicRoutes()
@@ -46,12 +83,21 @@ async function handleSubmit() {
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
     await router.replace(redirect || '/')
   } catch (error) {
+    if (error instanceof ApiRequestError) {
+      if (error.code === CAPTCHA_CODE_REQUIRED || error.code === CAPTCHA_CODE_INVALID) {
+        await handleCaptchaMismatch()
+      }
+    }
     const errorMessage = error instanceof Error ? error.message : t('login.failed')
     message.error(errorMessage)
   } finally {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  void refreshCaptcha()
+})
 </script>
 
 <template>
@@ -79,11 +125,32 @@ async function handleSubmit() {
             @keyup.enter="handleSubmit"
           />
         </FormItem>
+        <FormItem v-if="captchaVisible" name="captchaCode" class="captcha-item">
+          <div class="captcha-row">
+            <Input
+              v-model:value="form.captchaCode"
+              :placeholder="t('login.captcha')"
+              autocomplete="off"
+              @keyup.enter="handleSubmit"
+            />
+            <Button
+              class="captcha-image"
+              :loading="captchaLoading"
+              :title="t('login.captchaRefresh')"
+              @click="refreshCaptcha"
+            >
+              <img v-if="captchaImage" :src="captchaImage" alt="captcha" />
+            </Button>
+          </div>
+        </FormItem>
         <FormItem>
           <Button type="primary" html-type="submit" class="login-submit" :loading="loading">
             {{ t('login.submit') }}
           </Button>
         </FormItem>
+        <div class="login-footer">
+          <RouterLink class="login-link" to="/forgot">{{ t('login.forgotPassword') }}</RouterLink>
+        </div>
       </Form>
     </div>
   </div>
@@ -132,5 +199,40 @@ async function handleSubmit() {
 
 .login-submit {
   width: 100%;
+}
+
+.captcha-item {
+  margin-bottom: 16px;
+}
+
+.captcha-row {
+  display: flex;
+  gap: 8px;
+}
+
+.captcha-image {
+  flex: 0 0 120px;
+  height: 32px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.captcha-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.login-footer {
+  margin-top: 4px;
+  text-align: right;
+}
+
+.login-link {
+  color: #64748b;
+  font-size: 13px;
 }
 </style>

@@ -1,8 +1,13 @@
-import { request } from '@/utils/request'
+import { blobRequest, request } from '@/utils/request'
 import type { PaginatedResult, PaginationQuery } from '@/types/common'
 import type { Post } from '@/types/post'
 import type { Role } from '@/types/role'
-import type { CreateUserPayload, ManagedUser, UpdateUserPayload } from '@/types/user'
+import type {
+  CreateUserPayload,
+  ManagedUser,
+  UpdateUserPayload,
+  UserImportResult,
+} from '@/types/user'
 
 export function fetchUserList(query: PaginationQuery = {}): Promise<PaginatedResult<ManagedUser>> {
   return request.Get<PaginatedResult<ManagedUser>>('/user/list', {
@@ -12,6 +17,18 @@ export function fetchUserList(query: PaginationQuery = {}): Promise<PaginatedRes
     },
     cacheFor: 0,
   })
+}
+
+/** 下载用户导出文件（xlsx，受当前数据权限过滤）。 */
+export function exportUsersBlob(): Promise<Blob> {
+  return blobRequest.Get<Blob>('/user/export', { cacheFor: 0 })
+}
+
+/** 上传 xlsx 导入用户，返回逐行处理结果。 */
+export function importUsersFile(file: File): Promise<UserImportResult> {
+  const form = new FormData()
+  form.append('file', file)
+  return request.Post<UserImportResult>('/user/import', form, { cacheFor: 0 })
 }
 
 /** 用户选择器选项（启用用户，昵称优先展示） */

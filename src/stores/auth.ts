@@ -39,6 +39,10 @@ export const useAuthStore = defineStore(
       accessReady.value = true
     }
 
+    function setUser(nextUser: AuthUser): void {
+      user.value = nextUser
+    }
+
     function setAccountSets(nextAccountSets: AccountSetSummary[]): void {
       accountSets.value = nextAccountSets
 
@@ -102,6 +106,7 @@ export const useAuthStore = defineStore(
       currentAccountSetId,
       setSession,
       setAccess,
+      setUser,
       setAccountSets,
       setCurrentAccountSetId,
       clearAccess,

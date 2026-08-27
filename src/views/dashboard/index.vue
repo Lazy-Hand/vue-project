@@ -29,10 +29,26 @@ import {
   UserOutlined,
 } from '@antdv-next/icons'
 
-import { fetchDashboardOverview } from '@/api/dashboard'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { LineChart } from 'echarts/charts'
+import {
+  GridComponent,
+  LegendComponent,
+  TooltipComponent,
+} from 'echarts/components'
+import VChart from 'vue-echarts'
+
+import { fetchDashboardOverview, fetchDashboardTrends } from '@/api/dashboard'
 import { usePermission } from '@/composables/usePermission'
-import type { DashboardOverview } from '@/types/dashboard'
+import type {
+  DashboardDayTrend,
+  DashboardOverview,
+  DashboardTrends,
+} from '@/types/dashboard'
 import { ApiRequestError } from '@/utils/request'
+
+use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -43,6 +59,10 @@ const canQuery = computed(() => hasPermission('system:dashboard:query'))
 const overview = ref<DashboardOverview | null>(null)
 const loading = ref(false)
 const lastUpdatedTime = ref<string>('')
+
+const trends = ref<DashboardTrends | null>(null)
+const trendsLoading = ref(false)
+const trendsDays = ref(7)
 const autoRefreshInterval = ref<number>(0) // 0 = off, 30 = 30s, 60 = 60s
 let timer: ReturnType<typeof setInterval> | null = null
 
@@ -106,6 +126,87 @@ async function loadOverview(): Promise<void> {
   }
 }
 
+async function loadTrends(days: number): Promise<void> {
+  if (!canQuery.value) return
+  trendsLoading.value = true
+  try {
+    trends.value = await fetchDashboardTrends(days)
+  } catch (error) {
+    message.error(errorMessage(error))
+  } finally {
+    trendsLoading.value = false
+  }
+}
+
+function handleTrendsDaysChange(val: string | number): void {
+  const days = Number(val)
+  trendsDays.value = days
+  void loadTrends(days)
+}
+
+const trendChartOption = computed(() => {
+  const days = trends.value?.days ?? []
+  const seriesColor = {
+    operations: '#1677ff',
+    failedOperations: '#f5222d',
+    newUsers: '#13c2c2',
+    logins: '#722ed1',
+  } as const
+
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: {
+      data: [
+        t('dashboard.trendOperations'),
+        t('dashboard.trendFailedOperations'),
+        t('dashboard.trendNewUsers'),
+        t('dashboard.trendLogins'),
+      ],
+    },
+    grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: days.map((day: DashboardDayTrend) => day.date.slice(5)),
+    },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [
+      {
+        name: t('dashboard.trendOperations'),
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        itemStyle: { color: seriesColor.operations },
+        data: days.map((day: DashboardDayTrend) => day.operations),
+      },
+      {
+        name: t('dashboard.trendFailedOperations'),
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        itemStyle: { color: seriesColor.failedOperations },
+        data: days.map((day: DashboardDayTrend) => day.failedOperations),
+      },
+      {
+        name: t('dashboard.trendNewUsers'),
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        itemStyle: { color: seriesColor.newUsers },
+        data: days.map((day: DashboardDayTrend) => day.newUsers),
+      },
+      {
+        name: t('dashboard.trendLogins'),
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        itemStyle: { color: seriesColor.logins },
+        data: days.map((day: DashboardDayTrend) => day.logins),
+      },
+    ],
+  }
+})
+
 function handleAutoRefreshChange(val: string | number): void {
   const seconds = Number(val)
   autoRefreshInterval.value = seconds
@@ -126,6 +227,7 @@ function navigateTo(path: string): void {
 
 onMounted(() => {
   void loadOverview()
+  void loadTrends(trendsDays.value)
 })
 
 onBeforeUnmount(() => {
@@ -316,6 +418,35 @@ onBeforeUnmount(() => {
         </div>
       </Card>
     </div>
+
+    <!-- 业务趋势 -->
+    <Card variant="borderless" class="panel-card dashboard-trend-card">
+      <template #title>
+        <div class="panel-card-title">
+          <AuditOutlined class="text-blue-500" />
+          <span>{{ t('dashboard.trendTitle') }}</span>
+        </div>
+      </template>
+      <template #extra>
+        <Segmented
+          :value="trendsDays"
+          :options="[
+            { label: t('dashboard.trendDays7'), value: 7 },
+            { label: t('dashboard.trendDays30'), value: 30 },
+            { label: t('dashboard.trendDays90'), value: 90 },
+          ]"
+          @change="handleTrendsDaysChange"
+        />
+      </template>
+      <VChart
+        v-if="trends"
+        :option="trendChartOption"
+        :loading="trendsLoading"
+        autoresize
+        class="trend-chart"
+      />
+      <div v-else class="trend-empty">{{ t('dashboard.trendEmpty') }}</div>
+    </Card>
 
     <!-- 运营质量、吞吐分析与日志排查区 -->
     <Row :gutter="[20, 20]" class="dashboard-mid-row">
@@ -935,5 +1066,23 @@ onBeforeUnmount(() => {
 .resource-card:hover .res-arrow {
   color: #2563eb;
   transform: translateX(4px);
+}
+
+.dashboard-trend-card {
+  margin-bottom: 20px;
+}
+
+.trend-chart {
+  height: 320px;
+  width: 100%;
+}
+
+.trend-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #94a3b8;
+  font-size: 14px;
 }
 </style>

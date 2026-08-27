@@ -2,10 +2,11 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Avatar, Button, Modal, message } from 'antdv-next'
-import { UserOutlined } from '@antdv-next/icons'
+import { DownloadOutlined, UploadOutlined, UserOutlined } from '@antdv-next/icons'
 
 import { fetchDeptTree } from '@/api/dept'
 import { bindFileBusiness, buildFileUrl } from '@/api/file'
+import { downloadImportTemplateBlob } from '@/api/import-template'
 import { fetchPosts } from '@/api/post'
 import { fetchRoles } from '@/api/role'
 import {
@@ -13,12 +14,15 @@ import {
   assignUserRoles,
   createUser,
   deleteUser,
+  exportUsersBlob,
   fetchUserList,
   fetchUserPosts,
   fetchUserRoles,
+  importUsersFile,
   resetUserPassword,
   updateUser,
 } from '@/api/user'
+import ImportDialog from '@/components/ImportDialog/index.vue'
 import ProTable from '@/components/ProTable/index.vue'
 import ProTableActions from '@/components/ProTableActions/index.vue'
 import { usePermission } from '@/composables/usePermission'
@@ -65,6 +69,7 @@ const rolesUser = ref<ManagedUser | null>(null)
 const rolesCheckedIds = ref<string[]>([])
 const rolesDialogRef = ref<InstanceType<typeof UserRolesDialog> | null>(null)
 
+const canQuery = computed(() => hasPermission('system:user:query'))
 const canCreate = computed(() => hasPermission('system:user:create'))
 const canUpdate = computed(() => hasPermission('system:user:update'))
 const canDelete = computed(() => hasPermission('system:user:delete'))
@@ -218,6 +223,30 @@ async function openCreate(): Promise<void> {
   formVisible.value = true
 }
 
+async function handleExportUsers(): Promise<void> {
+  try {
+    const blob = await exportUsersBlob()
+    const objectUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = objectUrl
+    anchor.download = `users-${new Date().toISOString().slice(0, 10)}.xlsx`
+    anchor.click()
+    URL.revokeObjectURL(objectUrl)
+  } catch (error) {
+    message.error(errorMessage(error))
+  }
+}
+
+const importVisible = ref(false)
+
+function openImport(): void {
+  importVisible.value = true
+}
+
+async function handleImportSuccess(): Promise<void> {
+  await tableRef.value?.reload()
+}
+
 async function openEdit(row: ManagedUser): Promise<void> {
   await Promise.all([ensureDeptTree(), ensurePosts()])
   formMode.value = 'edit'
@@ -363,6 +392,12 @@ async function handleDelete(row: ManagedUser): Promise<void> {
       @request-error="handleRequestError"
     >
       <template #toolbar-actions>
+        <Button v-if="canQuery" @click="handleExportUsers">
+          <DownloadOutlined /> {{ t('user.export') }}
+        </Button>
+        <Button v-if="canCreate" @click="openImport">
+          <UploadOutlined /> {{ t('user.import') }}
+        </Button>
         <Button v-if="canCreate" type="primary" @click="openCreate">
           {{ t('user.create') }}
         </Button>
@@ -404,6 +439,16 @@ async function handleDelete(row: ManagedUser): Promise<void> {
       :roles="roles"
       :checked-ids="rolesCheckedIds"
       @submit="handleRolesSubmit"
+    />
+
+    <ImportDialog
+      v-model="importVisible"
+      :title="t('user.importTitle')"
+      :tip="t('user.importTip')"
+      :template-file-name="`user-import-template-${new Date().toISOString().slice(0, 10)}.xlsx`"
+      :download-template="() => downloadImportTemplateBlob('user')"
+      :on-import="importUsersFile"
+      @success="handleImportSuccess"
     />
   </div>
 </template>

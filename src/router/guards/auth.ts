@@ -6,6 +6,7 @@ import { pinia } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 
 export const LOGIN_PATH = '/login'
+export const FORGOT_PATH = '/forgot'
 export const HOME_PATH = '/'
 
 type AuthStore = ReturnType<typeof useAuthStore>
@@ -60,7 +61,7 @@ export function createAuthGuard(
     const authStore = getAuthStore()
     const isAuthenticated = !authStore.isAccessTokenExpired()
 
-    if (to.path === LOGIN_PATH) {
+    if (to.path === LOGIN_PATH || to.path === FORGOT_PATH) {
       return isAuthenticated ? { path: HOME_PATH, replace: true } : true
     }
 

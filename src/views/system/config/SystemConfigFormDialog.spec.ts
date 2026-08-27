@@ -75,6 +75,7 @@ describe('SystemConfigFormDialog', () => {
           name: 'Site title',
           value: 'Welcome',
           description: 'Shown on the home page',
+          group: 'general',
           enabled: true,
         },
       ],
@@ -88,6 +89,7 @@ describe('SystemConfigFormDialog', () => {
       name: 'Site title',
       value: null,
       description: 'Shown on the home page',
+      group: 'site',
       enabled: false,
       createdAt: '2026-08-01T00:00:00.000Z',
       updatedAt: '2026-08-01T00:00:00.000Z',
@@ -107,6 +109,7 @@ describe('SystemConfigFormDialog', () => {
       name: 'Updated title',
       value: null,
       description: null,
+      group: 'site',
       enabled: false,
     })
     expect(payload).not.toHaveProperty('key')

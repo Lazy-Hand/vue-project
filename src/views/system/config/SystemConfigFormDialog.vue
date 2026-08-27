@@ -41,6 +41,7 @@ interface FormModel {
   name: string
   value: string
   description: string
+  group: string
   enabled: boolean
 }
 
@@ -49,6 +50,7 @@ const form = reactive<FormModel>({
   name: '',
   value: '',
   description: '',
+  group: 'general',
   enabled: true,
 })
 
@@ -98,6 +100,7 @@ function resetForm(): void {
   form.name = ''
   form.value = ''
   form.description = ''
+  form.group = 'general'
   form.enabled = true
 }
 
@@ -106,6 +109,7 @@ function fillFromEditing(config: SystemConfig): void {
   form.name = config.name
   form.value = config.value ?? ''
   form.description = config.description ?? ''
+  form.group = config.group
   form.enabled = config.enabled
 }
 
@@ -126,6 +130,7 @@ function buildPayload(): SystemConfigPayload | UpdateSystemConfigPayload {
   const name = form.name.trim()
   const value = form.value.trim() ? form.value : null
   const description = form.description.trim() || null
+  const group = form.group.trim() || 'general'
 
   if (props.mode === 'create') {
     return {
@@ -133,6 +138,7 @@ function buildPayload(): SystemConfigPayload | UpdateSystemConfigPayload {
       name,
       value,
       description,
+      group,
       enabled: form.enabled,
     }
   }
@@ -141,6 +147,7 @@ function buildPayload(): SystemConfigPayload | UpdateSystemConfigPayload {
     name,
     value,
     description,
+    group,
     enabled: form.enabled,
   }
 }
@@ -202,6 +209,15 @@ defineExpose({
           v-model:value="form.value"
           :rows="3"
           :placeholder="t('config.valuePlaceholder')"
+        />
+      </FormItem>
+
+      <FormItem :label="t('config.group')" name="group">
+        <Input
+          v-model:value="form.group"
+          :maxlength="64"
+          show-count
+          :placeholder="t('config.groupPlaceholder')"
         />
       </FormItem>
 

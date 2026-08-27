@@ -4,6 +4,7 @@ export interface SystemConfig {
   name: string
   value: string | null
   description: string | null
+  group: string
   enabled: boolean
   createdAt: string
   updatedAt: string
@@ -14,6 +15,7 @@ export interface SystemConfigPayload {
   name: string
   value?: string | null
   description?: string | null
+  group?: string
   enabled?: boolean
 }
 

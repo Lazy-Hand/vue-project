@@ -62,11 +62,23 @@ const searchFields = computed<ProTableSearchField[]>(() => [
     placeholder: t('config.searchPlaceholder'),
     defaultValue: '',
   },
+  {
+    prop: 'group',
+    label: t('config.group'),
+    type: 'select',
+    placeholder: t('config.groupFilterPlaceholder'),
+    clearable: true,
+    options: [
+      { label: 'site', value: 'site' },
+      { label: 'general', value: 'general' },
+    ],
+  },
 ])
 
 const columns = computed<ProTableColumn<SystemConfig>[]>(() => [
   { prop: 'name', label: t('config.name'), minWidth: 160, showOverflowTooltip: true },
   { prop: 'key', label: t('config.key'), minWidth: 180, showOverflowTooltip: true },
+  { prop: 'group', label: t('config.group'), width: 110 },
   { prop: 'value', label: t('config.value'), minWidth: 180, showOverflowTooltip: true },
   {
     prop: 'description',
@@ -129,6 +141,7 @@ async function requestConfigs(params: ProTableRequestParams) {
     page: params.page,
     pageSize: params.pageSize,
     keyword: String(params.keyword ?? '').trim() || undefined,
+    group: params.group ? String(params.group) : undefined,
   })
 }
 

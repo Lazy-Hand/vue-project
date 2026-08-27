@@ -18,3 +18,20 @@ export interface DashboardOverview {
   /** 统计周期结束时间（UTC，不包含） */
   periodEnd: string
 }
+
+export interface DashboardDayTrend {
+  /** 日期（UTC，YYYY-MM-DD） */
+  date: string
+  /** 当日新增用户数 */
+  newUsers: number
+  /** 当日操作日志数 */
+  operations: number
+  /** 当日失败操作数 */
+  failedOperations: number
+  /** 当日登录次数 */
+  logins: number
+}
+
+export interface DashboardTrends {
+  days: DashboardDayTrend[]
+}

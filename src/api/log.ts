@@ -1,4 +1,4 @@
-import { request } from '@/utils/request'
+import { blobRequest, request } from '@/utils/request'
 import type { PaginatedResult } from '@/types/common'
 import type {
   CleanLoginLogResult,
@@ -17,13 +17,8 @@ function appendQueryParam(
   if (value !== undefined && value !== '') params[key] = value
 }
 
-export function fetchOperationLogList(
-  query: OperationLogQuery = {},
-): Promise<PaginatedResult<OperationLog>> {
-  const params: Record<string, string | number | boolean> = {
-    page: query.page ?? 1,
-    pageSize: query.pageSize ?? 10,
-  }
+function buildOperationLogParams(query: OperationLogQuery): Record<string, string | number | boolean> {
+  const params: Record<string, string | number | boolean> = {}
   appendQueryParam(params, 'module', query.module)
   appendQueryParam(params, 'action', query.action)
   appendQueryParam(params, 'success', query.success)
@@ -31,9 +26,40 @@ export function fetchOperationLogList(
   appendQueryParam(params, 'startTime', query.startTime)
   appendQueryParam(params, 'endTime', query.endTime)
   appendQueryParam(params, 'userId', query.userId)
+  return params
+}
 
+function buildLoginLogParams(query: LoginLogQuery): Record<string, string | number | boolean> {
+  const params: Record<string, string | number | boolean> = {}
+  appendQueryParam(params, 'username', query.username)
+  appendQueryParam(params, 'loginType', query.loginType)
+  appendQueryParam(params, 'success', query.success)
+  appendQueryParam(params, 'ip', query.ip)
+  appendQueryParam(params, 'startTime', query.startTime)
+  appendQueryParam(params, 'endTime', query.endTime)
+  appendQueryParam(params, 'userId', query.userId)
+  return params
+}
+
+export function fetchOperationLogList(
+  query: OperationLogQuery = {},
+): Promise<PaginatedResult<OperationLog>> {
   return request.Get<PaginatedResult<OperationLog>>('/operation-log/list', {
-    params,
+    params: {
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 10,
+      ...buildOperationLogParams(query),
+    },
+    cacheFor: 0,
+  })
+}
+
+/** 按当前过滤条件导出操作日志（xlsx）。 */
+export function exportOperationLogsBlob(
+  query: OperationLogQuery = {},
+): Promise<Blob> {
+  return blobRequest.Get<Blob>('/operation-log/export', {
+    params: buildOperationLogParams(query),
     cacheFor: 0,
   })
 }
@@ -48,20 +74,20 @@ export function cleanOperationLogs(before?: string): Promise<CleanOperationLogRe
 }
 
 export function fetchLoginLogList(query: LoginLogQuery = {}): Promise<PaginatedResult<LoginLog>> {
-  const params: Record<string, string | number | boolean> = {
-    page: query.page ?? 1,
-    pageSize: query.pageSize ?? 10,
-  }
-  appendQueryParam(params, 'username', query.username)
-  appendQueryParam(params, 'loginType', query.loginType)
-  appendQueryParam(params, 'success', query.success)
-  appendQueryParam(params, 'ip', query.ip)
-  appendQueryParam(params, 'startTime', query.startTime)
-  appendQueryParam(params, 'endTime', query.endTime)
-  appendQueryParam(params, 'userId', query.userId)
-
   return request.Get<PaginatedResult<LoginLog>>('/login-log/list', {
-    params,
+    params: {
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 10,
+      ...buildLoginLogParams(query),
+    },
+    cacheFor: 0,
+  })
+}
+
+/** 按当前过滤条件导出登录日志（xlsx）。 */
+export function exportLoginLogsBlob(query: LoginLogQuery = {}): Promise<Blob> {
+  return blobRequest.Get<Blob>('/login-log/export', {
+    params: buildLoginLogParams(query),
     cacheFor: 0,
   })
 }

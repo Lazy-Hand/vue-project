@@ -17,4 +17,19 @@ describe('static routes', () => {
     expect(route.name).toBe('login')
     expect(route.meta.requiresAuth).toBe(false)
   })
+
+  it('registers forgot-password as a public route', () => {
+    const route = router.resolve('/forgot')
+
+    expect(route.name).toBe('forgot')
+    expect(route.meta.requiresAuth).toBe(false)
+  })
+
+  it('registers profile under the authenticated layout', () => {
+    const route = router.resolve('/profile')
+
+    expect(route.name).toBe('profile')
+    expect(route.matched.some((item) => item.name === 'layout')).toBe(true)
+    expect(route.meta.requiresAuth).not.toBe(false)
+  })
 })

@@ -12,6 +12,18 @@ export interface ManagedUser {
   updatedAt?: string
 }
 
+export interface UserImportError {
+  row: number
+  message: string
+}
+
+export interface UserImportResult {
+  total: number
+  success: number
+  failed: number
+  errors: UserImportError[]
+}
+
 export interface CreateUserPayload {
   username: string
   password: string

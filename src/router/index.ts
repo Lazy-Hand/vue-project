@@ -20,12 +20,28 @@ const router = createRouter({
             title: '首页',
           },
         },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: () => import('@/views/profile/index.vue'),
+          meta: {
+            title: '个人信息',
+          },
+        },
       ],
     },
     {
       path: '/login',
       name: 'login',
       component: () => import('@/views/login/index.vue'),
+      meta: {
+        requiresAuth: false,
+      },
+    },
+    {
+      path: '/forgot',
+      name: 'forgot',
+      component: () => import('@/views/forgot/index.vue'),
       meta: {
         requiresAuth: false,
       },

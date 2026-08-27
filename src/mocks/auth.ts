@@ -192,6 +192,19 @@ function requestLocale(
 }
 
 export default defineMock({
+  '[GET]/auth/captcha': () =>
+    success({
+      captchaId: `mock-captcha-${Date.now()}`,
+      // 占位 SVG，仅用于 mock 环境展示
+      image:
+        'data:image/svg+xml;base64,' +
+        btoa(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"><rect width="120" height="40" fill="#eef2f7"/><text x="16" y="26" font-size="18" fill="#334155">MOCK</text></svg>',
+        ),
+      expiresIn: 300,
+    }),
+  '[POST]/auth/forgot-password': () => success({ success: true }),
+  '[POST]/auth/reset-password': () => success({ success: true }),
   '[POST]/auth/login': ({ data }) => {
     const credentials = data as Partial<LoginParams>
 

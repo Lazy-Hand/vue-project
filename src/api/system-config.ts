@@ -7,13 +7,14 @@ import type {
 } from '@/types/system-config'
 
 export function fetchSystemConfigList(
-  query: PaginationQuery & { keyword?: string } = {},
+  query: PaginationQuery & { keyword?: string; group?: string } = {},
 ): Promise<PaginatedResult<SystemConfig>> {
   return request.Get<PaginatedResult<SystemConfig>>('/system-config/list', {
     params: {
       page: query.page ?? 1,
       pageSize: query.pageSize ?? 10,
       ...(query.keyword ? { keyword: query.keyword } : {}),
+      ...(query.group ? { group: query.group } : {}),
     },
     cacheFor: 0,
   })

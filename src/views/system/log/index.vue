@@ -12,11 +12,13 @@ import {
   Tag,
   message,
 } from 'antdv-next'
-import { DeleteOutlined } from '@antdv-next/icons'
+import { DeleteOutlined, DownloadOutlined } from '@antdv-next/icons'
 
 import {
   cleanLoginLogs,
   cleanOperationLogs,
+  exportLoginLogsBlob,
+  exportOperationLogsBlob,
   fetchLoginLogList,
   fetchOperationLogList,
 } from '@/api/log'
@@ -394,6 +396,39 @@ async function handleCleanOperation(): Promise<void> {
   }
 }
 
+function triggerDownload(blob: Blob, filename: string): void {
+  const objectUrl = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(objectUrl)
+}
+
+async function handleExportOperation(): Promise<void> {
+  try {
+    const blob = await exportOperationLogsBlob()
+    triggerDownload(
+      blob,
+      `operation-log-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    )
+  } catch (error) {
+    message.error(errorMessage(error))
+  }
+}
+
+async function handleExportLogin(): Promise<void> {
+  try {
+    const blob = await exportLoginLogsBlob()
+    triggerDownload(
+      blob,
+      `login-log-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    )
+  } catch (error) {
+    message.error(errorMessage(error))
+  }
+}
+
 async function handleCleanLogin(): Promise<void> {
   const confirmed = await new Promise<boolean>((resolve) => {
     Modal.confirm({
@@ -460,6 +495,10 @@ function handleDateRangeChange(
           @request-error="handleRequestError"
         >
           <template #toolbar-actions>
+            <Button v-if="canQueryOperation" @click="handleExportOperation">
+              <DownloadOutlined />
+              {{ t('log.export') }}
+            </Button>
             <Button v-if="canDeleteOperation" danger @click="handleCleanOperation">
               <DeleteOutlined />
               {{ t('log.clean') }}
@@ -504,6 +543,10 @@ function handleDateRangeChange(
           @request-error="handleRequestError"
         >
           <template #toolbar-actions>
+            <Button v-if="canQueryLogin" @click="handleExportLogin">
+              <DownloadOutlined />
+              {{ t('log.export') }}
+            </Button>
             <Button v-if="canDeleteLogin" danger @click="handleCleanLogin">
               <DeleteOutlined />
               {{ t('log.clean') }}

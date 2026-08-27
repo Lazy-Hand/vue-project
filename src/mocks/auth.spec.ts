@@ -74,6 +74,22 @@ describe('auth mock', () => {
     })
   })
 
+  it('returns captcha, forgot-password and reset-password payloads', async () => {
+    const alova = createMockAlova()
+
+    await expect(alova.Get('/auth/captcha')).resolves.toMatchObject({
+      captchaId: expect.stringContaining('mock-captcha-'),
+      image: expect.stringContaining('data:image/svg+xml;base64,'),
+      expiresIn: 300,
+    })
+    await expect(
+      alova.Post('/auth/forgot-password', { usernameOrEmail: 'admin' }),
+    ).resolves.toEqual({ success: true })
+    await expect(
+      alova.Post('/auth/reset-password', { token: 't', newPassword: 'NewPass@123' }),
+    ).resolves.toEqual({ success: true })
+  })
+
   it('falls back to fetch when no mock route matches', async () => {
     const fetchMock = vi.fn<typeof fetch>(
       async () =>
