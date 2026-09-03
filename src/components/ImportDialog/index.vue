@@ -81,7 +81,8 @@ async function handleDownloadTemplate(): Promise<void> {
     anchor.click()
     URL.revokeObjectURL(objectUrl)
   } catch (error) {
-    const errorMessage = error instanceof ApiRequestError ? error.message : t('import.templateDownloadFailed')
+    const errorMessage =
+      error instanceof ApiRequestError ? error.message : t('import.templateDownloadFailed')
     message.error(errorMessage)
   } finally {
     templateLoading.value = false
@@ -105,8 +106,7 @@ const handleSelectFile: UploadProps['beforeUpload'] = async (file) => {
     }
     emit('success', importResult)
   } catch (error) {
-    const errorMessage =
-      error instanceof ApiRequestError ? error.message : t('import.importFailed')
+    const errorMessage = error instanceof ApiRequestError ? error.message : t('import.importFailed')
     message.error(errorMessage)
   } finally {
     importing.value = false
@@ -141,7 +141,11 @@ function handleClose(): void {
         "
       />
       <div v-if="result.errors.length > 0" class="import-errors">
-        <div v-for="item in result.errors" :key="`${item.row}-${item.message}`" class="import-error-row">
+        <div
+          v-for="item in result.errors"
+          :key="`${item.row}-${item.message}`"
+          class="import-error-row"
+        >
           <Tag color="red">#{{ item.row }}</Tag>
           <span>{{ item.message }}</span>
         </div>

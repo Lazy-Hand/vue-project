@@ -1852,4 +1852,79 @@ defineExpose({
     justify-content: flex-start;
   }
 }
+
+html.dark {
+  .pro-table__search-card {
+    background: #1c1d22 !important;
+    border: 1px solid #2a2c33;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.35);
+  }
+
+  .pro-table__body-card {
+    background: #1c1d22 !important;
+    border: 1px solid #2a2c33;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.35);
+  }
+
+  .pro-table:fullscreen {
+    background: #16171a;
+  }
+
+  .pro-table__toolbar {
+    border-bottom: 1px solid #2a2c33;
+  }
+
+  .pro-table__pagination {
+    border-top: 1px solid #2a2c33;
+  }
+
+  .pro-table__tool-btn {
+    color: #94a3b8;
+
+    &:hover {
+      color: #ffffff;
+      background: #262830;
+    }
+  }
+
+  .pro-table__table :deep(.ant-table) {
+    background-color: #1c1d22 !important;
+    color: #f1f5f9 !important;
+  }
+
+  .pro-table__table :deep(.ant-table-thead > tr > th) {
+    background: #22242a !important;
+    color: #cbd5e1 !important;
+    border-bottom: 1px solid #2e3038 !important;
+  }
+
+  .pro-table__table :deep(.ant-table-tbody > tr > td) {
+    background-color: #1c1d22;
+    border-bottom: 1px solid #262830 !important;
+    color: #f1f5f9;
+  }
+
+  .pro-table__table :deep(.ant-table-tbody > tr:hover > td),
+  .pro-table__table :deep(.ant-table-tbody > tr.ant-table-row-hover > td) {
+    background-color: #262830 !important;
+  }
+
+  .pro-table__table--stripe :deep(.ant-table-tbody > tr:nth-child(even) > td) {
+    background: #202228 !important;
+  }
+
+  .pro-table__column-drag-handle {
+    background: #22242a;
+    color: #94a3b8;
+
+    &:hover {
+      background: #262830;
+      color: #ffffff;
+    }
+  }
+
+  .pro-table__column-setting-option:hover {
+    background: #262830;
+  }
+}
 </style>

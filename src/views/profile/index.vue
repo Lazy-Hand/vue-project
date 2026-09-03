@@ -134,7 +134,10 @@ async function handleChangePassword() {
         @finish="handleSaveProfile"
       >
         <FormItem name="nickname" :label="t('profile.nickname')">
-          <Input v-model:value="profileForm.nickname" :placeholder="t('profile.nicknamePlaceholder')" />
+          <Input
+            v-model:value="profileForm.nickname"
+            :placeholder="t('profile.nicknamePlaceholder')"
+          />
         </FormItem>
         <FormItem name="email" :label="t('profile.email')">
           <Input v-model:value="profileForm.email" :placeholder="t('profile.emailPlaceholder')" />

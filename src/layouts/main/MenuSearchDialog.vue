@@ -415,4 +415,60 @@ onBeforeUnmount(() => {
 .tip-text {
   font-size: 12px;
 }
+
+html.dark {
+  .menu-search-dialog {
+    background: #1c1d22;
+    color: #f1f5f9;
+  }
+
+  .menu-search-header {
+    border-bottom: 1px solid #2a2c33;
+  }
+
+  .shortcut-badge {
+    background: #22242a;
+    border-color: #2e3038;
+    color: #94a3b8;
+  }
+
+  .menu-search-item {
+    color: #e2e8f0;
+
+    &:hover {
+      background-color: #262830;
+    }
+
+    &.is-active {
+      background-color: #2a2520;
+      color: #f97316;
+
+      .menu-item-icon {
+        color: #f97316;
+        background-color: #3b2414;
+      }
+
+      .menu-item-enter {
+        color: #f97316;
+      }
+    }
+  }
+
+  .menu-item-icon {
+    background-color: #22242a;
+    color: #94a3b8;
+  }
+
+  .menu-search-footer {
+    background-color: #18191e;
+    border-top: 1px solid #2a2c33;
+    color: #64748b;
+  }
+
+  .tip-kbd {
+    background: #22242a;
+    border-color: #2e3038;
+    color: #94a3b8;
+  }
+}
 </style>

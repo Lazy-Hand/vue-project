@@ -43,10 +43,7 @@ export function updateImportTemplate(
 }
 
 /** 替换模板文件（不改变版本号，替换时后端同样校验表头）。 */
-export function replaceImportTemplateFile(
-  id: string,
-  file: File,
-): Promise<ImportTemplate> {
+export function replaceImportTemplateFile(id: string, file: File): Promise<ImportTemplate> {
   const form = new FormData()
   form.append('file', file)
   return request.Put<ImportTemplate>(`/import-template/${id}/file`, form, {
@@ -58,21 +55,15 @@ export function deleteImportTemplate(id: string): Promise<void> {
   return request.Delete<void>(`/import-template/${id}`, {}, { cacheFor: 0 })
 }
 
-export function fetchActiveImportTemplate(
-  businessKey: string,
-): Promise<ImportTemplate> {
-  return request.Get<ImportTemplate>(
-    `/import-template/${encodeURIComponent(businessKey)}/active`,
-    { cacheFor: 0 },
-  )
+export function fetchActiveImportTemplate(businessKey: string): Promise<ImportTemplate> {
+  return request.Get<ImportTemplate>(`/import-template/${encodeURIComponent(businessKey)}/active`, {
+    cacheFor: 0,
+  })
 }
 
 /** 下载业务当前启用模板（xlsx）。 */
-export function downloadImportTemplateBlob(
-  businessKey: string,
-): Promise<Blob> {
-  return blobRequest.Get<Blob>(
-    `/import-template/${encodeURIComponent(businessKey)}/download`,
-    { cacheFor: 0 },
-  )
+export function downloadImportTemplateBlob(businessKey: string): Promise<Blob> {
+  return blobRequest.Get<Blob>(`/import-template/${encodeURIComponent(businessKey)}/download`, {
+    cacheFor: 0,
+  })
 }

@@ -442,31 +442,26 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="definition-page h-full flex flex-col bg-slate-50/50">
+  <div class="definition-page h-full flex flex-col">
     <!-- 顶部操作区 -->
-    <div class="bg-white border-b border-slate-200 px-6 py-4">
+    <div class="definition-header">
       <div class="flex items-center justify-between gap-4 mb-3">
         <div>
-          <h1 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <NodeIndexOutlined class="text-blue-600 text-xl" />
+          <h1 class="definition-title">
+            <NodeIndexOutlined class="text-blue-500 text-xl" />
             {{ t('approval.definition.title') }}
           </h1>
-          <p class="text-xs text-slate-400 mt-0.5">
+          <p class="definition-subtitle">
             {{ t('approval.definition.subtitle') }}
           </p>
         </div>
 
         <div class="flex items-center gap-2">
           <!-- 视图切换 -->
-          <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
+          <div class="view-mode-toggle">
             <button
               type="button"
-              :class="[
-                'px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer',
-                viewMode === 'card'
-                  ? 'bg-white text-blue-600 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-700',
-              ]"
+              :class="['view-mode-btn', viewMode === 'card' && 'is-active']"
               @click="viewMode = 'card'"
             >
               <AppstoreOutlined />
@@ -474,12 +469,7 @@ onMounted(() => {
             </button>
             <button
               type="button"
-              :class="[
-                'px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer',
-                viewMode === 'table'
-                  ? 'bg-white text-blue-600 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-700',
-              ]"
+              :class="['view-mode-btn', viewMode === 'table' && 'is-active']"
               @click="viewMode = 'table'"
             >
               <TableOutlined />
@@ -496,7 +486,7 @@ onMounted(() => {
 
       <!-- 分类 Tab 栏 + 卡片视图查询（仅 card 展示，table 走 ProTable 自带表单） -->
       <template v-if="viewMode === 'card'">
-        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+        <div class="definition-tabs-row">
           <Tabs
             :active-key="activeCategory"
             class="definition-category-tabs"
@@ -528,7 +518,7 @@ onMounted(() => {
         </div>
       </template>
       <template v-else>
-        <div class="border-t border-slate-100 pt-3">
+        <div class="definition-tabs-row">
           <Tabs
             :active-key="activeCategory"
             class="definition-category-tabs"
@@ -552,7 +542,7 @@ onMounted(() => {
         />
 
         <!-- 卡片分页 -->
-        <div class="p-3 bg-white border-t border-slate-200 flex items-center justify-end px-6">
+        <div class="definition-pagination">
           <Pagination
             v-model:current="cardPage"
             v-model:page-size="cardPageSize"
@@ -582,7 +572,7 @@ onMounted(() => {
               >
                 <component :is="getIconComponent(row.icon)" />
               </div>
-              <span class="text-sm font-medium text-slate-700">
+              <span class="text-sm font-medium definition-table-category">
                 {{ row.category || t('approval.definition.categoryDefault') }}
               </span>
             </div>
@@ -617,6 +607,12 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .definition-page {
+  background-color: var(--app-fill-color, #f8fafc);
+  color: var(--app-text-color-primary, #0f172a);
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+
   :deep(.definition-category-tabs) {
     margin-bottom: -16px;
     .ant-tabs-nav {
@@ -625,6 +621,143 @@ onMounted(() => {
         border-bottom: none;
       }
     }
+  }
+}
+
+.definition-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #eaedf3;
+  padding: 16px 24px;
+  transition: all 0.2s ease;
+}
+
+.definition-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.definition-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.view-mode-toggle {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 3px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #0f172a;
+  }
+
+  &.is-active {
+    background-color: #ffffff;
+    color: var(--app-color-primary, #3b82f6);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+}
+
+.definition-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 12px;
+  transition: border-color 0.2s;
+}
+
+.definition-table-category {
+  color: #334155;
+}
+
+.definition-pagination {
+  padding: 12px 24px;
+  background-color: #ffffff;
+  border-top: 1px solid #eaedf3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  transition: all 0.2s ease;
+}
+
+/* ==========================================================================
+   暗黑模式 (Dark Mode)
+   ========================================================================== */
+html.dark {
+  .definition-page {
+    background-color: #16171a;
+    color: #f1f5f9;
+  }
+
+  .definition-header {
+    background-color: #1c1d22;
+    border-bottom-color: #2a2c33;
+  }
+
+  .definition-title {
+    color: #ffffff;
+  }
+
+  .definition-subtitle {
+    color: #8b909a;
+  }
+
+  .view-mode-toggle {
+    background-color: #22242a;
+    border-color: #2e3038;
+  }
+
+  .view-mode-btn {
+    color: #8b909a;
+
+    &:hover {
+      color: #cbd5e1;
+    }
+
+    &.is-active {
+      background-color: #2e3038;
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  .definition-tabs-row {
+    border-top-color: #262830;
+  }
+
+  .definition-table-category {
+    color: #cbd5e1;
+  }
+
+  .definition-pagination {
+    background-color: #1c1d22;
+    border-top-color: #2a2c33;
   }
 }
 </style>

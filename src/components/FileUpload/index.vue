@@ -797,4 +797,32 @@ defineExpose<FileUploadExpose>({ upload, clear, getUploadedFiles })
     transition: none;
   }
 }
+
+html.dark {
+  .file-upload {
+    --file-upload-ink: #f1f5f9;
+    --file-upload-muted: #94a3b8;
+    --file-upload-line: #2a2c33;
+    --file-upload-surface: #1c1d22;
+  }
+
+  .file-upload__drop-icon {
+    background: #22242a;
+    border-color: #2e3038;
+  }
+
+  .file-upload__item {
+    background: #1c1d22;
+    border-color: #2a2c33;
+  }
+
+  .file-upload__dragger {
+    background: #1c1d22;
+  }
+
+  .file-upload__dragger:hover,
+  .file-upload__dragger:focus-within {
+    background-color: #22242a;
+  }
+}
 </style>

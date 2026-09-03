@@ -408,10 +408,7 @@ function triggerDownload(blob: Blob, filename: string): void {
 async function handleExportOperation(): Promise<void> {
   try {
     const blob = await exportOperationLogsBlob()
-    triggerDownload(
-      blob,
-      `operation-log-${new Date().toISOString().slice(0, 10)}.xlsx`,
-    )
+    triggerDownload(blob, `operation-log-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     message.error(errorMessage(error))
   }
@@ -420,10 +417,7 @@ async function handleExportOperation(): Promise<void> {
 async function handleExportLogin(): Promise<void> {
   try {
     const blob = await exportLoginLogsBlob()
-    triggerDownload(
-      blob,
-      `login-log-${new Date().toISOString().slice(0, 10)}.xlsx`,
-    )
+    triggerDownload(blob, `login-log-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     message.error(errorMessage(error))
   }

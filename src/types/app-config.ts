@@ -1,8 +1,10 @@
 export type AppLocale = 'zh-CN' | 'en-US'
+export type AppThemeMode = 'light' | 'dark'
 
 export interface AppConfigState {
   locale: AppLocale
   primaryColor: string
+  themeMode: AppThemeMode
 }
 
 export const APP_LOCALES: ReadonlyArray<{ value: AppLocale; label: string }> = [

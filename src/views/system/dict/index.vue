@@ -466,4 +466,15 @@ watch(
     grid-template-columns: 1fr;
   }
 }
+
+html.dark {
+  .dict-page__panel {
+    background: #1c1d22 !important;
+    border: 1px solid #2a2c33;
+  }
+
+  .dict-page__panel-title {
+    color: #ffffff !important;
+  }
+}
 </style>

@@ -17,7 +17,9 @@ function appendQueryParam(
   if (value !== undefined && value !== '') params[key] = value
 }
 
-function buildOperationLogParams(query: OperationLogQuery): Record<string, string | number | boolean> {
+function buildOperationLogParams(
+  query: OperationLogQuery,
+): Record<string, string | number | boolean> {
   const params: Record<string, string | number | boolean> = {}
   appendQueryParam(params, 'module', query.module)
   appendQueryParam(params, 'action', query.action)
@@ -55,9 +57,7 @@ export function fetchOperationLogList(
 }
 
 /** 按当前过滤条件导出操作日志（xlsx）。 */
-export function exportOperationLogsBlob(
-  query: OperationLogQuery = {},
-): Promise<Blob> {
+export function exportOperationLogsBlob(query: OperationLogQuery = {}): Promise<Blob> {
   return blobRequest.Get<Blob>('/operation-log/export', {
     params: buildOperationLogParams(query),
     cacheFor: 0,

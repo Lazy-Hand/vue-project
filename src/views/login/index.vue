@@ -15,11 +15,7 @@ import {
 
 import { bootstrapAccess, fetchCaptcha, loginAuth } from '@/api/auth'
 import { registerDynamicRoutes } from '@/router/dynamic'
-import {
-  CAPTCHA_CODE_INVALID,
-  CAPTCHA_CODE_REQUIRED,
-  type CaptchaInfo,
-} from '@/types/auth'
+import { CAPTCHA_CODE_INVALID, CAPTCHA_CODE_REQUIRED, type CaptchaInfo } from '@/types/auth'
 import { ApiRequestError } from '@/utils/request/response'
 import AppConfigControls from '@/layouts/main/AppConfigControls.vue'
 

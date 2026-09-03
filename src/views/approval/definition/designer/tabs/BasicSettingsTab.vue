@@ -198,15 +198,13 @@ function selectColor(color: string): void {
       </div>
 
       <!-- 图标与主题色配置 -->
-      <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl mb-4">
+      <div class="icon-config-box p-4 rounded-xl mb-4">
         <div class="flex items-center justify-between mb-3">
-          <div class="text-sm font-semibold text-slate-800">
+          <div class="icon-config-title text-sm font-semibold">
             {{ t('approval.definition.icon') }} 与 {{ t('approval.definition.color') }}
           </div>
           <!-- 实时效果预览 -->
-          <div
-            class="flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-2xs"
-          >
+          <div class="icon-preview-box flex items-center gap-2 px-3 py-1 rounded-lg shadow-2xs">
             <span class="text-xs text-slate-400">实时预览:</span>
             <div
               class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm shadow-2xs"
@@ -214,7 +212,7 @@ function selectColor(color: string): void {
             >
               <component :is="currentIconComp" />
             </div>
-            <span class="text-xs font-semibold text-slate-700">{{
+            <span class="icon-preview-name text-xs font-semibold">{{
               modelValue.name || '流程名称'
             }}</span>
           </div>
@@ -231,10 +229,8 @@ function selectColor(color: string): void {
                 type="button"
                 :title="item.label"
                 :class="[
-                  'h-9 rounded-lg flex items-center justify-center border transition-all text-base cursor-pointer',
-                  modelValue.icon === item.name
-                    ? 'border-blue-500 bg-blue-50 text-blue-600 shadow-xs ring-2 ring-blue-200 font-bold'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
+                  'icon-choice-btn h-9 rounded-lg flex items-center justify-center border transition-all text-base cursor-pointer',
+                  modelValue.icon === item.name && 'is-selected',
                 ]"
                 @click="selectIcon(item.name)"
               >
@@ -279,3 +275,83 @@ function selectColor(color: string): void {
     </Form>
   </div>
 </template>
+
+<style scoped lang="scss">
+.icon-config-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.icon-config-title {
+  color: #0f172a;
+}
+
+.icon-preview-box {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.icon-preview-name {
+  color: #334155;
+}
+
+.icon-choice-btn {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #475569;
+
+  &:hover {
+    border-color: #cbd5e1;
+    background-color: #f8fafc;
+  }
+
+  &.is-selected {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+    color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+}
+
+/* ==========================================================================
+   暗黑模式 (Dark Mode)
+   ========================================================================== */
+html.dark {
+  .icon-config-box {
+    background-color: #18191e;
+    border-color: #2a2c33;
+  }
+
+  .icon-config-title {
+    color: #ffffff;
+  }
+
+  .icon-preview-box {
+    background-color: #22242a;
+    border-color: #2e3038;
+  }
+
+  .icon-preview-name {
+    color: #f1f5f9;
+  }
+
+  .icon-choice-btn {
+    background-color: #22242a;
+    border-color: #2e3038;
+    color: #cbd5e1;
+
+    &:hover {
+      border-color: #3e424e;
+      background-color: #262830;
+      color: #ffffff;
+    }
+
+    &.is-selected {
+      border-color: #3b82f6;
+      background-color: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+    }
+  }
+}
+</style>

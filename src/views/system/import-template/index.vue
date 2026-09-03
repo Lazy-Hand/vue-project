@@ -84,7 +84,12 @@ const columns = computed<ProTableColumn<ImportTemplate>[]>(() => [
     label: t('importTemplate.version'),
     width: 90,
   },
-  { prop: 'fileName', label: t('importTemplate.fileName'), minWidth: 160, showOverflowTooltip: true },
+  {
+    prop: 'fileName',
+    label: t('importTemplate.fileName'),
+    minWidth: 160,
+    showOverflowTooltip: true,
+  },
   {
     prop: 'fileSize',
     label: t('importTemplate.fileSize'),
@@ -332,13 +337,10 @@ async function handleDelete(row: ImportTemplate): Promise<void> {
           />
         </FormItem>
         <FormItem :label="t('importTemplate.file')">
-          <Upload
-            :before-upload="handleSelectFile"
-            :show-upload-list="false"
-            accept=".xlsx,.xls"
-          >
+          <Upload :before-upload="handleSelectFile" :show-upload-list="false" accept=".xlsx,.xls">
             <Button :icon="undefined">
-              <UploadOutlined /> {{
+              <UploadOutlined />
+              {{
                 dialogMode === 'create'
                   ? selectedFile
                     ? selectedFile.name

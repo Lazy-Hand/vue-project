@@ -996,4 +996,30 @@ onBeforeUnmount(() => {
   padding: 14px 18px;
   border: 1px solid #1e293b;
 }
+
+html.dark {
+  .status-banner {
+    background: #1c1d22 !important;
+    border-color: #2a2c33 !important;
+  }
+
+  .status-meta {
+    color: #94a3b8 !important;
+  }
+
+  .metric-kpi-card {
+    background: #222429 !important;
+    border-color: #2e3038 !important;
+  }
+
+  .chart-panel-card {
+    background: #1c1d22 !important;
+    border-color: #2a2c33 !important;
+  }
+
+  .raw-inspector-card {
+    background: #1c1d22 !important;
+    border-color: #2a2c33 !important;
+  }
+}
 </style>

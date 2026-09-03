@@ -491,7 +491,11 @@ function getPopupContainer(triggerNode?: HTMLElement): HTMLElement {
                 <span>{{ t('scheduler.task.nextRuns') }}</span>
               </div>
               <div v-if="nextExecutionTimes.length > 0" class="art-runs-tags">
-                <div v-for="(timeStr, index) in nextExecutionTimes" :key="index" class="art-run-chip">
+                <div
+                  v-for="(timeStr, index) in nextExecutionTimes"
+                  :key="index"
+                  class="art-run-chip"
+                >
                   <span class="art-run-chip__idx">#{{ index + 1 }}</span>
                   <span class="art-run-chip__time">{{ timeStr }}</span>
                 </div>

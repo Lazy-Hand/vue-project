@@ -131,7 +131,13 @@ watch(token, () => {
       <template v-else-if="token">
         <h1 class="forgot-title">{{ t('forgot.resetTitle') }}</h1>
         <p class="forgot-subtitle">{{ t('forgot.resetSubtitle') }}</p>
-        <Form ref="formRef" :model="resetForm" :rules="resetRules" layout="vertical" @finish="handleReset">
+        <Form
+          ref="formRef"
+          :model="resetForm"
+          :rules="resetRules"
+          layout="vertical"
+          @finish="handleReset"
+        >
           <FormItem name="newPassword">
             <InputPassword
               v-model:value="resetForm.newPassword"

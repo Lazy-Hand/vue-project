@@ -1,16 +1,24 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { refreshLocalizedMenus } from '@/api/auth'
 import { setI18nLocale } from '@/i18n'
-import { APP_LOCALES, DEFAULT_PRIMARY_COLOR, type AppLocale } from '@/types/app-config'
-import { applyDocumentLocale, applyPrimaryColor } from '@/utils/theme'
+import {
+  APP_LOCALES,
+  DEFAULT_PRIMARY_COLOR,
+  type AppLocale,
+  type AppThemeMode,
+} from '@/types/app-config'
+import { applyDocumentLocale, applyPrimaryColor, applyThemeMode } from '@/utils/theme'
 
 export const useAppConfigStore = defineStore(
   'app-config',
   () => {
     const locale = ref<AppLocale>('zh-CN')
     const primaryColor = ref(DEFAULT_PRIMARY_COLOR)
+    const themeMode = ref<AppThemeMode>('light')
+
+    const darkMode = computed(() => themeMode.value === 'dark')
 
     function setLocale(next: AppLocale): void {
       if (!APP_LOCALES.some((item) => item.value === next)) return
@@ -30,31 +38,46 @@ export const useAppConfigStore = defineStore(
       primaryColor.value = color.toUpperCase()
     }
 
+    function setThemeMode(mode: AppThemeMode): void {
+      themeMode.value = mode
+      applyThemeMode(mode === 'dark')
+    }
+
+    function toggleThemeMode(): void {
+      setThemeMode(themeMode.value === 'dark' ? 'light' : 'dark')
+    }
+
     /** Apply persisted values to DOM / i18n (call once after Pinia hydrate). */
     function apply(): void {
       applyDocumentLocale(locale.value)
       setI18nLocale(locale.value)
       applyPrimaryColor(primaryColor.value)
+      applyThemeMode(darkMode.value)
     }
 
     function reset(): void {
       setLocale('zh-CN')
       setPrimaryColor(DEFAULT_PRIMARY_COLOR)
+      setThemeMode('light')
     }
 
     return {
       locale,
       primaryColor,
+      themeMode,
+      darkMode,
       locales: APP_LOCALES,
       setLocale,
       setPrimaryColor,
+      setThemeMode,
+      toggleThemeMode,
       apply,
       reset,
     }
   },
   {
     persist: {
-      pick: ['locale', 'primaryColor'],
+      pick: ['locale', 'primaryColor', 'themeMode'],
     },
   },
 )

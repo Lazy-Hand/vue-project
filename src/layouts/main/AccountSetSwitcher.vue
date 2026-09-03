@@ -39,12 +39,40 @@ const currentId = computed({
 </template>
 
 <style>
-/* 非 scoped：antdv-next 的 Select 会把 class 渲染到内部 .ant-select 元素上，
-   scoped 的 data-v 标记不会带走，宽高类样式必须用全局选择器才生效 */
 .account-set-switcher {
   flex-shrink: 0;
   width: auto;
-  min-width: 180px;
-  max-width: 320px;
+  min-width: 100px;
+  max-width: 180px;
+}
+
+.account-set-switcher.ant-select .ant-select-selector {
+  height: 34px !important;
+  display: flex !important;
+  align-items: center !important;
+  border-radius: 9999px !important;
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.account-set-switcher.ant-select:hover .ant-select-selector {
+  border-color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+}
+
+html.dark .account-set-switcher.ant-select .ant-select-selector {
+  background-color: #22242a !important;
+  border-color: #2e3038 !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .account-set-switcher.ant-select:hover .ant-select-selector {
+  border-color: #3b3e48 !important;
+  background-color: #262832 !important;
 }
 </style>

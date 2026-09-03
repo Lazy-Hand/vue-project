@@ -308,16 +308,47 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.notice-bell__trigger {
-  display: flex;
+.notice-bell {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  height: 34px;
+  line-height: 1;
+
+  :deep(.ant-badge) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    line-height: 1;
+  }
+}
+
+.notice-bell__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 6px;
+  color: #4b5563;
+  font-size: 16px;
+  line-height: 1;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: var(--app-color-primary, #409eff);
+    background-color: #f3f4f6;
+  }
 }
 
 .notice-bell__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 16px;
+  line-height: 1;
 }
 
 .notice-bell__panel {
@@ -422,5 +453,35 @@ onMounted(async () => {
   border-radius: 6px;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+html.dark {
+  .notice-bell__item {
+    &:hover {
+      background: #262830;
+    }
+  }
+
+  .notice-bell__item-title {
+    color: #f1f5f9;
+  }
+
+  .notice-bell__detail-content {
+    background: #18191e;
+    color: #e2e8f0;
+  }
+
+  .notice-bell__footer {
+    border-top: 1px solid #2a2c33;
+  }
+
+  .notice-bell__trigger {
+    color: #94a3b8;
+
+    &:hover {
+      color: #ffffff;
+      background-color: #262830;
+    }
+  }
 }
 </style>

@@ -90,19 +90,60 @@ function handleMenuClick(info: { key: string | number }): void {
 .aside-menu {
   width: 100%;
   border-right: none;
+  background-color: transparent;
+  padding: 4px 0;
+}
+
+.aside-menu :deep(.ant-menu-item),
+.aside-menu :deep(.ant-menu-submenu-title) {
+  margin: 3px 8px !important;
+  width: calc(100% - 16px) !important;
+  border-radius: 8px !important;
+  height: 38px !important;
+  line-height: 38px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  color: #475569 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .aside-menu :deep(.ant-menu-item:hover),
 .aside-menu :deep(.ant-menu-submenu-title:hover) {
-  background-color: #f3f4f6 !important;
+  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
 }
 
 .aside-menu :deep(.ant-menu-item-selected) {
-  color: var(--app-color-primary) !important;
-  background-color: color-mix(in srgb, var(--app-color-primary) 28%, transparent) !important;
+  color: var(--app-color-primary, #ea580c) !important;
+  background-color: color-mix(in srgb, var(--app-color-primary, #ea580c) 12%, #ffffff) !important;
+  font-weight: 700 !important;
 }
 
 .aside-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title) {
-  color: var(--app-color-primary) !important;
+  color: var(--app-color-primary, #ea580c) !important;
+  font-weight: 600 !important;
+}
+
+html.dark {
+  .aside-menu :deep(.ant-menu-item),
+  .aside-menu :deep(.ant-menu-submenu-title) {
+    color: #94a3b8 !important;
+  }
+
+  .aside-menu :deep(.ant-menu-item:hover),
+  .aside-menu :deep(.ant-menu-submenu-title:hover) {
+    color: #ffffff !important;
+    background-color: #262830 !important;
+  }
+
+  .aside-menu :deep(.ant-menu-item-selected) {
+    color: #f97316 !important;
+    background-color: #2a2520 !important;
+    font-weight: 700 !important;
+  }
+
+  .aside-menu :deep(.ant-menu-submenu-selected > .ant-menu-submenu-title) {
+    color: #f97316 !important;
+  }
 }
 </style>

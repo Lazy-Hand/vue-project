@@ -102,7 +102,9 @@ watch(
     destroy-on-hidden
     @close="visible = false"
   >
-    <p class="mb-3 text-sm text-slate-500">{{ t('approval.definition.onlyPublishedTip') }}</p>
+    <p class="mb-3 text-sm text-slate-500 dark:text-slate-400">
+      {{ t('approval.definition.onlyPublishedTip') }}
+    </p>
 
     <Table
       :data-source="bindings"
@@ -121,7 +123,7 @@ watch(
         <template v-if="column.key === 'version'">
           <div class="flex items-center gap-2">
             <Tag color="blue">v{{ (record as ApprovalSceneBinding).version }}</Tag>
-            <span class="text-xs text-slate-500">
+            <span class="text-xs text-slate-500 dark:text-slate-400">
               {{ (record as ApprovalSceneBinding).definitionName }}
             </span>
           </div>

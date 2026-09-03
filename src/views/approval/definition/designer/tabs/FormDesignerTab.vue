@@ -165,9 +165,9 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
   <div class="form-designer-tab flex h-[580px] gap-4">
     <!-- 左侧：字段库 -->
     <div
-      class="w-60 shrink-0 flex flex-col border border-slate-200 rounded-xl bg-white p-3 overflow-y-auto"
+      class="field-library-panel w-60 shrink-0 flex flex-col border rounded-xl p-3 overflow-y-auto"
     >
-      <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+      <div class="section-subhead text-xs font-semibold uppercase tracking-wider mb-2">
         {{ t('approval.definition.fieldLibBasic') }}
       </div>
       <div class="grid grid-cols-2 gap-2 mb-4">
@@ -175,7 +175,7 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
           v-for="item in basicFieldTypes"
           :key="item.type"
           type="button"
-          class="flex items-center gap-1.5 p-2 rounded-lg border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-600 text-xs font-medium transition-all cursor-pointer text-left"
+          class="field-type-btn flex items-center gap-1.5 p-2 rounded-lg border text-xs font-medium transition-all cursor-pointer text-left"
           @click="addField(item.type)"
         >
           <component :is="item.icon" class="text-sm shrink-0" />
@@ -183,7 +183,7 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
         </button>
       </div>
 
-      <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+      <div class="section-subhead text-xs font-semibold uppercase tracking-wider mb-2">
         {{ t('approval.definition.fieldLibAdvanced') }}
       </div>
       <div class="grid grid-cols-2 gap-2">
@@ -191,7 +191,7 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
           v-for="item in advancedFieldTypes"
           :key="item.type"
           type="button"
-          class="flex items-center gap-1.5 p-2 rounded-lg border border-slate-100 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 text-slate-700 hover:text-blue-600 text-xs font-medium transition-all cursor-pointer text-left"
+          class="field-type-btn flex items-center gap-1.5 p-2 rounded-lg border text-xs font-medium transition-all cursor-pointer text-left"
           @click="addField(item.type)"
         >
           <component :is="item.icon" class="text-sm shrink-0" />
@@ -201,11 +201,9 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
     </div>
 
     <!-- 中间：画布预览区 -->
-    <div
-      class="flex-1 flex flex-col border border-slate-200 rounded-xl bg-slate-50 overflow-hidden"
-    >
-      <div class="p-3 bg-white border-b border-slate-200 flex items-center justify-between">
-        <div class="text-xs font-semibold text-slate-700">
+    <div class="canvas-panel flex-1 flex flex-col border rounded-xl overflow-hidden">
+      <div class="canvas-header p-3 border-b flex items-center justify-between">
+        <div class="canvas-title text-xs font-semibold">
           {{ t('approval.definition.canvasTitle') }} ({{ fields.length }})
         </div>
         <div class="text-xs text-slate-400">
@@ -219,11 +217,11 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
           class="h-full flex flex-col items-center justify-center text-slate-400 py-16"
         >
           <div
-            class="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 mb-3 text-xl"
+            class="w-12 h-12 rounded-full bg-slate-200 dark:bg-[#22242a] flex items-center justify-center text-slate-400 mb-3 text-xl"
           >
             <PlusOutlined />
           </div>
-          <div class="text-sm font-medium text-slate-600">
+          <div class="text-sm font-medium text-slate-600 dark:text-slate-300">
             {{ t('approval.definition.noFieldsTitle') }}
           </div>
           <div class="text-xs text-slate-400 mt-1">{{ t('approval.definition.noFieldsDesc') }}</div>
@@ -233,16 +231,14 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
           v-for="(field, idx) in fields"
           :key="field.id"
           :class="[
-            'p-3.5 bg-white border rounded-xl shadow-2xs transition-all relative group cursor-pointer',
-            selectedField?.id === field.id
-              ? 'border-blue-500 ring-2 ring-blue-100'
-              : 'border-slate-200 hover:border-slate-300',
+            'canvas-field-card p-3.5 border rounded-xl shadow-2xs transition-all relative group cursor-pointer',
+            selectedField?.id === field.id && 'is-selected',
           ]"
           @click="selectedFieldId = field.id"
         >
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
-              <span class="text-xs font-semibold text-slate-700">{{ field.label }}</span>
+              <span class="canvas-field-label text-xs font-semibold">{{ field.label }}</span>
               <span v-if="field.required" class="text-red-500 font-bold text-xs">*</span>
               <span class="text-2xs text-slate-400 font-mono">#{{ field.id }}</span>
             </div>
@@ -347,8 +343,8 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
     </div>
 
     <!-- 右侧：属性编辑区 -->
-    <div class="w-72 shrink-0 border border-slate-200 rounded-xl bg-white p-4 overflow-y-auto">
-      <div class="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
+    <div class="field-props-panel w-72 shrink-0 border rounded-xl p-4 overflow-y-auto">
+      <div class="field-props-title text-xs font-semibold uppercase tracking-wider mb-3">
         {{ t('approval.definition.fieldPropsTitle') }}
       </div>
 
@@ -389,10 +385,10 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
               selectedField.type === 'checkbox' ||
               selectedField.type === 'select'
             "
-            class="pt-2 border-t border-slate-100"
+            class="pt-2 border-t border-slate-100 dark:border-[#262830]"
           >
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-medium text-slate-700">{{
+              <span class="text-xs font-medium text-slate-700 dark:text-slate-300">{{
                 t('approval.definition.fieldOptions')
               }}</span>
               <Button size="small" type="dashed" class="text-xs" @click="addOption">
@@ -440,3 +436,120 @@ function updateOption(idx: number, key: 'label' | 'value', val: string): void {
     </div>
   </div>
 </template>
+
+<style scoped lang="scss">
+.field-library-panel,
+.field-props-panel {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+}
+
+.section-subhead {
+  color: #64748b;
+}
+
+.field-type-btn {
+  background-color: #f8fafc;
+  border-color: #f1f5f9;
+  color: #334155;
+
+  &:hover {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #2563eb;
+  }
+}
+
+.canvas-panel {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.canvas-header {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+}
+
+.canvas-title,
+.field-props-title {
+  color: #0f172a;
+}
+
+.canvas-field-card {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
+
+  &.is-selected {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+}
+
+.canvas-field-label {
+  color: #1e293b;
+}
+
+/* ==========================================================================
+   暗黑模式 (Dark Mode)
+   ========================================================================== */
+html.dark {
+  .field-library-panel,
+  .field-props-panel {
+    background-color: #1c1d22;
+    border-color: #2a2c33;
+  }
+
+  .section-subhead {
+    color: #8b909a;
+  }
+
+  .field-type-btn {
+    background-color: #22242a;
+    border-color: #2e3038;
+    color: #cbd5e1;
+
+    &:hover {
+      background-color: #2a2d36;
+      border-color: #3e424e;
+      color: #60a5fa;
+    }
+  }
+
+  .canvas-panel {
+    background-color: #16171a;
+    border-color: #2a2c33;
+  }
+
+  .canvas-header {
+    background-color: #1c1d22;
+    border-color: #2a2c33;
+  }
+
+  .canvas-title,
+  .field-props-title {
+    color: #ffffff;
+  }
+
+  .canvas-field-card {
+    background-color: #1c1d22;
+    border-color: #2a2c33;
+
+    &:hover {
+      border-color: #3e424e;
+    }
+
+    &.is-selected {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+    }
+  }
+
+  .canvas-field-label {
+    color: #f1f5f9;
+  }
+}
+</style>

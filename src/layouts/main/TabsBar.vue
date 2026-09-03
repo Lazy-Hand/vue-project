@@ -383,4 +383,55 @@ function getTabLabel(tab?: TabItem | null): string {
     background-color: #f3f4f6;
   }
 }
+
+html.dark {
+  .layout-tabs-bar {
+    background-color: #1c1d22;
+    border-bottom: 1px solid #2a2c33;
+  }
+
+  .layout-tab-item {
+    color: #94a3b8;
+    background-color: #22242a;
+    border-color: #2e3038;
+
+    &:hover {
+      color: #ffffff;
+      background-color: #262832;
+      border-color: #3b3e48;
+    }
+
+    &.is-active {
+      color: var(--app-color-primary, #ea580c);
+      background-color: #2a2520;
+      border-color: #43240e;
+
+      .tab-icon {
+        color: var(--app-color-primary, #ea580c);
+      }
+    }
+
+    .tab-close-btn {
+      color: #64748b;
+
+      &:hover {
+        color: #ffffff;
+        background-color: #ef4444;
+      }
+    }
+  }
+
+  .layout-tabs-tools {
+    border-left: 1px solid #2a2c33;
+  }
+
+  .tab-tool-btn {
+    color: #94a3b8;
+
+    &:hover {
+      color: #ffffff;
+      background-color: #262830;
+    }
+  }
+}
 </style>

@@ -229,11 +229,43 @@ function getSiblingMenuItems(siblings: SiblingMenuItem[]): MenuProps['items'] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  @media (max-width: 1200px) {
+    max-width: 80px;
+  }
 }
 
 .breadcrumb-arrow {
   font-size: 10px;
   color: #9ca3af;
   margin-left: 2px;
+}
+
+html.dark {
+  .breadcrumb-link {
+    color: #94a3b8;
+
+    &:hover {
+      color: #ffffff;
+      background-color: #262830;
+    }
+
+    &.is-active {
+      color: #f1f5f9;
+
+      &:hover {
+        color: #f1f5f9;
+        background-color: transparent;
+      }
+    }
+  }
+
+  .breadcrumb-current {
+    color: #f1f5f9;
+  }
+
+  .breadcrumb-arrow {
+    color: #64748b;
+  }
 }
 </style>

@@ -513,12 +513,12 @@ function handleClose(): void {
             <NodeIndexOutlined />
           </div>
           <div>
-            <div class="text-base font-bold text-slate-800">
+            <div class="designer-modal-title text-base font-bold">
               {{
                 isEdit ? t('approval.definition.editTitle') : t('approval.definition.createTitle')
               }}
             </div>
-            <div class="text-2xs text-slate-400">
+            <div class="designer-modal-subtitle text-2xs">
               {{ t('approval.definition.subtitle') }}
             </div>
           </div>
@@ -527,7 +527,7 @@ function handleClose(): void {
     </template>
 
     <!-- 顶部步骤指示器 -->
-    <div class="py-3 px-6 bg-slate-50 border-y border-slate-200 -mx-6 mb-4">
+    <div class="designer-steps-wrap mb-4">
       <Steps
         :current="currentStep"
         size="small"
@@ -562,9 +562,7 @@ function handleClose(): void {
     </div>
 
     <!-- 底部操作栏 -->
-    <div
-      class="flex items-center justify-between pt-4 border-t border-slate-200 mt-4 -mx-6 px-6 bg-white"
-    >
+    <div class="designer-footer-wrap mt-4">
       <Button :disabled="submitting" @click="handleClose">
         {{ t('common.cancel') }}
       </Button>
@@ -601,6 +599,58 @@ function handleClose(): void {
 .workflow-designer-modal {
   :deep(.ant-modal-body) {
     padding-top: 12px;
+  }
+}
+
+.designer-modal-title {
+  color: #0f172a;
+}
+
+.designer-modal-subtitle {
+  color: #94a3b8;
+}
+
+.designer-steps-wrap {
+  padding: 12px 24px;
+  background-color: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  margin: 0 -24px 16px;
+  transition: all 0.2s ease;
+}
+
+.designer-footer-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px 0;
+  border-top: 1px solid #e2e8f0;
+  margin: 16px -24px 0;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+/* ==========================================================================
+   暗黑模式 (Dark Mode)
+   ========================================================================== */
+html.dark {
+  .designer-modal-title {
+    color: #ffffff;
+  }
+
+  .designer-modal-subtitle {
+    color: #8b909a;
+  }
+
+  .designer-steps-wrap {
+    background-color: #18191e;
+    border-top-color: #2a2c33;
+    border-bottom-color: #2a2c33;
+  }
+
+  .designer-footer-wrap {
+    background-color: #1c1d22;
+    border-top-color: #2a2c33;
   }
 }
 </style>
