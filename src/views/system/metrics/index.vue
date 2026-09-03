@@ -4,10 +4,11 @@ import { useI18n } from 'vue-i18n'
 import {
   Button,
   Card,
+  Col,
   Input,
   Progress,
+  Row,
   Segmented,
-  Statistic,
   Tag,
   Tooltip,
   message,
@@ -19,7 +20,6 @@ import {
   CopyOutlined,
   DashboardOutlined,
   DatabaseOutlined,
-  FilterOutlined,
   ReloadOutlined,
   SearchOutlined,
   ThunderboltOutlined,
@@ -255,23 +255,49 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="metrics-container">
-    <!-- 顶部监控控制台 -->
-    <div class="metrics-header">
-      <div class="header-left">
-        <div class="header-badge">
-          <DashboardOutlined class="header-badge-icon" />
-          <span>{{ t('metrics.title') }}</span>
+  <div class="metrics-workbench">
+    <!-- 顶部监控指令横幅 (Command Strip) -->
+    <div class="command-strip">
+      <div class="command-strip__main">
+        <div class="command-strip__avatar-wrap">
+          <div class="command-strip__icon-badge">
+            <DashboardOutlined />
+          </div>
+          <span class="command-strip__status-dot" />
         </div>
-        <p class="header-sub">
-          {{ t('metrics.subtitle') }}
-        </p>
+
+        <div class="command-strip__meta">
+          <div class="command-strip__title-row">
+            <h1 class="command-strip__greeting">{{ t('metrics.title') }}</h1>
+            <div class="command-strip__live-pill">
+              <span class="live-pulse-dot" />
+              <span class="live-pulse-text">{{ t('metrics.statusNormal') }}</span>
+              <span class="live-pulse-sep">·</span>
+              <span class="live-pulse-sla">{{ t('metrics.uptime') }} {{ uptime }}</span>
+            </div>
+          </div>
+          <div class="command-strip__sub-row">
+            <span class="command-strip__tag">
+              <span class="command-strip__tag-label">{{ t('metrics.startedAt') }}:</span>
+              <span class="command-strip__tag-value">{{ startedAtFormatted }}</span>
+            </span>
+            <span class="command-strip__divider">/</span>
+            <span class="command-strip__tag">
+              <span class="command-strip__tag-label">{{ t('metrics.totalRequests') }}:</span>
+              <span class="command-strip__tag-value">{{ totalHttpTrafficCount }}</span>
+            </span>
+            <span class="command-strip__divider">/</span>
+            <span class="command-strip__tag">
+              <span class="command-strip__tag-label">{{ t('metrics.lastUpdated') }}:</span>
+              <span class="command-strip__tag-value">{{ lastUpdatedTime || '-' }}</span>
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div class="header-actions">
-        <!-- 自动轮询控制 -->
+      <div class="command-strip__actions">
         <div class="refresh-controls">
-          <span class="refresh-label">{{ t('metrics.autoRefresh') }}:</span>
+          <span class="refresh-label">{{ t('metrics.autoRefresh') }}</span>
           <Segmented
             :value="autoRefreshInterval"
             :options="[
@@ -294,251 +320,150 @@ onBeforeUnmount(() => {
 
         <Button
           type="primary"
+          class="action-btn action-btn--primary"
           :loading="loading"
           :disabled="!canQuery"
-          class="refresh-btn"
           @click="loadMetrics"
         >
           <ReloadOutlined />
-          {{ t('metrics.refresh') }}
+          <span>{{ t('metrics.refresh') }}</span>
         </Button>
       </div>
     </div>
 
-    <!-- 运行状态横幅 -->
-    <div class="status-banner">
-      <div class="status-meta">
-        <Tag color="green" class="status-live-tag">
-          <span class="status-pulse-dot" />
-          {{ t('metrics.statusNormal') }}
-        </Tag>
-        <span class="status-divider">•</span>
-        <span class="status-item">
-          {{ t('metrics.uptime') }}: <strong>{{ uptime }}</strong>
-        </span>
-        <span class="status-divider">•</span>
-        <span class="status-item">
-          {{ t('metrics.startedAt') }}: <strong>{{ startedAtFormatted }}</strong>
-        </span>
+    <!-- Node.js 运行时四大核心体征卡 (Hero KPI Cards) -->
+    <div class="kpi-grid">
+      <!-- 1. V8 堆内存 -->
+      <div class="kpi-card kpi-card--static">
+        <div class="kpi-card__header">
+          <div class="kpi-card__title-box">
+            <div class="kpi-card__icon-badge kpi-card__icon-badge--blue">
+              <DashboardOutlined />
+            </div>
+            <span class="kpi-card__label">{{ t('metrics.heapMemory') }}</span>
+          </div>
+          <span class="trend-badge trend-badge--up">{{ heapUsagePercent }}%</span>
+        </div>
+
+        <div class="kpi-card__metric">
+          <span class="metric-number">{{ heapMemory }}</span>
+          <span class="metric-caption">{{ t('metrics.heapUsageRate') }}</span>
+        </div>
+
+        <div class="kpi-card__progress-box">
+          <Progress
+            :percent="heapUsagePercent"
+            :show-info="false"
+            stroke-color="#3b82f6"
+            size="small"
+          />
+        </div>
+
+        <div class="kpi-card__footer">
+          <span class="footer-link-text">RSS {{ residentMemory }} · Ext {{ externalMemory }}</span>
+        </div>
+      </div>
+
+      <!-- 2. CPU 计算耗时 -->
+      <div class="kpi-card kpi-card--static">
+        <div class="kpi-card__header">
+          <div class="kpi-card__title-box">
+            <div class="kpi-card__icon-badge kpi-card__icon-badge--amber">
+              <ThunderboltOutlined />
+            </div>
+            <span class="kpi-card__label">{{ t('metrics.cpuTime') }}</span>
+          </div>
+          <span class="launchpad-pill-tag">V8 Engine</span>
+        </div>
+
+        <div class="kpi-card__metric">
+          <span class="metric-number">{{ cpuTime }}</span>
+          <span class="metric-caption">{{ t('metrics.cpuSeconds') }}</span>
+        </div>
+
+        <div class="kpi-card__footer">
+          <span class="footer-mono">process_cpu_seconds_total</span>
+        </div>
+      </div>
+
+      <!-- 3. 事件循环延迟 -->
+      <div class="kpi-card kpi-card--static">
+        <div class="kpi-card__header">
+          <div class="kpi-card__title-box">
+            <div class="kpi-card__icon-badge kpi-card__icon-badge--emerald">
+              <ClockCircleOutlined />
+            </div>
+            <span class="kpi-card__label">{{ t('metrics.eventLoopLag') }}</span>
+          </div>
+          <span
+            :class="[
+              'trend-badge',
+              eventLoopHealthState === 'healthy'
+                ? 'trend-badge--emerald'
+                : eventLoopHealthState === 'warning'
+                  ? 'trend-badge--amber'
+                  : 'trend-badge--rose',
+            ]"
+          >
+            {{
+              eventLoopHealthState === 'healthy'
+                ? t('metrics.eventLoopStatusHealthy')
+                : eventLoopHealthState === 'warning'
+                  ? t('metrics.eventLoopStatusWarning')
+                  : t('metrics.eventLoopStatusCritical')
+            }}
+          </span>
+        </div>
+
+        <div class="kpi-card__metric">
+          <span class="metric-number">{{ eventLoopLag }}</span>
+          <span class="metric-caption">{{ t('metrics.eventLoopLagP50') }}</span>
+        </div>
+
+        <div class="kpi-card__footer">
+          <span class="footer-mono">nodejs_eventloop_lag_seconds</span>
+        </div>
+      </div>
+
+      <!-- 4. 并发与 I/O 句柄 -->
+      <div class="kpi-card kpi-card--static">
+        <div class="kpi-card__header">
+          <div class="kpi-card__title-box">
+            <div class="kpi-card__icon-badge kpi-card__icon-badge--purple">
+              <ApiOutlined />
+            </div>
+            <span class="kpi-card__label">{{ t('metrics.ioTitle') }}</span>
+          </div>
+          <span class="launchpad-pill-tag">Async I/O</span>
+        </div>
+
+        <div class="kpi-card__metric">
+          <span class="metric-number">{{ activeHandles ?? '-' }}</span>
+          <span class="metric-caption">
+            {{ t('metrics.activeRequests') }}: {{ activeRequests ?? '-' }}
+          </span>
+        </div>
+
+        <div class="kpi-card__footer">
+          <span class="footer-mono">nodejs_active_handles</span>
+        </div>
       </div>
     </div>
 
-    <!-- Node.js 运行时 4 大核心体征卡片 -->
-    <div class="vitals-grid">
-      <!-- 1. V8 堆内存 -->
-      <Card variant="borderless" class="vital-card hover-lift">
-        <div class="vital-card-inner">
-          <div class="vital-icon-box bg-gradient-to-br from-indigo-500 to-blue-600">
-            <DashboardOutlined />
-          </div>
-          <div class="vital-body">
-            <Statistic :title="t('metrics.heapMemory')" :value="heapMemory" class="vital-stat" />
-            <div class="vital-progress-box">
-              <div class="vital-progress-labels">
-                <span class="vital-sub-text">{{ t('metrics.heapUsageRate') }}</span>
-                <span class="vital-sub-num text-blue-600">{{ heapUsagePercent }}%</span>
-              </div>
-              <Progress
-                :percent="heapUsagePercent"
-                :show-info="false"
-                stroke-color="#3b82f6"
-                size="small"
-              />
+    <!-- 下半部分：双栏观测与基座 (Two-Column Workspace Feeds) -->
+    <Row :gutter="[20, 20]" class="workbench-split">
+      <!-- 左侧：流量分析与原始指标 -->
+      <Col :xs="24" :lg="15" class="split-col">
+        <!-- HTTP 接口流量与路由分析 -->
+        <Card variant="borderless" class="workbench-panel">
+          <template #title>
+            <div class="panel-header-title">
+              <ApiOutlined class="panel-title-icon text-blue-500" />
+              <span>{{ t('metrics.trafficTitle') }}</span>
+              <span class="panel-badge-count">{{ totalHttpTrafficCount }}</span>
             </div>
-            <div class="vital-bottom-tags">
-              <span class="vital-mini-stat">RSS: {{ residentMemory }}</span>
-              <span class="vital-mini-stat">Ext: {{ externalMemory }}</span>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <!-- 2. CPU 计算耗时 -->
-      <Card variant="borderless" class="vital-card hover-lift">
-        <div class="vital-card-inner">
-          <div class="vital-icon-box bg-gradient-to-br from-amber-500 to-orange-600">
-            <ThunderboltOutlined />
-          </div>
-          <div class="vital-body">
-            <Statistic :title="t('metrics.cpuTime')" :value="cpuTime" class="vital-stat" />
-            <div class="vital-bottom-info">
-              <span class="vital-sub-text">{{ t('metrics.cpuSeconds') }}</span>
-              <Tag color="orange" class="vital-tag">V8 Engine</Tag>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <!-- 3. 事件循环延迟 -->
-      <Card variant="borderless" class="vital-card hover-lift">
-        <div class="vital-card-inner">
-          <div class="vital-icon-box bg-gradient-to-br from-emerald-500 to-teal-600">
-            <ClockCircleOutlined />
-          </div>
-          <div class="vital-body">
-            <Statistic
-              :title="t('metrics.eventLoopLag')"
-              :value="eventLoopLag"
-              class="vital-stat"
-            />
-            <div class="vital-bottom-info">
-              <span class="vital-sub-text">{{ t('metrics.eventLoopLagP50') }}</span>
-              <Tag
-                :color="
-                  eventLoopHealthState === 'healthy'
-                    ? 'green'
-                    : eventLoopHealthState === 'warning'
-                      ? 'orange'
-                      : 'red'
-                "
-                class="vital-tag"
-              >
-                {{
-                  eventLoopHealthState === 'healthy'
-                    ? t('metrics.eventLoopStatusHealthy')
-                    : eventLoopHealthState === 'warning'
-                      ? t('metrics.eventLoopStatusWarning')
-                      : t('metrics.eventLoopStatusCritical')
-                }}
-              </Tag>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <!-- 4. 并发与 I/O 句柄 -->
-      <Card variant="borderless" class="vital-card hover-lift">
-        <div class="vital-card-inner">
-          <div class="vital-icon-box bg-gradient-to-br from-purple-500 to-pink-600">
-            <ApiOutlined />
-          </div>
-          <div class="vital-body">
-            <Statistic
-              :title="t('metrics.activeHandles')"
-              :value="activeHandles ?? '-'"
-              class="vital-stat"
-            />
-            <div class="vital-bottom-info">
-              <span class="vital-sub-text">
-                {{ t('metrics.activeRequests') }}:
-                <strong class="text-purple-600">{{ activeRequests ?? '-' }}</strong>
-              </span>
-              <Tag color="purple" class="vital-tag">Async I/O</Tag>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <!-- 5. PostgreSQL 数据库 -->
-      <Card variant="borderless" class="vital-card hover-lift">
-        <div class="vital-card-inner">
-          <div class="vital-icon-box bg-gradient-to-br from-cyan-500 to-blue-600">
-            <DatabaseOutlined />
-          </div>
-          <div class="vital-body">
-            <Statistic
-              :title="t('metrics.databaseTitle')"
-              :value="detailedHealth?.database ? `${detailedHealth.database.latencyMs}ms` : '-'"
-              class="vital-stat"
-            />
-            <div class="vital-bottom-info">
-              <span class="vital-sub-text">
-                {{ t('metrics.databaseLatency') }}
-              </span>
-              <Tag
-                :color="
-                  detailedHealth?.database?.status === 'up'
-                    ? 'green'
-                    : detailedHealth
-                      ? 'red'
-                      : 'default'
-                "
-                class="vital-tag"
-              >
-                {{
-                  detailedHealth?.database?.status === 'up'
-                    ? t('metrics.statusUp')
-                    : detailedHealth
-                      ? t('metrics.statusDown')
-                      : '-'
-                }}
-              </Tag>
-            </div>
-            <div v-if="detailedHealth?.database?.version" class="vital-bottom-tags">
-              <span class="vital-mini-stat" :title="detailedHealth.database.version">
-                {{ detailedHealth.database.version }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <!-- 6. Redis 缓存服务 -->
-      <Card variant="borderless" class="vital-card hover-lift">
-        <div class="vital-card-inner">
-          <div class="vital-icon-box bg-gradient-to-br from-rose-500 to-red-600">
-            <CloudServerOutlined />
-          </div>
-          <div class="vital-body">
-            <Statistic
-              :title="t('metrics.redisTitle')"
-              :value="detailedHealth?.redis ? `${detailedHealth.redis.latencyMs}ms` : '-'"
-              class="vital-stat"
-            />
-            <div class="vital-bottom-info">
-              <span class="vital-sub-text">
-                {{ t('metrics.redisLatency') }}
-              </span>
-              <Tag
-                :color="
-                  detailedHealth?.redis?.status === 'up'
-                    ? 'green'
-                    : detailedHealth
-                      ? 'red'
-                      : 'default'
-                "
-                class="vital-tag"
-              >
-                {{
-                  detailedHealth?.redis?.status === 'up'
-                    ? t('metrics.statusUp')
-                    : detailedHealth
-                      ? t('metrics.statusDown')
-                      : '-'
-                }}
-              </Tag>
-            </div>
-            <div v-if="detailedHealth?.redis" class="vital-bottom-tags">
-              <span v-if="detailedHealth.redis.usedMemoryHuman" class="vital-mini-stat">
-                {{ t('metrics.redisMemory') }}: {{ detailedHealth.redis.usedMemoryHuman }}
-              </span>
-              <span
-                v-if="detailedHealth.redis.connectedClients !== undefined"
-                class="vital-mini-stat"
-              >
-                {{ t('metrics.redisClients') }}: {{ detailedHealth.redis.connectedClients }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
-
-    <!-- HTTP 接口流量与路由分析表格 -->
-    <Card variant="borderless" class="traffic-card">
-      <template #title>
-        <div class="traffic-card-header">
-          <div class="traffic-title-wrap">
-            <ApiOutlined class="text-blue-500" />
-            <span class="traffic-title">{{ t('metrics.trafficTitle') }}</span>
-            <Tag color="blue" class="traffic-count-tag">
-              {{ t('metrics.totalRequests') }}: {{ totalHttpTrafficCount }}
-            </Tag>
-          </div>
-
-          <!-- HTTP Method 快速筛选 -->
-          <div class="traffic-filters">
-            <span class="filter-label"> <FilterOutlined /> {{ t('metrics.filterMethod') }}: </span>
+          </template>
+          <template #extra>
             <Segmented
               v-model:value="selectedMethodFilter"
               :options="[
@@ -550,122 +475,336 @@ onBeforeUnmount(() => {
               ]"
               size="small"
             />
-          </div>
-        </div>
-      </template>
+          </template>
 
-      <ProTable
-        :key="selectedMethodFilter"
-        :columns="httpColumns"
-        :request="requestHttpStats"
-        :immediate="canQuery"
-        :show-request-error="false"
-        :search-fields="[]"
-        :pagination="{ pageSize: 10 }"
-      >
-        <!-- 自定义 Method 渲染 -->
-        <template #column-method="{ row }">
-          <Tag :color="getMethodTagColor(row.method)" class="font-mono font-bold">
-            {{ row.method }}
-          </Tag>
-        </template>
-
-        <template #column-route="{ row }">
-          <span class="font-mono text-slate-700">{{ row.route }}</span>
-        </template>
-
-        <template #column-statusCode="{ row }">
-          <Tag :color="getStatusCodeTagColor(row.statusCode)" class="font-mono">
-            {{ row.statusCode }}
-          </Tag>
-        </template>
-
-        <template #column-count="{ row }">
-          <span class="font-semibold text-slate-900">{{ row.count }}</span>
-        </template>
-      </ProTable>
-    </Card>
-
-    <!-- Prometheus 原始指标检视器 -->
-    <Card variant="borderless" class="raw-inspector-card">
-      <div class="raw-inspector-header">
-        <div class="raw-header-left">
-          <span class="raw-title">{{ t('metrics.rawMetrics') }}</span>
-          <span class="raw-count-badge">{{ filteredRawLines.length }} lines</span>
-        </div>
-
-        <div class="raw-header-actions">
-          <Input
-            v-model:value="rawSearchQuery"
-            :placeholder="t('metrics.searchMetrics')"
-            size="small"
-            allow-clear
-            class="raw-search-input"
+          <ProTable
+            :key="selectedMethodFilter"
+            :columns="httpColumns"
+            :request="requestHttpStats"
+            :immediate="canQuery"
+            :show-request-error="false"
+            :search-fields="[]"
+            :pagination="{ pageSize: 10 }"
           >
-            <template #prefix>
-              <SearchOutlined class="text-slate-400" />
+            <template #column-method="{ row }">
+              <Tag :color="getMethodTagColor(row.method)" class="font-mono font-bold">
+                {{ row.method }}
+              </Tag>
             </template>
-          </Input>
 
-          <Button size="small" class="raw-btn" @click="copyRawMetrics">
-            <CopyOutlined />
-            {{ t('metrics.copyRaw') }}
-          </Button>
+            <template #column-route="{ row }">
+              <span class="http-route font-mono">{{ row.route }}</span>
+            </template>
 
-          <Button size="small" class="raw-btn" @click="rawInspectorOpen = !rawInspectorOpen">
-            {{ rawInspectorOpen ? t('proTable.collapse') : t('proTable.expand') }}
-          </Button>
-        </div>
-      </div>
+            <template #column-statusCode="{ row }">
+              <Tag :color="getStatusCodeTagColor(row.statusCode)" class="font-mono">
+                {{ row.statusCode }}
+              </Tag>
+            </template>
 
-      <div v-show="rawInspectorOpen" class="raw-content-box">
-        <pre class="raw-code-block">{{ filteredRawLines.join('\n') || t('metrics.empty') }}</pre>
-      </div>
-    </Card>
+            <template #column-count="{ row }">
+              <span class="http-count">{{ row.count }}</span>
+            </template>
+          </ProTable>
+        </Card>
+
+        <!-- Prometheus 原始指标检视器 -->
+        <Card variant="borderless" class="workbench-panel">
+          <template #title>
+            <div class="panel-header-title">
+              <SearchOutlined class="panel-title-icon text-slate-500" />
+              <span>{{ t('metrics.rawMetrics') }}</span>
+              <span class="raw-count-badge">{{ filteredRawLines.length }} lines</span>
+            </div>
+          </template>
+          <template #extra>
+            <Button
+              type="link"
+              size="small"
+              class="panel-extra-link"
+              @click="rawInspectorOpen = !rawInspectorOpen"
+            >
+              {{ rawInspectorOpen ? t('proTable.collapse') : t('proTable.expand') }} →
+            </Button>
+          </template>
+
+          <div class="raw-toolbar">
+            <Input
+              v-model:value="rawSearchQuery"
+              :placeholder="t('metrics.searchMetrics')"
+              size="small"
+              allow-clear
+              class="raw-search-input"
+            >
+              <template #prefix>
+                <SearchOutlined class="text-slate-400" />
+              </template>
+            </Input>
+
+            <Button size="small" class="action-btn action-btn--ghost" @click="copyRawMetrics">
+              <CopyOutlined />
+              <span>{{ t('metrics.copyRaw') }}</span>
+            </Button>
+          </div>
+
+          <div v-show="rawInspectorOpen" class="raw-content-box">
+            <pre class="raw-code-block">{{ filteredRawLines.join('\n') || t('metrics.empty') }}</pre>
+          </div>
+        </Card>
+      </Col>
+
+      <!-- 右侧：依赖基座速览 -->
+      <Col :xs="24" :lg="9" class="split-col">
+        <!-- PostgreSQL 数据库 -->
+        <Card variant="borderless" class="workbench-panel">
+          <template #title>
+            <div class="panel-header-title">
+              <DatabaseOutlined class="panel-title-icon text-cyan-500" />
+              <span>{{ t('metrics.databaseTitle') }}</span>
+            </div>
+          </template>
+          <template #extra>
+            <Tag
+              :color="
+                detailedHealth?.database?.status === 'up'
+                  ? 'green'
+                  : detailedHealth
+                    ? 'red'
+                    : 'default'
+              "
+              class="panel-status-tag"
+            >
+              {{
+                detailedHealth?.database?.status === 'up'
+                  ? t('metrics.statusUp')
+                  : detailedHealth
+                    ? t('metrics.statusDown')
+                    : '-'
+              }}
+            </Tag>
+          </template>
+
+          <div class="spec-list">
+            <div class="spec-row">
+              <span class="spec-label">{{ t('metrics.databaseLatency') }}</span>
+              <span class="spec-pill spec-pill--cyan">
+                {{ detailedHealth?.database ? `${detailedHealth.database.latencyMs}ms` : '-' }}
+              </span>
+            </div>
+            <div v-if="detailedHealth?.database?.version" class="spec-row">
+              <span class="spec-label">{{ t('metrics.databaseVersion') }}</span>
+              <span class="spec-mono" :title="detailedHealth.database.version">
+                {{ detailedHealth.database.version }}
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        <!-- Redis 缓存服务 -->
+        <Card variant="borderless" class="workbench-panel">
+          <template #title>
+            <div class="panel-header-title">
+              <CloudServerOutlined class="panel-title-icon text-rose-500" />
+              <span>{{ t('metrics.redisTitle') }}</span>
+            </div>
+          </template>
+          <template #extra>
+            <Tag
+              :color="
+                detailedHealth?.redis?.status === 'up'
+                  ? 'green'
+                  : detailedHealth
+                    ? 'red'
+                    : 'default'
+              "
+              class="panel-status-tag"
+            >
+              {{
+                detailedHealth?.redis?.status === 'up'
+                  ? t('metrics.statusUp')
+                  : detailedHealth
+                    ? t('metrics.statusDown')
+                    : '-'
+              }}
+            </Tag>
+          </template>
+
+          <div class="spec-list">
+            <div class="spec-row">
+              <span class="spec-label">{{ t('metrics.redisLatency') }}</span>
+              <span class="spec-pill spec-pill--amber">
+                {{ detailedHealth?.redis ? `${detailedHealth.redis.latencyMs}ms` : '-' }}
+              </span>
+            </div>
+            <div v-if="detailedHealth?.redis?.usedMemoryHuman" class="spec-row">
+              <span class="spec-label">{{ t('metrics.redisMemory') }}</span>
+              <span class="spec-mono">{{ detailedHealth.redis.usedMemoryHuman }}</span>
+            </div>
+            <div v-if="detailedHealth?.redis?.connectedClients !== undefined" class="spec-row">
+              <span class="spec-label">{{ t('metrics.redisClients') }}</span>
+              <span class="spec-pill spec-pill--blue">
+                {{ detailedHealth.redis.connectedClients }}
+              </span>
+            </div>
+          </div>
+        </Card>
+      </Col>
+    </Row>
   </div>
 </template>
 
 <style scoped lang="scss">
-.metrics-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  min-height: 100%;
+.metrics-workbench {
   padding-bottom: 24px;
 }
 
-.metrics-header {
+/* 1. 顶部指令横幅 (Command Strip, 与首页工作台同源) */
+.command-strip {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid #eaedf3;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s ease;
+
+  @media (max-width: 860px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+}
+
+.command-strip__main {
+  display: flex;
+  align-items: center;
   gap: 16px;
 }
 
-.header-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 20px;
-  font-weight: 700;
-  color: #0f172a;
+.command-strip__avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
 }
 
-.header-badge-icon {
+.command-strip__icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   font-size: 22px;
   color: #3b82f6;
+  background-color: #eff6ff;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.18);
 }
 
-.header-sub {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: #64748b;
+.command-strip__status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background-color: #10b981;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
 }
 
-.header-actions {
+.command-strip__title-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.command-strip__greeting {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.command-strip__live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  background-color: #ecfdf5;
+  border: 1px solid #d1fae5;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #047857;
+}
+
+.live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+
+.live-pulse-sep {
+  opacity: 0.5;
+}
+
+.live-pulse-sla {
+  font-weight: 600;
+}
+
+.command-strip__sub-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.command-strip__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.command-strip__tag-label {
+  color: #94a3b8;
+}
+
+.command-strip__tag-value {
+  color: #334155;
+  font-weight: 500;
+}
+
+.command-strip__divider {
+  color: #cbd5e1;
+}
+
+.command-strip__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
   flex-wrap: wrap;
 }
 
@@ -673,10 +812,6 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
 }
 
 .refresh-label {
@@ -695,292 +830,338 @@ onBeforeUnmount(() => {
   border-radius: 6px;
 }
 
-.refresh-btn {
+.action-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 6px;
-  font-weight: 500;
-}
-
-.status-banner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 16px;
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-}
-
-.status-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  height: 34px;
+  border-radius: 8px;
   font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.action-btn--ghost {
+  border-color: #e2e8f0;
   color: #475569;
-  flex-wrap: wrap;
-}
-
-.status-live-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  border-radius: 4px;
-}
-
-.status-pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-  animation: live-pulse 1.8s infinite;
-}
-
-@keyframes live-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.4;
-    transform: scale(0.8);
-  }
-}
-
-.status-divider {
-  color: #cbd5e1;
-}
-
-.vitals-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.vital-card {
-  border-radius: 12px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-  transition: all 0.25s ease;
 
-  :deep(.ant-card-body) {
-    padding: 18px 20px;
+  &:hover {
+    color: var(--app-color-primary, #3b82f6);
+    border-color: var(--app-color-primary, #3b82f6);
+    background: #f8fafc;
   }
 }
 
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.07);
-  border-color: #cbd5e1;
+.action-btn--primary {
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.15);
 }
 
-.vital-card-inner {
-  display: flex;
+/* 2. 四大核心体征指标卡 (Hero KPI Cards, 与首页同源) */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  align-items: flex-start;
+  margin-bottom: 24px;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
 }
 
-.vital-icon-box {
-  width: 48px;
-  height: 48px;
+.kpi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px 14px;
+  background: #ffffff;
+  border: 1px solid #eaedf3;
   border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: #cbd5e1;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+  }
+}
+
+.kpi-card--static {
+  cursor: default;
+}
+
+.kpi-card__header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-size: 22px;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.vital-body {
-  flex: 1;
+.kpi-card__title-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
-.vital-stat {
-  :deep(.ant-statistic-title) {
-    font-size: 13px;
-    color: #64748b;
-    margin-bottom: 4px;
-    font-weight: 500;
-  }
-
-  :deep(.ant-statistic-content-value) {
-    font-size: 22px;
-    font-weight: 700;
-    color: #0f172a;
-    letter-spacing: -0.02em;
-  }
-}
-
-.vital-progress-box {
-  margin-top: 8px;
-}
-
-.vital-progress-labels {
+.kpi-card__icon-badge {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: 12px;
-  margin-bottom: 2px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
-.vital-sub-text {
+.kpi-card__icon-badge--blue {
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+.kpi-card__icon-badge--emerald {
+  background-color: #ecfdf5;
+  color: #10b981;
+}
+
+.kpi-card__icon-badge--amber {
+  background-color: #fffbeb;
+  color: #f59e0b;
+}
+
+.kpi-card__icon-badge--purple {
+  background-color: #faf5ff;
+  color: #a855f7;
+}
+
+.kpi-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trend-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.trend-badge--up {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #dbeafe;
+}
+
+.trend-badge--emerald {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #d1fae5;
+}
+
+.trend-badge--amber {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fef3c7;
+}
+
+.trend-badge--rose {
+  background-color: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #ffe4e6;
+}
+
+.launchpad-pill-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.kpi-card__metric {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.metric-number {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric-caption {
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.kpi-card__progress-box {
+  width: 100%;
+  margin: 4px 0 10px;
+}
+
+.kpi-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
   font-size: 12px;
   color: #64748b;
+  transition: all 0.2s;
+  margin-top: auto;
 }
 
-.vital-sub-num {
-  font-size: 12px;
+.footer-link-text {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footer-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 3. 双栏观测与基座面板 (Workbench Panels, 与首页同源) */
+.workbench-panel {
+  background: #ffffff;
+  border: 1px solid #eaedf3;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+
+  :deep(.ant-card-head) {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    min-height: auto;
+  }
+  :deep(.ant-card-body) {
+    padding: 16px 18px;
+  }
+}
+
+.split-col {
+  :last-child.workbench-panel {
+    margin-bottom: 0;
+  }
+}
+
+.panel-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.panel-title-icon {
+  font-size: 15px;
+}
+
+.panel-badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background-color: #f59e0b;
+  color: #ffffff;
+  border-radius: 9999px;
+  font-size: 11px;
   font-weight: 600;
 }
 
-.vital-bottom-tags {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.vital-mini-stat {
-  font-size: 11px;
+.panel-extra-link {
+  padding: 0;
+  font-size: 12px;
   color: #64748b;
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
+
+  &:hover {
+    color: var(--app-color-primary, #3b82f6);
+  }
 }
 
-.vital-bottom-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.vital-tag {
+.panel-status-tag {
   margin: 0;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
 }
 
-.traffic-card {
-  border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-
-  :deep(.ant-card-head) {
-    padding: 14px 20px;
-    border-bottom: 1px solid #f1f5f9;
-  }
-
-  :deep(.ant-card-body) {
-    padding: 16px 20px 20px;
-  }
+.http-route {
+  color: #334155;
 }
 
-.traffic-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.traffic-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.traffic-title {
-  font-size: 15px;
+.http-count {
   font-weight: 600;
   color: #0f172a;
 }
 
-.traffic-count-tag {
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.traffic-filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.filter-label {
-  font-size: 12px;
-  color: #64748b;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.raw-inspector-card {
-  border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-
-  :deep(.ant-card-body) {
-    padding: 16px 20px;
-  }
-}
-
-.raw-inspector-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.raw-header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.raw-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-}
-
+/* 原始指标检视器 */
 .raw-count-badge {
   font-size: 11px;
   color: #64748b;
   background: #f1f5f9;
   padding: 2px 8px;
   border-radius: 12px;
+  font-weight: 500;
 }
 
-.raw-header-actions {
+.raw-toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
 .raw-search-input {
   width: 220px;
-}
-
-.raw-btn {
-  border-radius: 6px;
-  font-size: 12px;
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
 }
 
 .raw-content-box {
-  margin-top: 14px;
+  margin-top: 2px;
 }
 
 .raw-code-block {
@@ -997,29 +1178,274 @@ onBeforeUnmount(() => {
   border: 1px solid #1e293b;
 }
 
+/* 依赖基座规格列表 (Spec List, 与首页同源) */
+.spec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background-color: #f8fafc;
+  font-size: 12px;
+}
+
+.spec-label {
+  color: #64748b;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.spec-pill {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.spec-pill--cyan {
+  background-color: #ecfeff;
+  color: #0891b2;
+}
+
+.spec-pill--blue {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.spec-pill--amber {
+  background-color: #fffbeb;
+  color: #d97706;
+}
+
+.spec-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #334155;
+  background-color: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 4px;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   暗黑模式适配 (与首页工作台同源)
+   ========================================================================== */
 html.dark {
-  .status-banner {
-    background: #1c1d22 !important;
-    border-color: #2a2c33 !important;
+  .command-strip {
+    background: #1c1d22;
+    border-color: #2a2c33;
+    box-shadow: none;
   }
 
-  .status-meta {
-    color: #94a3b8 !important;
+  .command-strip__icon-badge {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #1c1d22;
   }
 
-  .metric-kpi-card {
-    background: #222429 !important;
-    border-color: #2e3038 !important;
+  .command-strip__status-dot {
+    border-color: #1c1d22;
   }
 
-  .chart-panel-card {
-    background: #1c1d22 !important;
-    border-color: #2a2c33 !important;
+  .command-strip__greeting {
+    color: #ffffff;
   }
 
-  .raw-inspector-card {
-    background: #1c1d22 !important;
-    border-color: #2a2c33 !important;
+  .command-strip__live-pill {
+    background-color: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #34d399;
+  }
+
+  .command-strip__tag-label {
+    color: #64748b;
+  }
+
+  .command-strip__tag-value {
+    color: #e2e8f0;
+  }
+
+  .command-strip__divider {
+    color: #334155;
+  }
+
+  .refresh-label {
+    color: #8b909a;
+  }
+
+  .last-updated-badge {
+    background-color: #22242a;
+    color: #8b909a;
+  }
+
+  .action-btn--ghost {
+    background: #22242a;
+    border-color: #2e3038;
+    color: #cbd5e1;
+
+    &:hover {
+      background: #262830;
+      border-color: #3b3e48;
+      color: #ffffff;
+    }
+  }
+
+  /* KPI 卡片 */
+  .kpi-card {
+    background: #1c1d22;
+    border-color: #2a2c33;
+    box-shadow: none;
+
+    &:hover {
+      border-color: #3e424e;
+      background: #202228;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  .kpi-card__label {
+    color: #94a3b8;
+  }
+
+  .metric-number {
+    color: #ffffff;
+  }
+
+  .metric-caption {
+    color: #64748b;
+  }
+
+  .kpi-card__footer {
+    border-top-color: #262830;
+    color: #94a3b8;
+  }
+
+  .footer-mono {
+    color: #64748b;
+  }
+
+  .kpi-card__icon-badge--blue {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+  }
+
+  .kpi-card__icon-badge--emerald {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+  }
+
+  .kpi-card__icon-badge--amber {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+  }
+
+  .kpi-card__icon-badge--purple {
+    background-color: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+  }
+
+  .trend-badge--up {
+    background-color: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.25);
+    color: #60a5fa;
+  }
+
+  .trend-badge--emerald {
+    background-color: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #34d399;
+  }
+
+  .trend-badge--amber {
+    background-color: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.25);
+    color: #fbbf24;
+  }
+
+  .trend-badge--rose {
+    background-color: rgba(244, 63, 94, 0.12);
+    border-color: rgba(244, 63, 94, 0.25);
+    color: #fb7185;
+  }
+
+  .launchpad-pill-tag {
+    background-color: #22242a;
+    border-color: #2e3038;
+    color: #94a3b8;
+  }
+
+  /* 面板与列表 */
+  .workbench-panel {
+    background: #1c1d22;
+    border-color: #2a2c33;
+
+    :deep(.ant-card-head) {
+      border-bottom-color: #262830;
+    }
+  }
+
+  .panel-header-title {
+    color: #ffffff;
+  }
+
+  .panel-extra-link {
+    color: #8b909a;
+
+    &:hover {
+      color: #60a5fa;
+    }
+  }
+
+  .http-route {
+    color: #cbd5e1;
+  }
+
+  .http-count {
+    color: #ffffff;
+  }
+
+  .raw-count-badge {
+    background-color: #22242a;
+    color: #8b909a;
+  }
+
+  .spec-row {
+    background-color: #22242a;
+  }
+
+  .spec-label {
+    color: #8b909a;
+  }
+
+  .spec-pill--cyan {
+    background-color: rgba(6, 182, 212, 0.15);
+    color: #22d3ee;
+  }
+
+  .spec-pill--blue {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+  }
+
+  .spec-pill--amber {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+  }
+
+  .spec-mono {
+    background-color: #262830;
+    color: #cbd5e1;
   }
 }
 </style>
