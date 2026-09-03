@@ -284,6 +284,16 @@ html.dark .main-layout {
   transition: all 0.2s ease;
   box-shadow: 2px 0 8px 0 rgb(29 35 41 / 5%);
   z-index: 10;
+
+  // LayoutSider 在 aside 内再包一层 .ant-layout-sider-children（antd 默认块级盒），
+  // flex 链不断在这里，菜单容器的 flex:1 / min-height:0 才会生效，展开超高后在内部滚动。
+  :deep(.ant-layout-sider-children) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
 }
 
 .brand {
